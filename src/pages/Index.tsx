@@ -4,6 +4,7 @@ import SocialProofSection from "@/components/landing/SocialProofSection";
 import ProblemSolutionSection from "@/components/landing/ProblemSolutionSection";
 import CreatorsSection from "@/components/landing/CreatorsSection";
 import FeaturesSection from "@/components/landing/FeaturesSection";
+import ProductShowcaseSection from "@/components/landing/ProductShowcaseSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import PricingSection from "@/components/landing/PricingSection";
 import FAQSection from "@/components/landing/FAQSection";
@@ -22,6 +23,7 @@ const Index = () => {
         <section id="features">
           <FeaturesSection />
         </section>
+        <ProductShowcaseSection />
         <section id="how-it-works">
           <HowItWorksSection />
         </section>
