@@ -1,66 +1,68 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Pinterest-inspired Design System
-   Clean white background with Pinterest red accents
+/* Creator OS Design System
+   Vibrant, creative palette for digital creators
+   Primary: Coral/Magenta gradient
    All colors in HSL format
 */
 
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
+    --foreground: 220 15% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
+    --card-foreground: 220 15% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
+    --popover-foreground: 220 15% 13%;
 
-    /* Pinterest Red as primary - #E60023 = hsl(350, 100%, 45%) */
-    --primary: 350 100% 45%;
+    /* Vibrant Coral as primary - #FF6B6B = hsl(0, 100%, 71%) */
+    --primary: 0 100% 71%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
+    /* Deep Purple for secondary - #7C3AED */
+    --secondary: 263 84% 58%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
-    /* Light pink accent */
-    --accent: 350 100% 97%;
-    --accent-foreground: 350 100% 35%;
+    /* Warm gradient accent */
+    --accent: 263 84% 96%;
+    --accent-foreground: 263 84% 40%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    /* Soft gray borders */
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 350 100% 45%;
+    /* Soft borders */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 0 100% 71%;
 
-    /* Rounded corners - Pinterest style */
+    /* Rounded corners */
     --radius: 1rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 9%;
-    --sidebar-primary: 350 100% 45%;
+    --sidebar-foreground: 220 15% 13%;
+    --sidebar-primary: 0 100% 71%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 350 100% 97%;
-    --sidebar-accent-foreground: 350 100% 35%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 350 100% 45%;
+    --sidebar-accent: 263 84% 96%;
+    --sidebar-accent-foreground: 263 84% 40%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 0 100% 71%;
 
-    /* Chart colors with Pinterest palette */
-    --chart-1: 350 100% 45%;
-    --chart-2: 0 0% 16%;
-    --chart-3: 0 0% 38%;
-    --chart-4: 214 89% 52%;
-    --chart-5: 173 58% 39%;
+    /* Chart colors with creator palette */
+    --chart-1: 0 100% 71%;
+    --chart-2: 263 84% 58%;
+    --chart-3: 36 100% 50%;
+    --chart-4: 173 58% 39%;
+    --chart-5: 214 89% 52%;
 
     --sidebar: 0 0% 100%;
 
@@ -83,50 +85,50 @@
   }
 
   .dark {
-    --background: 0 0% 7%;
+    --background: 220 15% 7%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 10%;
+    --card: 220 15% 10%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 10%;
+    --popover: 220 15% 10%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 350 100% 50%;
+    --primary: 0 100% 71%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 263 84% 58%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 9% 65%;
 
-    --accent: 350 80% 20%;
-    --accent-foreground: 350 100% 85%;
+    --accent: 263 60% 20%;
+    --accent-foreground: 263 84% 85%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 350 100% 50%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 0 100% 71%;
 
-    --sidebar-background: 0 0% 9%;
+    --sidebar-background: 220 15% 9%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 350 100% 50%;
+    --sidebar-primary: 0 100% 71%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 350 80% 20%;
-    --sidebar-accent-foreground: 350 100% 85%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 350 100% 50%;
+    --sidebar-accent: 263 60% 20%;
+    --sidebar-accent-foreground: 263 84% 85%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 0 100% 71%;
 
-    --chart-1: 350 100% 50%;
-    --chart-2: 0 0% 80%;
-    --chart-3: 0 0% 60%;
-    --chart-4: 214 89% 52%;
-    --chart-5: 173 58% 39%;
+    --chart-1: 0 100% 71%;
+    --chart-2: 263 84% 65%;
+    --chart-3: 36 100% 60%;
+    --chart-4: 173 58% 50%;
+    --chart-5: 214 89% 60%;
 
-    --sidebar: 0 0% 9%;
+    --sidebar: 220 15% 9%;
     --radius: 1rem;
 
     --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.2);
@@ -150,44 +152,99 @@
   }
 }
 
-/* Pinterest Gradient Utilities */
+/* Creator OS Gradient Utilities */
 @layer utilities {
-  .bg-pinterest-gradient {
+  /* Primary gradient: Coral to Magenta */
+  .bg-creator-gradient {
     background: linear-gradient(
       135deg, 
-      hsl(350, 100%, 45%) 0%,
-      hsl(350, 85%, 35%) 100%
+      hsl(0, 100%, 71%) 0%,
+      hsl(320, 85%, 55%) 100%
     );
   }
 
-  .bg-pinterest-gradient-hover {
+  .bg-creator-gradient-hover {
     background: linear-gradient(
       135deg, 
-      hsl(350, 100%, 40%) 0%,
-      hsl(350, 85%, 30%) 100%
+      hsl(0, 100%, 65%) 0%,
+      hsl(320, 85%, 50%) 100%
     );
   }
 
-  .text-pinterest-gradient {
+  /* Text gradient */
+  .text-creator-gradient {
     background: linear-gradient(
       135deg, 
-      hsl(350, 100%, 45%) 0%,
-      hsl(350, 85%, 35%) 100%
+      hsl(0, 100%, 71%) 0%,
+      hsl(320, 85%, 55%) 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .border-pinterest-gradient {
-    border-image: linear-gradient(
+  /* Purple gradient for secondary elements */
+  .bg-purple-gradient {
+    background: linear-gradient(
       135deg, 
-      hsl(350, 100%, 45%) 0%,
-      hsl(350, 85%, 35%) 100%
-    ) 1;
+      hsl(263, 84%, 58%) 0%,
+      hsl(280, 80%, 45%) 100%
+    );
   }
 
-  /* Masonry grid for Pinterest-style layouts */
+  .text-purple-gradient {
+    background: linear-gradient(
+      135deg, 
+      hsl(263, 84%, 58%) 0%,
+      hsl(280, 80%, 45%) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Hero section gradient background */
+  .bg-hero-gradient {
+    background: linear-gradient(
+      180deg,
+      hsl(0, 100%, 98%) 0%,
+      hsl(320, 100%, 98%) 50%,
+      hsl(263, 100%, 98%) 100%
+    );
+  }
+
+  /* Animated gradient */
+  .bg-animated-gradient {
+    background: linear-gradient(
+      270deg,
+      hsl(0, 100%, 71%),
+      hsl(320, 85%, 55%),
+      hsl(263, 84%, 58%),
+      hsl(0, 100%, 71%)
+    );
+    background-size: 400% 400%;
+    animation: gradient-flow 8s ease infinite;
+  }
+
+  /* Subtle mesh gradient for sections */
+  .bg-mesh-gradient {
+    background-color: hsl(0, 0%, 100%);
+    background-image: 
+      radial-gradient(at 40% 20%, hsl(0, 100%, 95%) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsl(320, 100%, 95%) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(263, 100%, 95%) 0px, transparent 50%);
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 40px hsl(0, 100%, 71%, 0.3);
+  }
+
+  .glow-secondary {
+    box-shadow: 0 0 40px hsl(263, 84%, 58%, 0.3);
+  }
+
+  /* Masonry grid for layouts */
   .masonry-grid {
     columns: 2;
     column-gap: 1rem;
@@ -223,6 +280,18 @@
 }
 
 /* Custom Animations */
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 @keyframes bounce-slow {
   0%, 100% {
     transform: translateY(0);
@@ -276,3 +345,67 @@
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
+
+@keyframes float-delayed {
+  0%, 100% {
+    transform: translateY(0px) rotate(6deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(6deg);
+  }
+}
+
+.animate-float-delayed {
+  animation: float-delayed 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out forwards;
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+/* Staggered animations */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
