@@ -1,5 +1,66 @@
-import { Brain, FileText, Lightbulb, List, Expand, Image, Download, FileCheck, Rocket, Bot, CheckCircle, Sparkles } from "lucide-react";
+import { Brain, FileText, Lightbulb, List, Expand, Image, Download, FileCheck, Rocket, Bot, CheckCircle, Sparkles, TrendingUp, Target, Puzzle, Clock, FileEdit, MessageSquare, ClipboardList, Gift } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+
+// PMF Score dimensions for the Product Validation module
+const pmfScores = [
+  {
+    id: "demand",
+    icon: TrendingUp,
+    title: "Demand Score",
+    question: "Is there proven interest?",
+    description: "Analyzes search trends, social mentions, and competitor products to gauge market demand."
+  },
+  {
+    id: "fit",
+    icon: Target,
+    title: "Fit Score",
+    question: "Does it match your expertise?",
+    description: "Compares against your brand profile, content history, and audience alignment."
+  },
+  {
+    id: "gap",
+    icon: Puzzle,
+    title: "Gap Score",
+    question: "Is the market underserved?",
+    description: "Identifies unmet needs and gaps in existing competitor products."
+  },
+  {
+    id: "urgency",
+    icon: Clock,
+    title: "Urgency Score",
+    question: "Do people need this now?",
+    description: "Measures time-sensitivity, current relevance, and trending topics."
+  }
+];
+
+// Pre-validation tools for the Product Validation module
+const validationTools = [
+  {
+    id: "waitlist",
+    icon: FileEdit,
+    title: "Waitlist Page Generator",
+    description: "Complete landing page copy with headline, benefits, and CTA to capture early interest."
+  },
+  {
+    id: "social",
+    icon: MessageSquare,
+    title: "\"Coming Soon\" Social Posts",
+    description: "Platform-specific posts for Twitter, LinkedIn, and Instagram to build anticipation."
+  },
+  {
+    id: "survey",
+    icon: ClipboardList,
+    title: "Interest Survey Builder",
+    description: "5-10 targeted questions to validate demand and discover ideal pricing."
+  },
+  {
+    id: "mini",
+    icon: Gift,
+    title: "Mini-Version Creator",
+    description: "Outline for a free sample (checklist, guide, chapter) to test engagement."
+  }
+];
 
 const modules = [
   {
@@ -15,7 +76,8 @@ const modules = [
       "Automatic context injection into all AI prompts"
     ],
     badge: null,
-    gradient: "from-purple-500/20 to-pink-500/20"
+    gradient: "from-purple-500/20 to-pink-500/20",
+    isExpanded: false
   },
   {
     id: "content-ingestion",
@@ -31,25 +93,18 @@ const modules = [
       "Pain point and desire identification"
     ],
     badge: null,
-    gradient: "from-blue-500/20 to-cyan-500/20"
+    gradient: "from-blue-500/20 to-cyan-500/20",
+    isExpanded: false
   },
   {
     id: "product-validation",
     icon: Lightbulb,
     headline: "Never Wonder What to Create — And Know It'll Sell",
     description: "AI analyzes your content sources and audience to generate profitable product ideas, then helps you validate them before you invest time building.",
-    capabilities: [
-      "AI-generated product ideas from your content",
-      "Product-Market Fit (PMF) scoring with 4 dimensions:",
-      "→ Demand Score: Is there proven interest?",
-      "→ Fit Score: Does it match your expertise?",
-      "→ Gap Score: Is the market underserved?",
-      "→ Urgency Score: Do people need this now?",
-      "Pre-validation toolkit: waitlist pages, social posts, surveys",
-      "Mini-version outline (lead magnet) creator"
-    ],
+    capabilities: [],
     badge: null,
-    gradient: "from-yellow-500/20 to-orange-500/20"
+    gradient: "from-yellow-500/20 to-orange-500/20",
+    isExpanded: true // This module gets special treatment
   },
   {
     id: "outline-generator",
@@ -65,7 +120,8 @@ const modules = [
       "Outline export and sharing"
     ],
     badge: null,
-    gradient: "from-green-500/20 to-emerald-500/20"
+    gradient: "from-green-500/20 to-emerald-500/20",
+    isExpanded: false
   },
   {
     id: "content-expansion",
@@ -83,7 +139,8 @@ const modules = [
       "Consistent voice throughout (uses Brand Memory)"
     ],
     badge: null,
-    gradient: "from-indigo-500/20 to-purple-500/20"
+    gradient: "from-indigo-500/20 to-purple-500/20",
+    isExpanded: false
   },
   {
     id: "image-studio",
@@ -100,7 +157,8 @@ const modules = [
       "Multiple style variations to choose from"
     ],
     badge: null,
-    gradient: "from-pink-500/20 to-rose-500/20"
+    gradient: "from-pink-500/20 to-rose-500/20",
+    isExpanded: false
   },
   {
     id: "export-engine",
@@ -116,7 +174,8 @@ const modules = [
       "Brand styling applied automatically"
     ],
     badge: null,
-    gradient: "from-teal-500/20 to-cyan-500/20"
+    gradient: "from-teal-500/20 to-cyan-500/20",
+    isExpanded: false
   },
   {
     id: "sales-page",
@@ -133,7 +192,8 @@ const modules = [
       "Export as HTML, Markdown, or copy-paste text"
     ],
     badge: "Pro & Unlimited",
-    gradient: "from-amber-500/20 to-yellow-500/20"
+    gradient: "from-amber-500/20 to-yellow-500/20",
+    isExpanded: false
   },
   {
     id: "launch-assets",
@@ -150,7 +210,8 @@ const modules = [
       "Offer & Pricing Recommendations"
     ],
     badge: "Pro & Unlimited",
-    gradient: "from-red-500/20 to-orange-500/20"
+    gradient: "from-red-500/20 to-orange-500/20",
+    isExpanded: false
   },
   {
     id: "ai-copilot",
@@ -168,9 +229,227 @@ const modules = [
       "Remembers previous conversations"
     ],
     badge: "Unlimited Only",
-    gradient: "from-violet-500/20 to-purple-500/20"
+    gradient: "from-violet-500/20 to-purple-500/20",
+    isExpanded: false
   }
 ];
+
+// Component for rendering the expanded Product Validation section
+const ProductValidationExpanded = () => {
+  return (
+    <div className="space-y-12">
+      {/* Intro */}
+      <div className="text-center max-w-3xl mx-auto">
+        <p className="text-lg text-muted-foreground">
+          Stop guessing which products to build. Our AI-powered validation engine analyzes your content, audience, and market to surface ideas that are <span className="text-primary font-semibold">proven to sell</span>.
+        </p>
+      </div>
+
+      {/* How It Works Steps */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="bg-card/50 border-border/50">
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-xl font-bold text-primary">1</span>
+            </div>
+            <h4 className="font-semibold text-foreground mb-2">AI Scans Your Content</h4>
+            <p className="text-sm text-muted-foreground">
+              Analyzes your blogs, videos, notes, and audience data to identify recurring themes and opportunities.
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card/50 border-border/50">
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-xl font-bold text-primary">2</span>
+            </div>
+            <h4 className="font-semibold text-foreground mb-2">Generates Product Ideas</h4>
+            <p className="text-sm text-muted-foreground">
+              Creates 5-10 tailored product ideas with titles, descriptions, formats, and target audience recommendations.
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card/50 border-border/50">
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-xl font-bold text-primary">3</span>
+            </div>
+            <h4 className="font-semibold text-foreground mb-2">Scores & Validates</h4>
+            <p className="text-sm text-muted-foreground">
+              Rates each idea with PMF scoring and provides tools to validate demand before you build.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* PMF Scoring System */}
+      <div className="space-y-6">
+        <div className="text-center">
+          <Badge variant="outline" className="mb-3 border-primary/30 text-primary">
+            Product-Market Fit Scoring
+          </Badge>
+          <h4 className="text-2xl font-bold text-foreground">
+            Know Your Idea's Potential Before Building
+          </h4>
+          <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
+            Each product idea receives a 0-100 PMF score based on four key dimensions. Focus on ideas scoring 70+ for the best chance of success.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {pmfScores.map((score) => {
+            const Icon = score.icon;
+            return (
+              <Card key={score.id} className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-primary" />
+                    </div>
+                    <h5 className="font-semibold text-foreground">{score.title}</h5>
+                  </div>
+                  <p className="text-sm font-medium text-primary mb-2">{score.question}</p>
+                  <p className="text-sm text-muted-foreground">{score.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Visual PMF Score Example */}
+        <Card className="bg-card/50 border-border/50 overflow-hidden">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              {/* Score Gauges */}
+              <div className="flex-1 grid grid-cols-2 gap-6">
+                {pmfScores.map((score, index) => {
+                  const exampleScores = [85, 92, 78, 88];
+                  const percentage = exampleScores[index];
+                  return (
+                    <div key={score.id} className="text-center">
+                      <div className="relative w-20 h-20 mx-auto mb-2">
+                        <svg className="w-20 h-20 transform -rotate-90">
+                          <circle
+                            cx="40"
+                            cy="40"
+                            r="35"
+                            stroke="currentColor"
+                            strokeWidth="6"
+                            fill="none"
+                            className="text-muted/20"
+                          />
+                          <circle
+                            cx="40"
+                            cy="40"
+                            r="35"
+                            stroke="currentColor"
+                            strokeWidth="6"
+                            fill="none"
+                            strokeDasharray={`${percentage * 2.2} 220`}
+                            className="text-primary"
+                          />
+                        </svg>
+                        <span className="absolute inset-0 flex items-center justify-center text-lg font-bold text-foreground">
+                          {percentage}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{score.title.split(' ')[0]}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Combined Score */}
+              <div className="text-center md:border-l md:border-border md:pl-8">
+                <div className="relative w-32 h-32 mx-auto mb-4">
+                  <svg className="w-32 h-32 transform -rotate-90">
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="none"
+                      className="text-muted/20"
+                    />
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="none"
+                      strokeDasharray="308 352"
+                      className="text-primary"
+                    />
+                  </svg>
+                  <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-foreground">
+                    86
+                  </span>
+                </div>
+                <Badge className="bg-primary/20 text-primary border-primary/30 mb-2">
+                  Strong Opportunity
+                </Badge>
+                <p className="text-sm text-muted-foreground">Combined PMF Score</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Pre-Validation Toolkit */}
+      <div className="space-y-6">
+        <div className="text-center">
+          <Badge variant="outline" className="mb-3 border-primary/30 text-primary">
+            Pre-Validation Toolkit
+          </Badge>
+          <h4 className="text-2xl font-bold text-foreground">
+            Validate Demand Before You Build
+          </h4>
+          <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
+            Don't waste weeks creating a product nobody wants. Use these AI-generated tools to test interest and gather feedback first.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {validationTools.map((tool) => {
+            const Icon = tool.icon;
+            return (
+              <Card key={tool.id} className="bg-card/50 border-border/50 hover:border-primary/30 transition-colors">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h5 className="font-semibold text-foreground mb-1">{tool.title}</h5>
+                      <p className="text-sm text-muted-foreground">{tool.description}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="text-center">
+        <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-primary/20 inline-block">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex items-center gap-3 justify-center mb-2">
+              <Lightbulb className="w-6 h-6 text-primary" />
+              <span className="font-semibold text-foreground">One-Click Workflow</span>
+            </div>
+            <p className="text-muted-foreground max-w-md">
+              Found a winning idea? Click "Build This Product" to instantly start creating with all context pre-loaded.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
 const DetailedModulesSection = () => {
   return (
@@ -195,6 +474,51 @@ const DetailedModulesSection = () => {
           {modules.map((module, index) => {
             const Icon = module.icon;
             const isReversed = index % 2 === 1;
+            
+            // Special expanded treatment for product-validation
+            if (module.isExpanded) {
+              return (
+                <div key={module.id} className="space-y-12">
+                  {/* Module Header */}
+                  <div className={`flex flex-col ${isReversed ? 'lg:flex-row-reverse' : 'lg:flex-row'} gap-8 lg:gap-16 items-center`}>
+                    {/* Visual Side */}
+                    <div className="w-full lg:w-1/2">
+                      <div className={`relative rounded-3xl bg-gradient-to-br ${module.gradient} p-8 md:p-12 border border-border/50`}>
+                        <div className="flex items-center justify-center h-48 md:h-64">
+                          <div className="relative">
+                            <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl" />
+                            <Icon className="w-24 h-24 md:w-32 md:h-32 text-primary relative z-10" strokeWidth={1} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content Side */}
+                    <div className="w-full lg:w-1/2 space-y-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Icon className="w-5 h-5 text-primary" />
+                        </div>
+                        <Badge variant="outline" className="border-yellow-500/30 text-yellow-600 bg-yellow-500/10">
+                          Key Feature
+                        </Badge>
+                      </div>
+                      
+                      <h3 className="text-2xl md:text-3xl font-bold text-foreground">
+                        {module.headline}
+                      </h3>
+                      
+                      <p className="text-muted-foreground text-lg">
+                        {module.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Expanded Content */}
+                  <ProductValidationExpanded />
+                </div>
+              );
+            }
             
             return (
               <div 
