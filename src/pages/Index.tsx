@@ -5,6 +5,7 @@ import ProblemSolutionSection from "@/components/landing/ProblemSolutionSection"
 import UseCasesSection from "@/components/landing/UseCasesSection";
 import DetailedModulesSection from "@/components/landing/DetailedModulesSection";
 import ProductTypesSection from "@/components/landing/ProductTypesSection";
+import ProductIdeasSection from "@/components/landing/ProductIdeasSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import CreatorsSection from "@/components/landing/CreatorsSection";
 import PricingSection from "@/components/landing/PricingSection";
@@ -27,6 +28,9 @@ const Index = () => {
           <DetailedModulesSection />
         </section>
         <ProductTypesSection />
+        <section id="templates">
+          <ProductIdeasSection />
+        </section>
         <section id="how-it-works">
           <HowItWorksSection />
         </section>

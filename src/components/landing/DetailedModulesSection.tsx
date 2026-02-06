@@ -1,4 +1,4 @@
-import { Brain, FileText, Lightbulb, List, Expand, Image, Download, FileCheck, Rocket, Bot, CheckCircle, Sparkles, TrendingUp, Target, Puzzle, Clock, FileEdit, MessageSquare, ClipboardList, Gift } from "lucide-react";
+import { Brain, FileText, Lightbulb, List, Expand, Image, Download, FileCheck, Rocket, Bot, CheckCircle, Sparkles, TrendingUp, Target, Puzzle, Clock, FileEdit, MessageSquare, ClipboardList, Gift, BookMarked, Globe, DollarSign, FileType, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -231,8 +231,164 @@ const modules = [
     badge: "Unlimited Only",
     gradient: "from-violet-500/20 to-purple-500/20",
     isExpanded: false
+  },
+  {
+    id: "amazon-kdp",
+    icon: BookMarked,
+    headline: "Publish to Amazon Kindle & Reach Millions of Readers",
+    description: "Export your ebooks and print books in KDP-ready format. Upload directly to Amazon Kindle Direct Publishing and start selling on the world's largest bookstore in 72 hours.",
+    capabilities: [
+      "Kindle eBook export (.epub) with proper metadata",
+      "Print-ready PDF formatting (paperback & hardcover)",
+      "KDP-compliant cover generation with spine calculator",
+      "Book description & A+ content generator",
+      "7 backend keyword suggestions for discoverability",
+      "Category recommendations for Amazon search",
+      "Royalty calculator (70% vs 35% tier optimization)",
+      "Global marketplace publishing guidance"
+    ],
+    badge: "Pro & Unlimited",
+    gradient: "from-orange-500/20 to-amber-500/20",
+    isExpanded: true // This module gets special treatment
   }
 ];
+
+// KDP Stats for the Amazon module
+const kdpStats = [
+  { value: "70%", label: "eBook Royalty", icon: DollarSign },
+  { value: "60%", label: "Print Royalty", icon: DollarSign },
+  { value: "10+", label: "Countries", icon: Globe },
+  { value: "72hrs", label: "To Go Live", icon: Clock }
+];
+
+// KDP Features breakdown
+const kdpFeatures = [
+  {
+    id: "formatting",
+    icon: FileType,
+    title: "KDP-Ready Formatting",
+    items: [
+      "Kindle eBook format (.epub, .mobi) with proper metadata",
+      "Paperback interior PDF (6x9, 5.5x8.5, custom sizes)",
+      "Hardcover interior PDF with bleed settings"
+    ]
+  },
+  {
+    id: "covers",
+    icon: Layers,
+    title: "Cover Generation",
+    items: [
+      "KDP-compliant cover dimensions",
+      "Spine calculator for print books",
+      "Back cover copy generator"
+    ]
+  },
+  {
+    id: "metadata",
+    icon: FileText,
+    title: "Metadata & Listing",
+    items: [
+      "Book description generator (A+ content ready)",
+      "Keyword research suggestions (7 backend keywords)",
+      "Category recommendations for discoverability"
+    ]
+  },
+  {
+    id: "royalty",
+    icon: DollarSign,
+    title: "Royalty Optimization",
+    items: [
+      "Pricing calculator for 70% vs 35% royalty tiers",
+      "Kindle Unlimited enrollment guidance",
+      "Global marketplace recommendations"
+    ]
+  }
+];
+
+// Component for rendering the expanded Amazon KDP section
+const AmazonKDPExpanded = () => {
+  return (
+    <div className="space-y-12">
+      {/* Intro */}
+      <div className="text-center max-w-3xl mx-auto">
+        <p className="text-lg text-muted-foreground">
+          Turn your digital products into <span className="text-primary font-semibold">passive income on Amazon</span>. Our KDP integration handles formatting, covers, and metadata — you just upload and start earning.
+        </p>
+      </div>
+
+      {/* Stats Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {kdpStats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.label} className="bg-gradient-to-br from-orange-500/10 to-amber-500/10 border-orange-500/20">
+              <CardContent className="p-6 text-center">
+                <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center mx-auto mb-3">
+                  <Icon className="w-5 h-5 text-orange-500" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                <p className="text-sm text-muted-foreground">{stat.label}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Feature Breakdown */}
+      <div className="space-y-6">
+        <div className="text-center">
+          <Badge variant="outline" className="mb-3 border-orange-500/30 text-orange-600 dark:text-orange-400">
+            Complete KDP Toolkit
+          </Badge>
+          <h4 className="text-2xl font-bold text-foreground">
+            Everything You Need to Publish on Amazon
+          </h4>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {kdpFeatures.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <Card key={feature.id} className="bg-card/50 border-border/50 hover:border-orange-500/30 transition-colors">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+                      <Icon className="w-6 h-6 text-orange-500" />
+                    </div>
+                    <div>
+                      <h5 className="font-semibold text-foreground mb-2">{feature.title}</h5>
+                      <ul className="space-y-1">
+                        {feature.items.map((item, index) => (
+                          <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                            <CheckCircle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <Card className="bg-gradient-to-br from-orange-500/10 to-amber-500/10 border-orange-500/20">
+        <CardContent className="p-8 text-center">
+          <BookMarked className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+          <h4 className="text-xl font-semibold text-foreground mb-2">
+            Ready to Become a Published Author?
+          </h4>
+          <p className="text-muted-foreground max-w-xl mx-auto">
+            Join thousands of creators who've published their expertise on Amazon and built passive income streams with KDP.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 // Component for rendering the expanded Product Validation section
 const ProductValidationExpanded = () => {
@@ -515,7 +671,8 @@ const DetailedModulesSection = () => {
                   </div>
 
                   {/* Expanded Content */}
-                  <ProductValidationExpanded />
+                  {module.id === "product-validation" && <ProductValidationExpanded />}
+                  {module.id === "amazon-kdp" && <AmazonKDPExpanded />}
                 </div>
               );
             }
