@@ -112,7 +112,7 @@ export default function Analytics() {
       <aside className="w-64 border-r-2 border-foreground bg-background flex flex-col">
         <div className="p-4 border-b-2 border-foreground">
           <Link to="/" className="flex items-center gap-2">
-            <img src={creatorberryLogo} alt="CreatorBerry" className="w-14 h-14 rounded-xl object-contain" />
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-24 h-24 rounded-xl object-contain" />
           </Link>
         </div>
 
