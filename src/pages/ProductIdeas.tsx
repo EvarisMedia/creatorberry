@@ -8,6 +8,7 @@ import { useBrands } from "@/hooks/useBrands";
 import { useProductIdeas } from "@/hooks/useProductIdeas";
 import { ProductIdeaCard } from "@/components/product-ideas/ProductIdeaCard";
 import { GenerateIdeasDialog } from "@/components/product-ideas/GenerateIdeasDialog";
+import { AddIdeaDialog } from "@/components/product-ideas/AddIdeaDialog";
 import {
   LayoutDashboard,
   Rss,
@@ -44,7 +45,7 @@ const sidebarItems = [
   { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
   { icon: Pin, label: "Pins", href: "/pins" },
   { icon: LayoutGrid, label: "Boards", href: "/boards" },
-  { icon: Rss, label: "Sources", href: "/sources" },
+  
   { icon: Image, label: "Images", href: "/images" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
@@ -52,11 +53,13 @@ const sidebarItems = [
 const ProductIdeas = () => {
   const { user, profile, isAdmin, isLoading, signOut } = useAuth();
   const { brands, currentBrand, isLoading: brandsLoading, selectBrand } = useBrands();
-  const { ideas, isLoading: ideasLoading, isGenerating, generateIdeas, updateIdeaStatus, deleteIdea } = useProductIdeas(currentBrand?.id || null);
+  const { ideas, isLoading: ideasLoading, isGenerating, generateIdeas, createIdea, updateIdeaStatus, deleteIdea } = useProductIdeas(currentBrand?.id || null);
   const navigate = useNavigate();
   const location = useLocation();
 
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [formatFilter, setFormatFilter] = useState("all");
   const [sortBy, setSortBy] = useState("score");
@@ -73,9 +76,15 @@ const ProductIdeas = () => {
 
   const isActive = (href: string) => location.pathname === href;
 
-  const handleGenerate = async (numberOfIdeas: number) => {
+  const handleGenerate = async (numberOfIdeas: number, seedPrompt?: string) => {
     if (!currentBrand) return;
-    await generateIdeas(currentBrand, numberOfIdeas);
+    await generateIdeas(currentBrand, numberOfIdeas, seedPrompt);
+  };
+
+  const handleAddIdea = async (idea: { title: string; description: string; format: string; target_audience: string }) => {
+    setIsAdding(true);
+    await createIdea(idea);
+    setIsAdding(false);
   };
 
   // Filter and sort ideas
@@ -209,6 +218,11 @@ const ProductIdeas = () => {
             <h1 className="text-2xl font-semibold">Product Ideas</h1>
             <p className="text-muted-foreground">Generate and validate digital product ideas with PMF scoring</p>
           </div>
+          <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setAddDialogOpen(true)} disabled={!currentBrand}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Manually
+          </Button>
           <Button onClick={() => setGenerateDialogOpen(true)} disabled={!currentBrand || isGenerating}>
             {isGenerating ? (
               <>
@@ -222,6 +236,7 @@ const ProductIdeas = () => {
               </>
             )}
           </Button>
+          </div>
         </header>
 
         <div className="p-6">
@@ -337,6 +352,12 @@ const ProductIdeas = () => {
         onOpenChange={setGenerateDialogOpen}
         onGenerate={handleGenerate}
         isGenerating={isGenerating}
+      />
+      <AddIdeaDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onAdd={handleAddIdea}
+        isAdding={isAdding}
       />
     </div>
   );

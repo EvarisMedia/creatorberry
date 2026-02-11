@@ -25,6 +25,30 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
+    // Get authenticated user
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: { user }, error: userError } = await userSupabase.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { brand, numberOfIdeas = 5, seedPrompt } = await req.json();
+
+    if (!brand?.id || !brand?.name) {
+      return new Response(
+        JSON.stringify({ error: 'Brand information is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Fetch content sources for this brand
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Look up user's API key
     let userApiKey: string | null = null;
     let userTextModel: string | null = null;
@@ -44,29 +68,6 @@ serve(async (req) => {
       throw new Error('No API key configured');
     }
 
-    // Get authenticated user
-    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-    const { data: { user }, error: userError } = await userSupabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authentication token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { brand, numberOfIdeas = 5 } = await req.json();
-
-    if (!brand?.id || !brand?.name) {
-      return new Response(
-        JSON.stringify({ error: 'Brand information is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Fetch content sources for this brand
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { data: sources } = await supabase
       .from('content_sources')
       .select('name, source_type, content, topic, url, funnel_stage')
@@ -147,7 +148,7 @@ IMPORTANT:
 - Combined score must follow the weighted formula
 - Prioritize ideas that leverage the creator's unique expertise
 - Consider the creator's existing content sources as validation signals
-- Include at least one "quick win" (low effort, fast to market) and one "flagship" (high effort, high reward)`;
+- Include at least one "quick win" (low effort, fast to market) and one "flagship" (high effort, high reward)${seedPrompt ? `\n\nThe creator is particularly interested in exploring: ${seedPrompt}` : ''}`;
 
     console.log('Generating product ideas for brand:', brand.name, 'source:', userApiKey ? 'user-key' : 'gateway');
 

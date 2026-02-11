@@ -36,23 +36,21 @@ const timezones = [
   { value: "Australia/Sydney", label: "Sydney (AEST)" },
 ];
 
-const toneOptions = [
-  { value: "professional", label: "Professional", description: "Polished and authoritative" },
-  { value: "conversational", label: "Conversational", description: "Friendly and approachable" },
-  { value: "bold", label: "Bold", description: "Direct and impactful" },
-  { value: "opinionated", label: "Opinionated", description: "Strong takes and hot takes" },
+const contentStyleOptions = [
+  { value: "educational", label: "Educational", description: "Teaching and informing" },
+  { value: "inspirational", label: "Inspirational", description: "Motivating and uplifting" },
+  { value: "tactical", label: "Tactical", description: "Step-by-step, actionable" },
+  { value: "research_backed", label: "Research-Backed", description: "Data-driven and analytical" },
 ];
 
-const emojiOptions = [
-  { value: "none", label: "None", description: "No emojis" },
-  { value: "minimal", label: "Minimal", description: "1-2 per post" },
-  { value: "moderate", label: "Moderate", description: "3-5 per post" },
-];
-
-const writingStyles = [
-  { value: "short_punchy", label: "Short & Punchy", description: "Quick, impactful lines" },
-  { value: "long_form", label: "Long-form", description: "Deep, detailed insights" },
-  { value: "story_driven", label: "Story-driven", description: "Narrative-based content" },
+const productFormatOptions = [
+  { value: "ebook", label: "Ebook / Guide" },
+  { value: "course", label: "Online Course" },
+  { value: "templates", label: "Templates / Toolkit" },
+  { value: "workbook", label: "Workbook / Journal" },
+  { value: "coaching", label: "Coaching Program" },
+  { value: "membership", label: "Membership / Community" },
+  { value: "printables", label: "Printables / Planners" },
 ];
 
 const CreateBrand = () => {
@@ -69,9 +67,10 @@ const CreateBrand = () => {
   const [primaryColor, setPrimaryColor] = useState("#000000");
   const [secondaryColor, setSecondaryColor] = useState("#FFFFFF");
   const [timezone, setTimezone] = useState("UTC");
-  const [tone, setTone] = useState("professional");
-  const [emojiUsage, setEmojiUsage] = useState("minimal");
-  const [writingStyle, setWritingStyle] = useState("short_punchy");
+  const [niche, setNiche] = useState("");
+  const [expertise, setExpertise] = useState("");
+  const [contentStyle, setContentStyle] = useState("educational");
+  const [preferredFormats, setPreferredFormats] = useState<string[]>([]);
   
   // Brand Knowledge
   const [about, setAbout] = useState("");
@@ -152,9 +151,8 @@ const CreateBrand = () => {
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           timezone,
-          tone: tone as "professional" | "conversational" | "bold" | "opinionated",
-          emoji_usage: emojiUsage as "none" | "minimal" | "moderate",
-          writing_style: writingStyle as "short_punchy" | "long_form" | "story_driven",
+          niche: niche || null,
+          content_style: contentStyle || null,
           about: about || null,
           core_beliefs: coreBeliefs || null,
           target_audience: targetAudience || null,
@@ -384,7 +382,7 @@ const CreateBrand = () => {
           </Card>
         )}
         
-        {/* Step 3: Voice & Tone */}
+        {/* Step 3: Product Profile */}
         {step === 3 && (
           <Card className="border-2 border-foreground shadow-md">
             <CardHeader className="border-b-2 border-foreground">
@@ -393,76 +391,79 @@ const CreateBrand = () => {
                   <Mic className="w-6 h-6" />
                 </div>
                 <div>
-                  <CardTitle>Brand Voice</CardTitle>
-                  <CardDescription>Define how your content should sound</CardDescription>
+                  <CardTitle>Product Profile</CardTitle>
+                  <CardDescription>Define your expertise and product preferences</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="niche">Niche / Industry</Label>
+                <Input
+                  id="niche"
+                  value={niche}
+                  onChange={(e) => setNiche(e.target.value)}
+                  placeholder="e.g. Personal Finance, Health & Wellness, SaaS Marketing"
+                  className="h-12"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="expertise">Your Expertise</Label>
+                <Textarea
+                  id="expertise"
+                  value={expertise}
+                  onChange={(e) => setExpertise(e.target.value)}
+                  placeholder="What topics are you an expert in? What unique knowledge do you bring?"
+                  rows={3}
+                />
+              </div>
+
               <div className="space-y-3">
-                <Label>Tone</Label>
+                <Label>Content Style</Label>
                 <div className="grid grid-cols-2 gap-3">
-                  {toneOptions.map((option) => (
+                  {contentStyleOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setTone(option.value)}
+                      onClick={() => setContentStyle(option.value)}
                       className={`p-4 border-2 border-foreground text-left transition-all ${
-                        tone === option.value 
-                          ? "bg-foreground text-primary-foreground shadow-sm" 
+                        contentStyle === option.value
+                          ? "bg-foreground text-primary-foreground shadow-sm"
                           : "hover:bg-secondary"
                       }`}
                     >
                       <div className="font-medium">{option.label}</div>
-                      <div className={`text-sm ${tone === option.value ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                      <div className={`text-sm ${contentStyle === option.value ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                         {option.description}
                       </div>
                     </button>
                   ))}
                 </div>
               </div>
-              
+
               <div className="space-y-3">
-                <Label>Emoji Usage</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {emojiOptions.map((option) => (
+                <Label>Preferred Product Formats</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {productFormatOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setEmojiUsage(option.value)}
-                      className={`p-4 border-2 border-foreground text-left transition-all ${
-                        emojiUsage === option.value 
-                          ? "bg-foreground text-primary-foreground shadow-sm" 
+                      onClick={() =>
+                        setPreferredFormats((prev) =>
+                          prev.includes(option.value)
+                            ? prev.filter((f) => f !== option.value)
+                            : [...prev, option.value]
+                        )
+                      }
+                      className={`p-3 border-2 border-foreground text-left transition-all flex items-center gap-2 ${
+                        preferredFormats.includes(option.value)
+                          ? "bg-foreground text-primary-foreground shadow-sm"
                           : "hover:bg-secondary"
                       }`}
                     >
-                      <div className="font-medium">{option.label}</div>
-                      <div className={`text-sm ${emojiUsage === option.value ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                        {option.description}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <Label>Writing Style</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {writingStyles.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setWritingStyle(option.value)}
-                      className={`p-4 border-2 border-foreground text-left transition-all ${
-                        writingStyle === option.value 
-                          ? "bg-foreground text-primary-foreground shadow-sm" 
-                          : "hover:bg-secondary"
-                      }`}
-                    >
-                      <div className="font-medium">{option.label}</div>
-                      <div className={`text-sm ${writingStyle === option.value ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                        {option.description}
-                      </div>
+                      <Check className={`w-4 h-4 ${preferredFormats.includes(option.value) ? "opacity-100" : "opacity-0"}`} />
+                      <span className="font-medium text-sm">{option.label}</span>
                     </button>
                   ))}
                 </div>
