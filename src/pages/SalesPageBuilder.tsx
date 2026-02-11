@@ -163,7 +163,7 @@ section{padding:3rem 2rem}.section-title{font-size:1.8rem;margin-bottom:1rem;col
     <div className="min-h-screen bg-muted/30 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-card border-r border-border flex flex-col shadow-sm">
-        <div className="p-5 border-b border-border">
+        <div className="p-3 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
             <img src={creatorberryLogo} alt="CreatorBerry" className="w-40 h-auto object-contain" />
           </Link>
