@@ -18,7 +18,6 @@ import { useUserApiKeys } from "@/hooks/useUserApiKeys";
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
-  Rss,
   Settings as SettingsIcon,
   Plus,
   LogOut,
@@ -39,6 +38,7 @@ import {
   ShoppingCart,
   Rocket,
   Library,
+  HelpCircle,
 } from "lucide-react";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import {
@@ -60,7 +60,7 @@ const sidebarItems = [
   { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },
   { icon: ShoppingCart, label: "Sales Pages", href: "/sales-pages" },
   { icon: Rocket, label: "Launch Toolkit", href: "/launch-toolkit" },
-  { icon: Rss, label: "Sources", href: "/sources" },
+  { icon: HelpCircle, label: "Help & Resources", href: "/help" },
   { icon: SettingsIcon, label: "Settings", href: "/settings" },
 ];
 

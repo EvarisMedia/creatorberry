@@ -9,10 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   LayoutDashboard,
   FileText,
-  Rss,
-  Image,
-  Calendar,
-  BarChart3,
   Settings,
   Plus,
   LogOut,
@@ -20,6 +16,15 @@ import {
   Shield,
   Loader2,
   TrendingUp,
+  Lightbulb,
+  Palette,
+  Download,
+  BookOpen,
+  ShoppingCart,
+  Rocket,
+  Library,
+  HelpCircle,
+  Image,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,11 +43,15 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line } fro
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: FileText, label: "Content", href: "/content" },
-  { icon: Rss, label: "Sources", href: "/sources" },
-  { icon: Image, label: "Images", href: "/images" },
-  { icon: Calendar, label: "Schedule", href: "/schedule" },
-  { icon: BarChart3, label: "Analytics", href: "/analytics", active: true },
+  { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
+  { icon: FileText, label: "Outlines", href: "/outlines" },
+  { icon: Library, label: "Templates", href: "/templates" },
+  { icon: Palette, label: "Image Studio", href: "/image-studio" },
+  { icon: Download, label: "Export Center", href: "/export-center" },
+  { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },
+  { icon: ShoppingCart, label: "Sales Pages", href: "/sales-pages" },
+  { icon: Rocket, label: "Launch Toolkit", href: "/launch-toolkit" },
+  { icon: HelpCircle, label: "Help & Resources", href: "/help" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
@@ -182,12 +191,12 @@ export default function Analytics() {
 
         <nav className="flex-1 p-4">
           <ul className="space-y-1">
-            {sidebarItems.map((item, index) => (
+                {sidebarItems.map((item, index) => (
               <li key={index}>
                 <Link
                   to={item.href}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
-                    item.active ? "bg-foreground text-primary-foreground" : "hover:bg-secondary"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    location.pathname === item.href ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   }`}
                 >
                   <item.icon className="w-4 h-4" />
@@ -241,7 +250,7 @@ export default function Analytics() {
           {!currentBrand ? (
             <Card className="border-2 border-foreground">
               <CardContent className="p-8 text-center">
-                <BarChart3 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-xl font-bold mb-2">No Brand Selected</h3>
                 <p className="text-muted-foreground mb-4">Select a brand to view analytics</p>
                 <Button onClick={() => navigate("/dashboard")}>Go to Dashboard</Button>

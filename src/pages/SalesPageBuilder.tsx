@@ -13,8 +13,8 @@ import { useBrands } from "@/hooks/useBrands";
 import { useProductOutlines } from "@/hooks/useProductOutlines";
 import { useSalesPages, SalesPage, SalesPageSection } from "@/hooks/useSalesPages";
 import {
-  LayoutDashboard, Rss, Settings, Sparkles, Lightbulb, FileText, Palette,
-  Download, BookOpen, ShoppingCart, Plus, Loader2, Trash2, Eye, Edit, Copy,
+  LayoutDashboard, Settings, Sparkles, Lightbulb, FileText, Palette,
+  Download, BookOpen, ShoppingCart, Rocket, Library, HelpCircle, Plus, Loader2, Trash2, Eye, Edit, Copy,
   ChevronDown, LogOut, Shield,
 } from "lucide-react";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
@@ -30,11 +30,13 @@ const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
   { icon: FileText, label: "Outlines", href: "/outlines" },
+  { icon: Library, label: "Templates", href: "/templates" },
   { icon: Palette, label: "Image Studio", href: "/image-studio" },
   { icon: Download, label: "Export Center", href: "/export-center" },
   { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },
   { icon: ShoppingCart, label: "Sales Pages", href: "/sales-pages" },
-  { icon: Rss, label: "Sources", href: "/sources" },
+  { icon: Rocket, label: "Launch Toolkit", href: "/launch-toolkit" },
+  { icon: HelpCircle, label: "Help & Resources", href: "/help" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
