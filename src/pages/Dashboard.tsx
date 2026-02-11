@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import {
   ShoppingCart,
   Rocket,
   Library,
+  Bot,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CopilotChat } from "@/components/copilot/CopilotChat";
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -49,6 +51,7 @@ const sidebarItems = [
 ];
 
 const Dashboard = () => {
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const { user, profile, isAdmin, isLoading, signOut } = useAuth();
   const { brands, currentBrand, isLoading: brandsLoading, selectBrand } = useBrands();
   const { ideas } = useProductIdeas(currentBrand?.id || null);
@@ -448,7 +451,24 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Copilot Toggle */}
+        <button
+          onClick={() => setCopilotOpen(!copilotOpen)}
+          className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-xl bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center"
+          title="AI Copilot"
+        >
+          <Bot className="w-5 h-5" />
+        </button>
       </main>
+
+      {/* Copilot Sidebar */}
+      <CopilotChat
+        brand={currentBrand || null}
+        currentPage="Dashboard"
+        isOpen={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+      />
     </div>
   );
 };
