@@ -44,6 +44,7 @@ import {
   Pencil,
   Trash2,
   Search,
+  UserPlus,
 } from "lucide-react";
 
 interface UserProfile {
@@ -70,6 +71,14 @@ const AdminUsers = () => {
   const [editPlanId, setEditPlanId] = useState<string | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+
+  // Add user state
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newApproved, setNewApproved] = useState(true);
+  const [newPlanId, setNewPlanId] = useState<string | null>(null);
+  const [addingUser, setAddingUser] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/auth");
@@ -156,6 +165,34 @@ const AdminUsers = () => {
     setDeleteUserId(null);
   };
 
+  const handleAddUser = async () => {
+    if (!newEmail.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+    setAddingUser(true);
+    // Create a profile entry directly (no auth account — admin-managed user)
+    const { error } = await supabase.from("profiles").insert({
+      user_id: crypto.randomUUID(),
+      email: newEmail.trim(),
+      full_name: newName.trim() || null,
+      is_approved: newApproved,
+      plan_id: newPlanId,
+    } as any);
+    if (error) {
+      toast.error("Failed to add user: " + error.message);
+    } else {
+      toast.success("User added successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setShowAddUser(false);
+      setNewEmail("");
+      setNewName("");
+      setNewApproved(true);
+      setNewPlanId(null);
+    }
+    setAddingUser(false);
+  };
+
   const handleAssignPlan = async (userId: string, planId: string) => {
     await assignPlan.mutateAsync({ userId, planId: planId === "none" ? null : planId });
   };
@@ -180,7 +217,13 @@ const AdminUsers = () => {
       <main className="flex-1 overflow-auto">
         <header className="p-6 border-b">
           <h1 className="text-2xl font-bold">User Management</h1>
-          <p className="text-muted-foreground">Manage users, assign plans, and control access</p>
+          <div className="flex items-center justify-between">
+            <p className="text-muted-foreground">Manage users, assign plans, and control access</p>
+            <Button onClick={() => setShowAddUser(true)}>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add User
+            </Button>
+          </div>
         </header>
 
         <div className="p-6 space-y-4">
@@ -345,6 +388,51 @@ const AdminUsers = () => {
             <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
             <Button onClick={handleSaveEdit} disabled={updatingUser === editUser?.user_id}>
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add User</DialogTitle>
+            <DialogDescription>Manually add a new user profile.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Email *</Label>
+              <Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="user@example.com" />
+            </div>
+            <div>
+              <Label>Full Name</Label>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="John Doe" />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Approved</Label>
+              <Switch checked={newApproved} onCheckedChange={setNewApproved} />
+            </div>
+            <div>
+              <Label>Assign Plan</Label>
+              <Select value={newPlanId || "none"} onValueChange={(v) => setNewPlanId(v === "none" ? null : v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No plan</SelectItem>
+                  {plans?.filter((p) => p.is_active).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name} (${p.price})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddUser(false)}>Cancel</Button>
+            <Button onClick={handleAddUser} disabled={addingUser}>
+              {addingUser ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Add User
             </Button>
           </DialogFooter>
         </DialogContent>
