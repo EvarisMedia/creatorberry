@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, ChevronDown, ChevronRight, Pencil, Check, X, BookOpen } from "lucide-react";
+import { GripVertical, ChevronDown, ChevronRight, Pencil, Check, X, BookOpen, PenTool } from "lucide-react";
 import { OutlineSection } from "@/hooks/useProductOutlines";
 
 interface OutlineSectionCardProps {
@@ -12,9 +13,11 @@ interface OutlineSectionCardProps {
   index: number;
   onUpdate: (sectionId: string, updates: Partial<OutlineSection>) => Promise<boolean>;
   dragHandleProps?: any;
+  outlineId?: string;
 }
 
-const OutlineSectionCard = ({ section, index, onUpdate, dragHandleProps }: OutlineSectionCardProps) => {
+const OutlineSectionCard = ({ section, index, onUpdate, dragHandleProps, outlineId }: OutlineSectionCardProps) => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(section.title);
@@ -99,6 +102,11 @@ const OutlineSectionCard = ({ section, index, onUpdate, dragHandleProps }: Outli
                   <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setIsEditing(true)}>
                     <Pencil className="w-3 h-3" />
                   </Button>
+                  {outlineId && (
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-primary" onClick={() => navigate(`/content-editor/${section.id}?outlineId=${outlineId}`)}>
+                      <PenTool className="w-3 h-3 mr-1" /> Expand
+                    </Button>
+                  )}
                 </div>
                 {section.description && (
                   <p className="text-sm text-muted-foreground ml-6 line-clamp-2">{section.description}</p>
