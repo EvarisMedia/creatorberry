@@ -1,42 +1,37 @@
 
-# Update Admin Panel: Remove Old Pages, Add AI Model Access to Plans
+# Help & Resources Page
 
-## What Changes
+## Overview
+Create a new `/help` page accessible from the sidebar that serves as a comprehensive in-app documentation and workflow guide for Creator OS. It will cover the full step-by-step workflow and document every module.
 
-### 1. Remove "AI Training" and "AI Settings" from Admin Sidebar
-These are legacy features. Remove their links from the sidebar navigation. The pages and routes will remain in the codebase but won't be accessible from the admin panel navigation.
+## Changes
 
-**File: `src/components/admin/AdminSidebar.tsx`**
-- Remove the "AI Training" (`/admin/training`) and "AI Settings" (`/admin/settings`) sidebar items
-- Final sidebar: Dashboard, Users, Plans
+### 1. New Page: `src/pages/Help.tsx`
+A full documentation page using the existing sidebar layout pattern (matching Dashboard). Content organized with Accordion components for collapsible sections:
 
-### 2. Add AI Model Access to Plan Features
-Plans should control which AI models users can access. Add new feature toggles to the `PlanFeatures` interface and plan creation/edit dialog.
+**Sections:**
+- **Getting Started** -- Account setup, creating your first brand, understanding the dashboard
+- **Step-by-Step Workflow** -- The 4-step process documented in detail:
+  1. Set Up Your Brand -- Voice, audience, tone, beliefs, offers
+  2. Generate Product Ideas -- Sources, AI ideation, PMF scoring explained
+  3. Build Your Product -- Outlines, content expansion, image studio, templates
+  4. Export & Launch -- Export center, KDP publisher, sales pages, launch toolkit
+- **Modules Reference** -- One accordion item per module:
+  - Dashboard, Product Ideas, Outlines, Templates, Image Studio, Export Center, KDP Publisher, Sales Pages, Launch Toolkit, Sources, Settings
+- **FAQ** -- Common questions about using the app
+- **Keyboard Shortcuts & Tips** -- Power-user tips
 
-**File: `src/hooks/usePlans.tsx`**
-- Add to `PlanFeatures` interface:
-  - `ai_text_models: boolean` -- access to text generation AI models
-  - `ai_image_models: boolean` -- access to image generation AI models
+Uses `Accordion`, `Card`, and existing UI components. Same sidebar layout as Dashboard with the Help item highlighted.
 
-**File: `src/pages/AdminPlans.tsx`**
-- Update `DEFAULT_FEATURES` to include `ai_text_models: false` and `ai_image_models: false`
-- Add two new `FeatureBool` toggles under a new "AI Access" section in the create/edit dialog:
-  - "AI Text Models"
-  - "AI Image Models"
-- Show AI model badges on plan cards alongside existing feature badges
+### 2. Add Route: `src/App.tsx`
+- Import and add `<Route path="/help" element={<Help />} />`
 
-### 3. Update Seeded Plans via Data Update
-Update the three existing seeded plans to include the new AI model fields in their `features` JSON:
-- Starter: `ai_text_models: true`, `ai_image_models: false`
-- Pro: `ai_text_models: true`, `ai_image_models: true`
-- Unlimited: `ai_text_models: true`, `ai_image_models: true`
+### 3. Add Sidebar Link: `src/pages/Dashboard.tsx`
+- Add a `HelpCircle` icon item `{ icon: HelpCircle, label: "Help & Resources", href: "/help" }` to the `sidebarItems` array (before Settings)
 
-This is a data update (not schema change) using the insert tool.
-
-## Files Modified
-- `src/components/admin/AdminSidebar.tsx` -- remove 2 sidebar items
-- `src/hooks/usePlans.tsx` -- extend PlanFeatures interface
-- `src/pages/AdminPlans.tsx` -- add AI toggles to dialog and card display
-
-## No Database Migration Needed
-The `features` column is already JSONB, so adding new keys requires no schema change -- just code and data updates.
+## Technical Details
+- No database changes needed -- purely static content page
+- Reuses the sidebar layout pattern from Dashboard.tsx (copy the sidebar shell)
+- Uses `Accordion` from `@radix-ui/react-accordion` (already installed)
+- Uses `Card`, `Badge` components for visual structure
+- Fully responsive with the existing sidebar collapse pattern
