@@ -113,7 +113,6 @@ export default function Analytics() {
         <div className="p-4 border-b-2 border-foreground">
           <Link to="/" className="flex items-center gap-2">
             <img src={creatorberryLogo} alt="CreatorBerry" className="w-8 h-8 rounded-lg object-contain" />
-            <span className="font-bold">CreatorBerry</span>
           </Link>
         </div>
 

@@ -44,7 +44,6 @@ const Signup = () => {
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-2 mb-12">
             <img src={creatorberryLogo} alt="CreatorBerry" className="w-8 h-8 rounded-lg object-contain" />
-            <span className="font-bold text-lg">CreatorBerry</span>
           </Link>
           
           <h1 className="text-3xl font-bold mb-2">Create your account</h1>

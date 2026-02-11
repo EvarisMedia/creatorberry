@@ -32,7 +32,6 @@ const PendingApproval = () => {
       <div className="max-w-md w-full text-center">
         <Link to="/" className="inline-flex items-center gap-2 mb-12">
           <img src={creatorberryLogo} alt="CreatorBerry" className="w-8 h-8 rounded-lg object-contain" />
-          <span className="font-bold text-lg">CreatorBerry</span>
         </Link>
         
         <div className="w-20 h-20 mx-auto mb-8 border-4 border-foreground flex items-center justify-center">

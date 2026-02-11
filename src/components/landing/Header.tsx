@@ -14,7 +14,6 @@ const Header = () => {
       <div className="container px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
           <img src={creatorberryLogo} alt="CreatorBerry" className="w-9 h-9 rounded-xl object-contain" />
-          <span className="font-bold text-lg">CreatorBerry</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">
