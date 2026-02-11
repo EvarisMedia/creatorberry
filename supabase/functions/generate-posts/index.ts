@@ -140,8 +140,26 @@ const {
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+
+    // Look up user's own Gemini API key
+    let userApiKey: string | null = null;
+    let userTextModel: string | null = null;
+    if (userId) {
+      try {
+        const { data: keyData } = await supabase
+          .from('user_api_keys')
+          .select('gemini_api_key, preferred_text_model')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (keyData?.gemini_api_key) {
+          userApiKey = keyData.gemini_api_key;
+          userTextModel = keyData.preferred_text_model;
+        }
+      } catch (e) { console.log('No user API key found'); }
+    }
+
+    if (!userApiKey && !LOVABLE_API_KEY) {
+      throw new Error('No API key configured');
     }
 
     // Initialize Supabase client to fetch training data
@@ -381,38 +399,61 @@ ${mediaFormat === 'carousel' ? `- CRITICAL: Include the "carouselSlides" array w
 - Keep text MINIMAL per slide - designed for visual consumption on mobile
 - Optimize for 1080x1350 (4:5 ratio) viewing` : ''}`;
 
-    // Fetch the configured model from settings
-    let model = 'google/gemini-3-flash-preview'; // default
+    // Determine model and endpoint
+    let model = 'google/gemini-3-flash-preview';
     try {
       const { data: modelSetting } = await supabase
         .from('ai_settings')
         .select('setting_value')
         .eq('setting_key', 'model_post_generation')
         .single();
-      
-      if (modelSetting?.setting_value) {
-        model = modelSetting.setting_value;
-      }
+      if (modelSetting?.setting_value) model = modelSetting.setting_value;
     } catch (err) {
       console.log('Using default model for post generation');
     }
 
-    console.log('Generating posts with model:', model, 'types:', typesToGenerate, 'format:', mediaFormat);
+    let apiUrl: string;
+    let apiKey: string;
+    let apiModel: string;
+    let headers: Record<string, string>;
+    let bodyPayload: any;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+    if (userApiKey) {
+      const geminiModel = userTextModel || 'gemini-2.5-flash';
+      apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`;
+      apiKey = userApiKey;
+      apiModel = geminiModel;
+      headers = { 'Content-Type': 'application/json' };
+      bodyPayload = {
+        contents: [
+          { role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] },
+        ],
+        generationConfig: { temperature: 0.8 },
+      };
+    } else {
+      apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+      apiKey = LOVABLE_API_KEY!;
+      apiModel = model;
+      headers = {
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: model,
+      };
+      bodyPayload = {
+        model: apiModel,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.8,
-      }),
+      };
+    }
+
+    console.log('Generating posts with model:', apiModel, 'source:', userApiKey ? 'user-key' : 'gateway', 'format:', mediaFormat);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(bodyPayload),
     });
 
     if (!response.ok) {
@@ -433,8 +474,16 @@ ${mediaFormat === 'carousel' ? `- CRITICAL: Include the "carouselSlides" array w
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    let content: string;
+    if (userApiKey) {
+      // Gemini API response format
+      const data = await response.json();
+      content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } else {
+      // OpenAI-compatible response format
+      const data = await response.json();
+      content = data.choices?.[0]?.message?.content || '';
+    }
 
     if (!content) {
       throw new Error('No content generated');
@@ -443,13 +492,11 @@ ${mediaFormat === 'carousel' ? `- CRITICAL: Include the "carouselSlides" array w
     // Parse the JSON response
     let parsedPosts;
     try {
-      // Extract JSON from the response (handle markdown code blocks)
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
       parsedPosts = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error('Failed to parse AI response:', content);
-      // Fallback: create a simple post from the content
       parsedPosts = {
         posts: [{
           hook: content.split('\n')[0] || 'Check this out:',

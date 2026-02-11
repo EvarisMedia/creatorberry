@@ -15,7 +15,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get("Authorization");
@@ -65,18 +65,51 @@ Return ONLY valid JSON in this exact format:
   ]
 }`;
 
-    const aiResponse = await fetch("https://api.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-      }),
-    });
+    // Look up user's own API key
+    let userApiKey: string | null = null;
+    let userTextModel: string | null = null;
+    try {
+      const { data: keyData } = await supabase
+        .from("user_api_keys")
+        .select("gemini_api_key, preferred_text_model")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (keyData?.gemini_api_key) {
+        userApiKey = keyData.gemini_api_key;
+        userTextModel = keyData.preferred_text_model;
+      }
+    } catch (e) { console.log("No user API key found"); }
+
+    if (!userApiKey && !lovableApiKey) throw new Error("No API key configured");
+
+    let aiResponse: Response;
+    if (userApiKey) {
+      const geminiModel = userTextModel || "gemini-2.5-flash";
+      aiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7 },
+          }),
+        }
+      );
+    } else {
+      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+        }),
+      });
+    }
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
@@ -84,7 +117,12 @@ Return ONLY valid JSON in this exact format:
     }
 
     const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content || "";
+    let rawContent: string;
+    if (userApiKey) {
+      rawContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } else {
+      rawContent = aiData.choices?.[0]?.message?.content || "";
+    }
     
     // Extract JSON from response
     const jsonMatch = rawContent.match(/\{[\s\S]*\}/);

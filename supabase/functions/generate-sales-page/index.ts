@@ -26,8 +26,38 @@ serve(async (req) => {
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Look up user's API key
+    let userApiKey: string | null = null;
+    let userTextModel: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const userClient = createClient(supabaseUrl, anonKey, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: { user } } = await userClient.auth.getUser();
+        if (user) {
+          const supabase = createClient(supabaseUrl, supabaseServiceKey);
+          const { data: keyData } = await supabase
+            .from("user_api_keys")
+            .select("gemini_api_key, preferred_text_model")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (keyData?.gemini_api_key) {
+            userApiKey = keyData.gemini_api_key;
+            userTextModel = keyData.preferred_text_model;
+          }
+        }
+      } catch (e) { console.log("No user API key found"); }
+    }
+
+    if (!userApiKey && !LOVABLE_API_KEY) {
+      throw new Error("No API key configured");
     }
 
     const body: SalesPageRequest = await req.json();
@@ -95,20 +125,35 @@ Return as JSON with this structure:
 
 Generate 6-9 sections. Make the copy compelling and specific to the product.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
+    let response: Response;
+    if (userApiKey) {
+      const geminiModel = userTextModel || "gemini-2.5-flash";
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
+          }),
+        }
+      );
+    } else {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        }),
+      });
+    }
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -117,12 +162,17 @@ Generate 6-9 sections. Make the copy compelling and specific to the product.`;
         });
       }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      console.error("AI error:", response.status, errorText);
+      throw new Error(`AI error: ${response.status}`);
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    let content: string;
+    if (userApiKey) {
+      content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } else {
+      content = data.choices?.[0]?.message?.content || '';
+    }
 
     if (!content) {
       throw new Error("No content received from AI");

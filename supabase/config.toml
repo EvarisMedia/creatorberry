@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.copilot-chat]
 verify_jwt = false
+
+[functions.verify-api-key]
+verify_jwt = false

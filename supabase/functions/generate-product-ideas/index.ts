@@ -25,8 +25,23 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    // Look up user's API key
+    let userApiKey: string | null = null;
+    let userTextModel: string | null = null;
+    try {
+      const { data: keyData } = await supabase
+        .from('user_api_keys')
+        .select('gemini_api_key, preferred_text_model')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (keyData?.gemini_api_key) {
+        userApiKey = keyData.gemini_api_key;
+        userTextModel = keyData.preferred_text_model;
+      }
+    } catch (e) { console.log('No user API key found'); }
+
+    if (!userApiKey && !LOVABLE_API_KEY) {
+      throw new Error('No API key configured');
     }
 
     // Get authenticated user
@@ -134,24 +149,40 @@ IMPORTANT:
 - Consider the creator's existing content sources as validation signals
 - Include at least one "quick win" (low effort, fast to market) and one "flagship" (high effort, high reward)`;
 
-    console.log('Generating product ideas for brand:', brand.name);
+    console.log('Generating product ideas for brand:', brand.name, 'source:', userApiKey ? 'user-key' : 'gateway');
 
-    const response = await fetch('https://api.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.8,
-        response_format: { type: 'json_object' },
-      }),
-    });
+    let response: Response;
+    if (userApiKey) {
+      const geminiModel = userTextModel || 'gemini-2.5-flash';
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
+            generationConfig: { temperature: 0.8 },
+          }),
+        }
+      );
+    } else {
+      response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.8,
+          response_format: { type: 'json_object' },
+        }),
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -160,7 +191,12 @@ IMPORTANT:
     }
 
     const aiResult = await response.json();
-    const content = aiResult.choices?.[0]?.message?.content;
+    let content: string;
+    if (userApiKey) {
+      content = aiResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } else {
+      content = aiResult.choices?.[0]?.message?.content || '';
+    }
 
     if (!content) {
       throw new Error('No content received from AI');
