@@ -1,89 +1,52 @@
 
 
-# Rebrand App to "CreatorBerry"
+# Fix: Remove Sources from Dashboard + Clarify Product Location
 
-## Overview
-Rename the entire app from "Creator OS" to "CreatorBerry", add the uploaded logo, and update the color palette to match the logo's strawberry pink and purple tones.
+## Issue 1: "Add Source" Still Showing on Dashboard
 
-## Brand Colors (from logo)
-- **Primary**: Strawberry Pink -- `hsl(340, 82%, 65%)` (the pink from the berry/text)
-- **Secondary**: Berry Purple -- `hsl(270, 65%, 55%)` (the purple "Creator" text)
-- Gradient: Pink-to-Purple (strawberry theme)
-- Keep the warm, playful feel consistent with the kawaii strawberry mascot
+Sources was removed from the sidebar but still appears in three places on the dashboard main content area:
 
-## Changes
+1. **Quick Actions grid** -- "Add Source" card linking to `/sources`
+2. **Stats grid** -- "Content Sources" stat card showing `sources.length`
+3. **Getting Started checklist** -- Step 2 "Add a content source" linking to `/sources`
 
-### 1. Add Logo Asset
-- Copy `user-uploads://image-2.png` to `src/assets/creatorberry-logo.png`
-- Use as an imported asset in React components
+### Fix
 
-### 2. Update Color Palette (`src/index.css`)
-- **Primary**: Shift from coral `hsl(0, 100%, 71%)` to strawberry pink `hsl(340, 82%, 65%)`
-- **Secondary**: Adjust purple to `hsl(270, 65%, 55%)` to match logo
-- **Ring/Accent**: Update to match new primary
-- Update gradient utilities (`.bg-creator-gradient`, `.text-creator-gradient`) to use strawberry-pink-to-berry-purple
-- Update dark mode variants accordingly
-- Rename gradient classes from `creator-gradient` to `berry-gradient`
+- Remove the "Add Source" quick action card (replace with a more relevant action, e.g., "KDP Publisher" or "Export Center")
+- Remove the "Content Sources" stat card (replace with something useful like "Exports" or "Images")
+- Remove the "Add a content source" getting started step (renumber remaining steps to 1-3)
+- Remove the `useContentSources` import and `sources` variable since they're no longer needed
+- Remove the `Rss` icon import
 
-### 3. Update `index.html`
-- Title: "CreatorBerry - Build, Validate & Launch Digital Products"
-- Meta author: "CreatorBerry"
-- OG tags: Update all "Creator OS" references to "CreatorBerry"
+### Updated Quick Actions (4 cards)
+1. Generate Ideas (keep)
+2. Create Outline (keep)
+3. Image Studio (keep)
+4. Export Center (new -- replaces "Add Source")
 
-### 4. Replace All "Creator OS" Text References (28 files)
-Key files with brand name occurrences:
-- `src/components/landing/Header.tsx` -- Replace Sparkles icon with logo image, rename text
-- `src/components/landing/Footer.tsx` -- Replace icon and text
-- `src/components/landing/HeroSection.tsx` -- Update gradient class names
-- `src/components/landing/CTASection.tsx` -- Update text
-- `src/components/landing/PricingSection.tsx` -- Update gradient classes
-- `src/components/landing/FAQSection.tsx` -- Update gradient classes
-- `src/components/landing/ProblemSolutionSection.tsx` -- Update gradient classes
-- `src/components/landing/CreatorsSection.tsx` -- Update gradient classes
-- `src/components/landing/UseCasesSection.tsx` -- Update text
-- `src/pages/Dashboard.tsx` -- Replace sidebar logo (Sparkles icon to logo image), rename text
-- `src/pages/Auth.tsx` -- Replace logo and text
-- `src/pages/PendingApproval.tsx` -- Replace logo and text
-- `src/pages/Help.tsx` -- Replace logo and all documentation references
-- `src/pages/Analytics.tsx` -- Replace logo and text
-- `src/pages/ProductOutline.tsx` -- Replace logo and text
-- All other pages with sidebar logos (same pattern)
+### Updated Stats Grid (4 cards)
+1. Product Ideas (keep)
+2. Outlines (keep)
+3. Brands (keep)
+4. Exports or Images (replaces "Content Sources")
 
-### 5. Update Gradient Class Names (`src/index.css` + all component files)
-- `.bg-creator-gradient` becomes `.bg-berry-gradient`
-- `.text-creator-gradient` becomes `.text-berry-gradient`
-- `.bg-creator-gradient-hover` becomes `.bg-berry-gradient-hover`
-- `.bg-hero-gradient` -- adjust hues to pink/purple
-- `.bg-mesh-gradient` -- adjust radial gradient colors
-- Update all component files referencing these classes
+### Updated Getting Started (3 steps)
+1. Set up your brand profile
+2. Generate product ideas
+3. Create your first outline
 
-### 6. Update `tailwind.config.ts`
-- No structural changes needed (colors come from CSS variables)
+## Issue 2: Where Created Products Appear
+
+Currently, products created under a brand appear across separate pages:
+- **Product Ideas** at `/product-ideas`
+- **Outlines** at `/outlines`
+- **Exports** at `/export-center`
+
+No changes needed here for now -- the sidebar navigation already provides access to each. The dashboard stats and quick actions will guide users to the right pages.
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/assets/creatorberry-logo.png` | **New** -- logo asset |
-| `index.html` | Update title, meta tags |
-| `src/index.css` | Update color variables, rename gradient utilities |
-| `src/components/landing/Header.tsx` | Logo image + "CreatorBerry" + gradient classes |
-| `src/components/landing/Footer.tsx` | Logo image + "CreatorBerry" |
-| `src/components/landing/HeroSection.tsx` | Gradient classes |
-| `src/components/landing/CTASection.tsx` | Text + gradient classes |
-| `src/components/landing/PricingSection.tsx` | Gradient classes |
-| `src/components/landing/FAQSection.tsx` | Gradient classes |
-| `src/components/landing/ProblemSolutionSection.tsx` | Gradient classes |
-| `src/components/landing/CreatorsSection.tsx` | Gradient classes |
-| `src/components/landing/UseCasesSection.tsx` | Text |
-| `src/pages/Dashboard.tsx` | Sidebar logo + text |
-| `src/pages/Auth.tsx` | Logo + text |
-| `src/pages/PendingApproval.tsx` | Logo + text |
-| `src/pages/Help.tsx` | Logo + all doc text references |
-| `src/pages/Analytics.tsx` | Logo + text |
-| `src/pages/ProductOutline.tsx` | Logo + text |
-| All remaining pages with sidebar pattern | Logo + text |
-
-## No Database Changes
-This is a purely frontend/visual rebrand.
+| `src/pages/Dashboard.tsx` | Remove Sources references from quick actions, stats, getting started; remove `useContentSources` import; replace with Export Center action |
 
