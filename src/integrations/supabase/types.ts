@@ -1189,6 +1189,69 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_pages: {
+        Row: {
+          brand_id: string
+          created_at: string
+          cta_text: string | null
+          cta_url: string | null
+          framework: string
+          headline: string
+          id: string
+          product_outline_id: string | null
+          sections: Json
+          status: string
+          subheadline: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          cta_text?: string | null
+          cta_url?: string | null
+          framework?: string
+          headline?: string
+          id?: string
+          product_outline_id?: string | null
+          sections?: Json
+          status?: string
+          subheadline?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          cta_text?: string | null
+          cta_url?: string | null
+          framework?: string
+          headline?: string
+          id?: string
+          product_outline_id?: string | null
+          sections?: Json
+          status?: string
+          subheadline?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_pages_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_pages_product_outline_id_fkey"
+            columns: ["product_outline_id"]
+            isOneToOne: false
+            referencedRelation: "product_outlines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       script_templates: {
         Row: {
           created_at: string

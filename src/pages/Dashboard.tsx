@@ -22,6 +22,7 @@ import {
   Palette,
   Download,
   BookOpen,
+  ShoppingCart,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,6 +39,7 @@ const sidebarItems = [
   { icon: Palette, label: "Image Studio", href: "/image-studio" },
   { icon: Download, label: "Export Center", href: "/export-center" },
   { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },
+  { icon: ShoppingCart, label: "Sales Pages", href: "/sales-pages" },
   { icon: Rss, label: "Sources", href: "/sources" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
