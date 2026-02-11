@@ -19,6 +19,7 @@ import {
   Lightbulb,
   FileText,
   Sparkles,
+  Palette,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,6 +33,7 @@ const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
   { icon: FileText, label: "Outlines", href: "/outlines" },
+  { icon: Palette, label: "Image Studio", href: "/image-studio" },
   { icon: Rss, label: "Sources", href: "/sources" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
@@ -291,7 +293,7 @@ const Dashboard = () => {
           
           {/* Quick Actions */}
           {currentBrand && (
-            <div className="grid md:grid-cols-3 gap-4 mb-8">
+            <div className="grid md:grid-cols-4 gap-4 mb-8">
               <Link to="/product-ideas">
                 <Card className="cursor-pointer group hover:shadow-lg transition-all">
                   <CardContent className="p-6 flex items-center gap-4">
@@ -327,6 +329,19 @@ const Dashboard = () => {
                     <div>
                       <CardTitle className="text-lg">Add Source</CardTitle>
                       <CardDescription>Connect blog or RSS feed</CardDescription>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link to="/image-studio">
+                <Card className="cursor-pointer group hover:shadow-lg transition-all">
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-all">
+                      <Palette className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Image Studio</CardTitle>
+                      <CardDescription>Generate book covers, illustrations & more</CardDescription>
                     </div>
                   </CardContent>
                 </Card>

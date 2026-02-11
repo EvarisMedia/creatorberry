@@ -16,6 +16,7 @@ interface GenerateImageRequest {
   quote_text?: string;
   style: string;
   image_type: string;
+  custom_prompt?: string;
 }
 
 serve(async (req) => {
@@ -29,11 +30,10 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { brand, quote_text, style, image_type }: GenerateImageRequest = await req.json();
+    const { brand, quote_text, style, image_type, custom_prompt }: GenerateImageRequest = await req.json();
 
-    // Build the image generation prompt based on brand and style
     let prompt = "";
-    
+
     if (image_type === "quote_card") {
       prompt = `Create a professional Instagram quote card image with the following specifications:
 - Brand: ${brand.name}
@@ -82,6 +82,80 @@ Design requirements:
 - Clean and modern aesthetic
 - Suitable as an Instagram Story or Reel cover
 - Ultra high resolution`;
+    } else if (image_type === "book_cover") {
+      prompt = `Create a stunning professional book cover design with the following specifications:
+- Brand/Author: ${brand.name}
+- Primary color: ${brand.primary_color || "#000000"}
+- Secondary color: ${brand.secondary_color || "#ffffff"}
+- Tone: ${brand.tone || "professional"}
+- Style: ${style}
+${quote_text ? `- Title text: "${quote_text}"` : ""}
+
+Design requirements:
+- Professional book cover layout (6x9 portrait ratio)
+- Bold, eye-catching typography for the title
+- ${style} aesthetic with premium feel
+- Brand colors used as dominant palette
+- Suitable for ebook cover or print-ready design
+- Include subtle design elements (patterns, gradients, illustrations) matching the ${style} style
+- Author name area at the bottom
+- High contrast and readable from thumbnail size
+- Ultra high resolution`;
+    } else if (image_type === "chapter_illustration") {
+      prompt = `Create a professional chapter header illustration with the following specifications:
+- Brand: ${brand.name}
+- Primary color: ${brand.primary_color || "#000000"}
+- Secondary color: ${brand.secondary_color || "#ffffff"}
+- Tone: ${brand.tone || "professional"}
+- Style: ${style}
+${quote_text ? `- Chapter theme: "${quote_text}"` : ""}
+
+Design requirements:
+- Horizontal banner format (16:9 aspect ratio)
+- ${style} illustration style
+- Conceptual, abstract representation of the chapter theme
+- Brand colors as the dominant palette
+- Clean and elegant, suitable as a chapter divider in an ebook or course
+- No text in the image, purely visual
+- Subtle, sophisticated design elements
+- Ultra high resolution`;
+    } else if (image_type === "worksheet_bg") {
+      prompt = `Create a subtle, professional worksheet background pattern with the following specifications:
+- Brand: ${brand.name}
+- Primary color: ${brand.primary_color || "#000000"}
+- Secondary color: ${brand.secondary_color || "#ffffff"}
+- Style: ${style}
+
+Design requirements:
+- Portrait format (8.5x11 / letter size ratio)
+- Very subtle, light background pattern using brand colors at low opacity
+- ${style} design aesthetic
+- Must not interfere with overlaid text readability
+- Include subtle watermark-style brand elements
+- Light, airy feel with plenty of white/light space
+- Professional worksheet/workbook page background
+- Decorative borders or corner elements are welcome
+- Ultra high resolution`;
+    } else if (image_type === "social_promo") {
+      prompt = `Create a promotional social media graphic for a digital product with the following specifications:
+- Brand: ${brand.name}
+- Primary color: ${brand.primary_color || "#000000"}
+- Secondary color: ${brand.secondary_color || "#ffffff"}
+- Tone: ${brand.tone || "professional"}
+- Style: ${style}
+${quote_text ? `- Product name/tagline: "${quote_text}"` : ""}
+
+Design requirements:
+- Square format (1080x1080) for social media
+- Eye-catching, scroll-stopping design
+- ${style} aesthetic
+- Brand colors prominently featured
+- Mockup style showing a digital product (ebook, course, template)
+- Professional and premium feel
+- Clear visual hierarchy
+- Ultra high resolution`;
+    } else if (custom_prompt) {
+      prompt = custom_prompt;
     }
 
     // Initialize Supabase client to fetch model settings
@@ -90,14 +164,14 @@ Design requirements:
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch the configured model from settings
-    let model = "google/gemini-2.5-flash-image-preview"; // default
+    let model = "google/gemini-2.5-flash-image-preview";
     try {
       const { data: modelSetting } = await supabase
         .from("ai_settings")
         .select("setting_value")
         .eq("setting_key", "model_image_generation")
         .single();
-      
+
       if (modelSetting?.setting_value) {
         model = modelSetting.setting_value;
       }
@@ -105,7 +179,7 @@ Design requirements:
       console.log("Using default model for image generation");
     }
 
-    console.log("Generating image with model:", model, "prompt:", prompt);
+    console.log("Generating image with model:", model, "type:", image_type);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -150,7 +224,7 @@ Design requirements:
     console.log("AI response received");
 
     const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
+
     if (!imageUrl) {
       console.error("No image URL in response:", data);
       return new Response(
@@ -160,9 +234,9 @@ Design requirements:
     }
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         image_url: imageUrl,
-        prompt: prompt 
+        prompt: prompt,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
