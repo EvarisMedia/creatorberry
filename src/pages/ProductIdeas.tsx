@@ -11,19 +11,23 @@ import { GenerateIdeasDialog } from "@/components/product-ideas/GenerateIdeasDia
 import { AddIdeaDialog } from "@/components/product-ideas/AddIdeaDialog";
 import {
   LayoutDashboard,
-  Rss,
   Settings,
   Plus,
   LogOut,
   ChevronDown,
   Shield,
   Loader2,
-  LayoutGrid,
-  Pin,
-  Image,
   Sparkles,
   Lightbulb,
   Filter,
+  FileText,
+  Palette,
+  Download,
+  BookOpen,
+  ShoppingCart,
+  Rocket,
+  Library,
+  HelpCircle,
 } from "lucide-react";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import {
@@ -44,10 +48,14 @@ import {
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
-  { icon: Pin, label: "Pins", href: "/pins" },
-  { icon: LayoutGrid, label: "Boards", href: "/boards" },
-  
-  { icon: Image, label: "Images", href: "/images" },
+  { icon: FileText, label: "Outlines", href: "/outlines" },
+  { icon: Library, label: "Templates", href: "/templates" },
+  { icon: Palette, label: "Image Studio", href: "/image-studio" },
+  { icon: Download, label: "Export Center", href: "/export-center" },
+  { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },
+  { icon: ShoppingCart, label: "Sales Pages", href: "/sales-pages" },
+  { icon: Rocket, label: "Launch Toolkit", href: "/launch-toolkit" },
+  { icon: HelpCircle, label: "Help & Resources", href: "/help" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
@@ -168,7 +176,7 @@ const ProductIdeas = () => {
                   to={item.href}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive(item.href)
-                      ? "bg-pinterest-gradient text-white shadow-sm"
+                      ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   }`}
                 >

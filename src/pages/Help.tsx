@@ -13,7 +13,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBrands } from "@/hooks/useBrands";
 import {
   LayoutDashboard,
-  Rss,
   Settings,
   Plus,
   LogOut,
@@ -60,7 +59,6 @@ const sidebarItems = [
   { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },
   { icon: ShoppingCart, label: "Sales Pages", href: "/sales-pages" },
   { icon: Rocket, label: "Launch Toolkit", href: "/launch-toolkit" },
-  { icon: Rss, label: "Sources", href: "/sources" },
   { icon: HelpCircle, label: "Help & Resources", href: "/help" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
@@ -607,7 +605,7 @@ const Help = () => {
                 <AccordionItem value="mod-sources" className="border rounded-xl px-4">
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex items-center gap-2">
-                      <Rss className="w-4 h-4 text-primary" />
+                      <Globe className="w-4 h-4 text-primary" />
                       <span>Sources</span>
                     </div>
                   </AccordionTrigger>
@@ -722,7 +720,7 @@ const Help = () => {
                 </div>
                 <div className="p-4 rounded-xl border border-border bg-background space-y-2">
                   <h4 className="font-medium flex items-center gap-2">
-                    <Rss className="w-4 h-4 text-primary" />
+                    <Globe className="w-4 h-4 text-primary" />
                     Add Multiple Sources
                   </h4>
                   <p className="text-sm text-muted-foreground">Connect several content sources (blogs, RSS feeds, notes) to give the AI richer context for generating relevant product ideas.</p>

@@ -10,8 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBrands } from "@/hooks/useBrands";
 import { useTemplates, TemplateSection } from "@/hooks/useTemplates";
 import {
-  LayoutDashboard, Rss, Settings, Sparkles, Lightbulb, FileText, Palette,
-  Download, BookOpen, ShoppingCart, Rocket, Library, Plus, Loader2, Trash2,
+  LayoutDashboard, Settings, Sparkles, Lightbulb, FileText, Palette,
+  Download, BookOpen, ShoppingCart, Rocket, Library, HelpCircle, Plus, Loader2, Trash2,
   Search, ChevronDown, LogOut, Shield, Copy, Eye, ArrowRight, X,
 } from "lucide-react";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
@@ -34,7 +34,7 @@ const sidebarItems = [
   { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },
   { icon: ShoppingCart, label: "Sales Pages", href: "/sales-pages" },
   { icon: Rocket, label: "Launch Toolkit", href: "/launch-toolkit" },
-  { icon: Rss, label: "Sources", href: "/sources" },
+  { icon: HelpCircle, label: "Help & Resources", href: "/help" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 

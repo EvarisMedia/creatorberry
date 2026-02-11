@@ -12,7 +12,6 @@ import OutlineCard from "@/components/outlines/OutlineCard";
 import GenerateOutlineDialog from "@/components/outlines/GenerateOutlineDialog";
 import {
   LayoutDashboard,
-  Rss,
   Settings,
   Plus,
   LogOut,
@@ -24,6 +23,12 @@ import {
   BookOpen,
   ArrowLeft,
   Sparkles,
+  Palette,
+  Download,
+  ShoppingCart,
+  Rocket,
+  Library,
+  HelpCircle,
 } from "lucide-react";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import {
@@ -38,8 +43,13 @@ const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
   { icon: FileText, label: "Outlines", href: "/outlines" },
-  { icon: BookOpen, label: "Content", href: "/content-editor" },
-  { icon: Rss, label: "Sources", href: "/sources" },
+  { icon: Library, label: "Templates", href: "/templates" },
+  { icon: Palette, label: "Image Studio", href: "/image-studio" },
+  { icon: Download, label: "Export Center", href: "/export-center" },
+  { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },
+  { icon: ShoppingCart, label: "Sales Pages", href: "/sales-pages" },
+  { icon: Rocket, label: "Launch Toolkit", href: "/launch-toolkit" },
+  { icon: HelpCircle, label: "Help & Resources", href: "/help" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
