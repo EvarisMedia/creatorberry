@@ -43,7 +43,7 @@ const Signup = () => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-2 mb-12">
-            <img src={creatorberryLogo} alt="CreatorBerry" className="w-16 h-16 rounded-xl object-contain" />
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-40 h-auto object-contain" />
           </Link>
           
           <h1 className="text-3xl font-bold mb-2">Create your account</h1>

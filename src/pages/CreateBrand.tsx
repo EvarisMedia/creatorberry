@@ -189,7 +189,7 @@ const CreateBrand = () => {
       <header className="border-b-2 border-foreground">
         <div className="container px-4 h-16 flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img src={creatorberryLogo} alt="CreatorBerry" className="w-16 h-16 rounded-xl object-contain" />
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-40 h-auto object-contain" />
           </Link>
           <Link to="/dashboard">
             <Button variant="ghost" size="sm">
