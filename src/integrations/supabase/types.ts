@@ -917,6 +917,69 @@ export type Database = {
           },
         ]
       }
+      product_exports: {
+        Row: {
+          brand_id: string
+          created_at: string
+          error: string | null
+          export_settings: Json | null
+          file_size: number | null
+          file_url: string | null
+          format: string
+          id: string
+          product_outline_id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          error?: string | null
+          export_settings?: Json | null
+          file_size?: number | null
+          file_url?: string | null
+          format: string
+          id?: string
+          product_outline_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          error?: string | null
+          export_settings?: Json | null
+          file_size?: number | null
+          file_url?: string | null
+          format?: string
+          id?: string
+          product_outline_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_exports_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_exports_product_outline_id_fkey"
+            columns: ["product_outline_id"]
+            isOneToOne: false
+            referencedRelation: "product_outlines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_ideas: {
         Row: {
           brand_id: string
