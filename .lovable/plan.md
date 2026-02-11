@@ -1,32 +1,24 @@
 
-# Clean Up Settings Page
+
+# Add New Gemini Models to Settings
 
 ## Problem
-The Settings page has an outdated left sidebar with old navigation links (Content, Sources, Images, Schedule, Analytics) that don't match the current app navigation. It also contains many settings sections that are irrelevant to this product-building app (RSS management, scheduling preferences, multi-type generation, image preferences, notifications).
+The model selection dropdowns in Settings only show three older models. The newer Gemini 3.x models are missing from both the text and image model selectors.
 
 ## Changes
 
-### 1. Replace the old sidebar with the current app sidebar
-Remove the hardcoded old sidebar (lines 204-323) and replace it with the same sidebar used in Dashboard.tsx, which includes: Dashboard, Product Ideas, Outlines, Templates, Image Studio, Export Center, KDP Publisher, Sales Pages, Launch Toolkit, Sources, Settings.
+### File: `src/pages/Settings.tsx`
 
-### 2. Remove irrelevant settings sections
-Remove the following cards that are leftover from a social media content tool and not relevant:
-- **Content Generation** (posts per source, post length, post type, media format, creativity, CTA toggle)
-- **Multi-Type Generation** (mixed types, enabled post types)
-- **Scheduling Preferences** (posting times, posts per week, auto-schedule, weekends)
-- **Source Management** (RSS refresh, max items, auto-generate, freshness)
-- **Image Preferences** (image style, image type, auto-generate images)
-- **Notifications** (email notifications, weekly digest, reminders, alerts)
+**Text Model dropdown (around line 425-429)** -- Add two new options:
+- `gemini-3-pro-preview` -- "Gemini 3 Pro Preview (Latest)"
+- `gemini-3-flash-preview` -- "Gemini 3 Flash Preview (Fast + New)"
 
-### 3. Keep these sections
-- **Profile** -- name, email, account created
-- **AI Configuration** -- Gemini API key, model selection, connection test
-- **Account** -- sign out button
+**Image Model dropdown (around line 441-445)** -- Add one new option:
+- `gemini-3-pro-image-preview` -- "Gemini 3 Pro Image Preview (Latest)"
 
-### Technical Details
-- **File modified:** `src/pages/Settings.tsx`
-- Remove unused imports: `useUserSettings`, `ALL_POST_TYPES`, `ALL_MEDIA_FORMATS`, `useBrands`, `Slider`, `Checkbox`, `Switch`, various icon imports, `DropdownMenu` components, and constants (`POST_LENGTHS`, `IMAGE_STYLES`, `IMAGE_TYPES`, `RSS_REFRESH_OPTIONS`, `FRESHNESS_OPTIONS`, `POSTING_TIMES`, `REMINDER_OPTIONS`)
-- Replace old `sidebarItems` array with the Dashboard's navigation items
-- Add brand switcher dropdown matching Dashboard layout
-- Add active route highlighting using `useLocation`
-- The page will go from ~983 lines to approximately 350 lines
+### No other changes needed
+- The database `user_api_keys` table stores models as plain text, so it already supports any model string.
+- The edge functions pass the model value through to the API, so they'll work with the new model names automatically.
+- The `useUserApiKeys` hook doesn't validate model names, so no changes needed there either.
+
+This is a one-file, ~5-line addition.
