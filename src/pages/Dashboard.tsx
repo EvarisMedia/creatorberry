@@ -88,7 +88,7 @@ const Dashboard = () => {
             <div className="w-9 h-9 rounded-xl bg-pinterest-gradient flex items-center justify-center">
               <Pin className="w-5 h-5 text-white" />
             </div>
-            <span className="font-semibold text-lg">Pinterest Traffic OS</span>
+            <span className="font-semibold text-lg">Creator OS</span>
           </Link>
         </div>
         

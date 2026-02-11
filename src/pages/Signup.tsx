@@ -5,10 +5,10 @@ import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 
 const benefits = [
-  "Transform any content source into Instagram posts",
-  "Maintain your unique brand voice",
-  "Scale your authority on autopilot",
-  "Access viral hook templates for Reels",
+  "Generate validated product ideas with PMF scoring",
+  "Create professional digital products in minutes",
+  "Publish to Amazon KDP, Gumroad & more",
+  "AI-powered content expansion & formatting",
 ];
 
 const Signup = () => {
@@ -20,10 +20,10 @@ const Signup = () => {
           <div className="text-5xl font-bold mb-6">
             Start Your
             <br />
-            Authority Journey
+            Creator Journey
           </div>
           <p className="text-xl text-primary-foreground/70 mb-8">
-            Everything you need to dominate Instagram.
+            Everything you need to build, validate, and launch digital products.
           </p>
           <ul className="space-y-4">
             {benefits.map((benefit, index) => (
@@ -43,7 +43,7 @@ const Signup = () => {
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-2 mb-12">
             <div className="w-8 h-8 bg-foreground" />
-            <span className="font-bold text-lg">Authority OS</span>
+            <span className="font-bold text-lg">Creator OS</span>
           </Link>
           
           <h1 className="text-3xl font-bold mb-2">Create your account</h1>

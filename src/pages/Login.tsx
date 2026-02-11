@@ -11,7 +11,7 @@ const Login = () => {
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-2 mb-12">
             <div className="w-8 h-8 bg-foreground" />
-            <span className="font-bold text-lg">Authority OS</span>
+            <span className="font-bold text-lg">Creator OS</span>
           </Link>
           
           <h1 className="text-3xl font-bold mb-2">Welcome back</h1>
@@ -63,12 +63,12 @@ const Login = () => {
       <div className="hidden lg:flex flex-1 bg-foreground text-primary-foreground items-center justify-center p-12">
         <div className="max-w-md">
           <div className="text-6xl font-bold mb-6">
-            Build
+            Create.
             <br />
-            Authority.
+            Launch.
           </div>
           <p className="text-xl text-primary-foreground/70">
-            Join hundreds of founders and agencies scaling their LinkedIn presence on autopilot.
+            Join hundreds of creators turning their expertise into profitable digital products.
           </p>
         </div>
       </div>

@@ -31,7 +31,7 @@ const PendingApproval = () => {
       <div className="max-w-md w-full text-center">
         <Link to="/" className="inline-flex items-center gap-2 mb-12">
           <div className="w-8 h-8 bg-foreground" />
-          <span className="font-bold text-lg">Authority OS</span>
+          <span className="font-bold text-lg">Creator OS</span>
         </Link>
         
         <div className="w-20 h-20 mx-auto mb-8 border-4 border-foreground flex items-center justify-center">
@@ -42,7 +42,7 @@ const PendingApproval = () => {
         
         <p className="text-muted-foreground mb-8 leading-relaxed">
           Your account has been created successfully! An administrator needs to approve 
-          your access before you can start using Insta Authority OS.
+          your access before you can start using Creator OS.
         </p>
         
         <div className="border-2 border-foreground p-6 mb-8 bg-secondary">
