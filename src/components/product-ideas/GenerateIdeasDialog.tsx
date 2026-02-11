@@ -9,13 +9,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Sparkles } from "lucide-react";
 
 interface GenerateIdeasDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onGenerate: (numberOfIdeas: number) => Promise<void>;
+  onGenerate: (numberOfIdeas: number, seedPrompt?: string) => Promise<void>;
   isGenerating: boolean;
 }
 
@@ -26,9 +27,11 @@ export const GenerateIdeasDialog = ({
   isGenerating,
 }: GenerateIdeasDialogProps) => {
   const [numberOfIdeas, setNumberOfIdeas] = useState("5");
+  const [seedPrompt, setSeedPrompt] = useState("");
 
   const handleGenerate = async () => {
-    await onGenerate(parseInt(numberOfIdeas));
+    await onGenerate(parseInt(numberOfIdeas), seedPrompt.trim() || undefined);
+    setSeedPrompt("");
     onOpenChange(false);
   };
 
@@ -56,6 +59,19 @@ export const GenerateIdeasDialog = ({
                 <SelectItem value="10">10 ideas</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Seed Prompt (optional)</Label>
+            <Textarea
+              value={seedPrompt}
+              onChange={(e) => setSeedPrompt(e.target.value)}
+              placeholder="Describe a topic, trend, or rough idea you want AI to explore..."
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground">
+              Guide the AI toward specific topics or market opportunities you're interested in.
+            </p>
           </div>
         </div>
 

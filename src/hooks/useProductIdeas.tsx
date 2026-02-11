@@ -86,14 +86,38 @@ export function useProductIdeas(brandId: string | null) {
     fetchIdeas();
   }, [fetchIdeas]);
 
-  const generateIdeas = async (brand: any, numberOfIdeas = 5) => {
+  const createIdea = async (idea: { title: string; description: string; format: string; target_audience: string }) => {
+    if (!user || !brandId) return;
+    const { error } = await supabase
+      .from("product_ideas")
+      .insert({
+        user_id: user.id,
+        brand_id: brandId,
+        title: idea.title,
+        description: idea.description,
+        format: idea.format,
+        target_audience: idea.target_audience || null,
+        status: "new",
+      });
+
+    if (error) {
+      console.error("Error creating idea:", error);
+      toast({ title: "Error", description: "Failed to add idea.", variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Idea Added", description: "Your product idea has been saved." });
+    await fetchIdeas();
+  };
+
+  const generateIdeas = async (brand: any, numberOfIdeas = 5, seedPrompt?: string) => {
     setIsGenerating(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
       const response = await supabase.functions.invoke("generate-product-ideas", {
-        body: { brand, numberOfIdeas },
+        body: { brand, numberOfIdeas, seedPrompt },
       });
 
       if (response.error) throw response.error;
@@ -155,6 +179,7 @@ export function useProductIdeas(brandId: string | null) {
     ideas,
     isLoading,
     isGenerating,
+    createIdea,
     generateIdeas,
     updateIdeaStatus,
     deleteIdea,
