@@ -1043,6 +1043,42 @@ export type Database = {
           },
         ]
       }
+      plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          features: Json
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          features?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          features?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pmf_scores: {
         Row: {
           combined_score: number
@@ -1261,6 +1297,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_approved: boolean
+          plan_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1270,6 +1307,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_approved?: boolean
+          plan_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1279,10 +1317,19 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_approved?: boolean
+          plan_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sales_pages: {
         Row: {

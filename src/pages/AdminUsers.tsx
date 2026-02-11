@@ -2,20 +2,49 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlans } from "@/hooks/usePlans";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { 
-  LayoutDashboard, 
-  Users,
-  Brain,
-  LogOut,
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
   Check,
   X,
   Loader2,
-  Shield
+  Pencil,
+  Trash2,
+  Search,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 interface UserProfile {
   id: string;
@@ -23,76 +52,117 @@ interface UserProfile {
   email: string;
   full_name: string | null;
   is_approved: boolean;
+  plan_id: string | null;
   created_at: string;
 }
 
-import { Settings } from "lucide-react";
-
-const sidebarItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: false },
-  { icon: Users, label: "Users", href: "/admin/users", active: true },
-  { icon: Brain, label: "AI Training", href: "/admin/training", active: false },
-  { icon: Settings, label: "Settings", href: "/admin/settings", active: false },
-];
-
 const AdminUsers = () => {
-  const { user, profile, isAdmin, isLoading, signOut } = useAuth();
+  const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
+  const queryClient = useQueryClient();
+  const { plans, assignPlan } = usePlans();
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending">("all");
+  const [editUser, setEditUser] = useState<UserProfile | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editApproved, setEditApproved] = useState(false);
+  const [editPlanId, setEditPlanId] = useState<string | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      navigate("/auth");
-    }
-    if (!isLoading && !isAdmin) {
-      navigate("/dashboard");
-    }
+    if (!isLoading && !user) navigate("/auth");
+    if (!isLoading && !isAdmin) navigate("/dashboard");
   }, [user, isAdmin, isLoading, navigate]);
 
-  useEffect(() => {
-    if (isAdmin) {
-      fetchUsers();
-    }
-  }, [isAdmin]);
+  const { data: users = [], isLoading: loadingUsers } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as UserProfile[];
+    },
+    enabled: isAdmin,
+  });
 
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
-    
-    if (error) {
-      toast.error("Failed to fetch users");
-    } else {
-      setUsers(data as UserProfile[]);
-    }
-    setLoadingUsers(false);
-  };
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch =
+      !search ||
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      (u.full_name || "").toLowerCase().includes(search.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "approved" && u.is_approved) ||
+      (statusFilter === "pending" && !u.is_approved);
+    return matchesSearch && matchesStatus;
+  });
 
   const handleApproval = async (userId: string, approve: boolean) => {
     setUpdatingUser(userId);
-    
     const { error } = await supabase
       .from("profiles")
       .update({ is_approved: approve })
       .eq("user_id", userId);
-    
-    if (error) {
-      toast.error("Failed to update user");
-    } else {
+    if (error) toast.error("Failed to update user");
+    else {
       toast.success(approve ? "User approved" : "User access revoked");
-      fetchUsers();
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     }
-    
     setUpdatingUser(null);
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
+  const openEdit = (u: UserProfile) => {
+    setEditUser(u);
+    setEditName(u.full_name || "");
+    setEditApproved(u.is_approved);
+    setEditPlanId(u.plan_id);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    setUpdatingUser(editUser.user_id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: editName,
+        is_approved: editApproved,
+        plan_id: editPlanId,
+      } as any)
+      .eq("user_id", editUser.user_id);
+    if (error) toast.error("Failed to update user");
+    else {
+      toast.success("User updated");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
+    setEditUser(null);
+    setUpdatingUser(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteUserId) return;
+    const { error } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("user_id", deleteUserId);
+    if (error) toast.error("Failed to delete user");
+    else {
+      toast.success("User deleted");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
+    setDeleteUserId(null);
+  };
+
+  const handleAssignPlan = async (userId: string, planId: string) => {
+    await assignPlan.mutateAsync({ userId, planId: planId === "none" ? null : planId });
+  };
+
+  const getPlanName = (planId: string | null) => {
+    if (!planId) return "No plan";
+    return plans?.find((p) => p.id === planId)?.name || "Unknown";
   };
 
   if (isLoading) {
@@ -105,79 +175,43 @@ const AdminUsers = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 border-r-2 border-foreground bg-background flex flex-col">
-        {/* Logo */}
-        <div className="p-4 border-b-2 border-foreground">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-foreground" />
-            <span className="font-bold">Creator OS</span>
-          </Link>
-        </div>
-        
-        {/* Admin Badge */}
-        <div className="p-4 border-b-2 border-foreground">
-          <div className="flex items-center gap-2 p-3 bg-foreground text-primary-foreground">
-            <Shield className="w-4 h-4" />
-            <span className="font-medium text-sm">Admin Panel</span>
-          </div>
-        </div>
-        
-        {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <ul className="space-y-1">
-            {sidebarItems.map((item, index) => (
-              <li key={index}>
-                <Link
-                  to={item.href}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
-                    item.active 
-                      ? "bg-foreground text-primary-foreground" 
-                      : "hover:bg-secondary"
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        
-        {/* User */}
-        <div className="p-4 border-t-2 border-foreground">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-secondary border-2 border-foreground flex items-center justify-center font-bold text-sm">
-                {profile?.full_name?.charAt(0) || "A"}
-              </div>
-              <div className="text-sm">
-                <div className="font-medium">{profile?.full_name || "Admin"}</div>
-                <div className="text-xs text-muted-foreground">Administrator</div>
-              </div>
-            </div>
-            <button onClick={handleSignOut} className="p-2 hover:bg-secondary transition-colors">
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </aside>
-      
-      {/* Main Content */}
+      <AdminSidebar />
+
       <main className="flex-1 overflow-auto">
-        {/* Header */}
-        <header className="p-6 border-b-2 border-foreground">
+        <header className="p-6 border-b">
           <h1 className="text-2xl font-bold">User Management</h1>
-          <p className="text-muted-foreground">Approve or revoke user access</p>
+          <p className="text-muted-foreground">Manage users, assign plans, and control access</p>
         </header>
-        
-        {/* Users List */}
-        <div className="p-6">
-          <Card className="border-2 border-foreground shadow-xs">
-            <CardHeader className="border-b-2 border-foreground">
+
+        <div className="p-6 space-y-4">
+          {/* Search & Filter */}
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Users</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Card>
+            <CardHeader>
               <CardTitle>All Users</CardTitle>
               <CardDescription>
-                {users.filter(u => !u.is_approved).length} pending approval
+                {users.filter((u) => !u.is_approved).length} pending approval
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -185,51 +219,60 @@ const AdminUsers = () => {
                 <div className="p-8 text-center">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                 </div>
-              ) : users.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  No users found
-                </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">No users found</div>
               ) : (
-                users.map((userProfile) => (
+                filteredUsers.map((userProfile) => (
                   <div
                     key={userProfile.id}
-                    className="flex items-center justify-between p-4 border-b border-border last:border-b-0 hover:bg-secondary transition-colors"
+                    className="flex items-center justify-between p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex-1">
-                      <div className="font-medium">
-                        {userProfile.full_name || "No name"}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {userProfile.email}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Joined {new Date(userProfile.created_at).toLocaleDateString()}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium">{userProfile.full_name || "No name"}</div>
+                      <div className="text-sm text-muted-foreground">{userProfile.email}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          Joined {new Date(userProfile.created_at).toLocaleDateString()}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {getPlanName(userProfile.plan_id)}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className={`px-3 py-1 text-xs font-mono uppercase border-2 border-foreground ${
-                        userProfile.is_approved 
-                          ? "bg-foreground text-primary-foreground" 
-                          : "bg-secondary"
-                      }`}>
+
+                    <div className="flex items-center gap-2">
+                      <Badge variant={userProfile.is_approved ? "default" : "secondary"}>
                         {userProfile.is_approved ? "Approved" : "Pending"}
-                      </div>
+                      </Badge>
+
+                      {/* Quick plan assign */}
+                      <Select
+                        value={userProfile.plan_id || "none"}
+                        onValueChange={(v) => handleAssignPlan(userProfile.user_id, v)}
+                      >
+                        <SelectTrigger className="w-32 h-8 text-xs">
+                          <SelectValue placeholder="Assign plan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No plan</SelectItem>
+                          {plans?.filter((p) => p.is_active).map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
                       {userProfile.user_id !== user?.id && (
-                        <div className="flex gap-2">
+                        <>
                           {!userProfile.is_approved ? (
                             <Button
                               size="sm"
                               onClick={() => handleApproval(userProfile.user_id, true)}
                               disabled={updatingUser === userProfile.user_id}
-                              className="shadow-xs"
                             >
                               {updatingUser === userProfile.user_id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
-                                <>
-                                  <Check className="w-4 h-4 mr-1" />
-                                  Approve
-                                </>
+                                <><Check className="w-4 h-4 mr-1" />Approve</>
                               )}
                             </Button>
                           ) : (
@@ -238,19 +281,21 @@ const AdminUsers = () => {
                               variant="outline"
                               onClick={() => handleApproval(userProfile.user_id, false)}
                               disabled={updatingUser === userProfile.user_id}
-                              className="shadow-xs"
                             >
                               {updatingUser === userProfile.user_id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
-                                <>
-                                  <X className="w-4 h-4 mr-1" />
-                                  Revoke
-                                </>
+                                <><X className="w-4 h-4 mr-1" />Revoke</>
                               )}
                             </Button>
                           )}
-                        </div>
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(userProfile)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setDeleteUserId(userProfile.user_id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -260,6 +305,66 @@ const AdminUsers = () => {
           </Card>
         </div>
       </main>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>Update user profile and plan assignment.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Full Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input value={editUser?.email || ""} disabled />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Approved</Label>
+              <Switch checked={editApproved} onCheckedChange={setEditApproved} />
+            </div>
+            <div>
+              <Label>Assigned Plan</Label>
+              <Select value={editPlanId || "none"} onValueChange={(v) => setEditPlanId(v === "none" ? null : v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No plan</SelectItem>
+                  {plans?.filter((p) => p.is_active).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name} (${p.price})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={updatingUser === editUser?.user_id}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={(open) => !open && setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the user's profile. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

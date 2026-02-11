@@ -30,6 +30,7 @@ import KDPPublisher from "./pages/KDPPublisher";
 import SalesPageBuilder from "./pages/SalesPageBuilder";
 import LaunchToolkit from "./pages/LaunchToolkit";
 import TemplateLibrary from "./pages/TemplateLibrary";
+import AdminPlans from "./pages/AdminPlans";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/pending-approval" element={<PendingApproval />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/plans" element={<AdminPlans />} />
             <Route path="/admin/training" element={<AdminTrainingLibrary />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/channels/new" element={<CreateBrand />} />
