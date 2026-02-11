@@ -1637,6 +1637,36 @@ export type Database = {
           },
         ]
       }
+      user_api_keys: {
+        Row: {
+          created_at: string | null
+          gemini_api_key: string | null
+          id: string
+          preferred_image_model: string | null
+          preferred_text_model: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          gemini_api_key?: string | null
+          id?: string
+          preferred_image_model?: string | null
+          preferred_text_model?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          gemini_api_key?: string | null
+          id?: string
+          preferred_image_model?: string | null
+          preferred_text_model?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

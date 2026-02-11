@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useUserApiKeys } from "@/hooks/useUserApiKeys";
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
@@ -39,6 +40,10 @@ import {
   Clock,
   ImageIcon,
   Shuffle,
+  Key,
+  ExternalLink,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -114,8 +119,12 @@ export default function Settings() {
   const { settings, isLoading: settingsLoading, updateSettings } = useUserSettings();
   const { toast } = useToast();
 
+  const { keys, maskedKey, isConfigured, isSaving: isKeysSaving, isTesting, saveKeys, testConnection } = useUserApiKeys();
+
   const [fullName, setFullName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -368,6 +377,138 @@ export default function Settings() {
                 )}
                 Save Changes
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* AI Configuration Section */}
+          <Card className="border-2 border-foreground">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="w-5 h-5" />
+                AI Configuration
+              </CardTitle>
+              <CardDescription>
+                Connect your own Gemini API key for AI features.{" "}
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline inline-flex items-center gap-1"
+                >
+                  Get a key <ExternalLink className="w-3 h-3" />
+                </a>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* API Key */}
+              <div className="space-y-2">
+                <Label>Gemini API Key</Label>
+                {isConfigured && !showApiKeyInput ? (
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 flex items-center gap-2 p-2 border-2 border-foreground bg-muted font-mono text-sm">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span className="truncate">{maskedKey}</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowApiKeyInput(true)}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="password"
+                      placeholder="AIza..."
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      className="border-2 border-foreground font-mono"
+                    />
+                    <Button
+                      onClick={async () => {
+                        if (!apiKeyInput.trim()) return;
+                        await saveKeys({ gemini_api_key: apiKeyInput.trim() });
+                        setApiKeyInput("");
+                        setShowApiKeyInput(false);
+                      }}
+                      disabled={isKeysSaving || !apiKeyInput.trim()}
+                    >
+                      {isKeysSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    </Button>
+                    {showApiKeyInput && (
+                      <Button variant="outline" size="sm" onClick={() => { setShowApiKeyInput(false); setApiKeyInput(""); }}>
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Your key is stored securely and used to call Google Gemini directly.
+                </p>
+              </div>
+
+              {/* Test connection */}
+              {isConfigured && (
+                <Button
+                  variant="outline"
+                  onClick={testConnection}
+                  disabled={isTesting}
+                  className="border-2 border-foreground"
+                >
+                  {isTesting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                  )}
+                  Test Connection
+                </Button>
+              )}
+
+              {/* Model Selection */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Preferred Text Model</Label>
+                  <Select
+                    value={keys.preferred_text_model}
+                    onValueChange={(value) => saveKeys({ preferred_text_model: value })}
+                  >
+                    <SelectTrigger className="border-2 border-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</SelectItem>
+                      <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro (Best quality)</SelectItem>
+                      <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (Fastest)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Preferred Image Model</Label>
+                  <Select
+                    value={keys.preferred_image_model}
+                    onValueChange={(value) => saveKeys({ preferred_image_model: value })}
+                  >
+                    <SelectTrigger className="border-2 border-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gemini-2.5-flash-image-preview">Gemini 2.5 Flash Image</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {!isConfigured && (
+                <div className="flex items-start gap-2 p-3 bg-muted border-2 border-border">
+                  <XCircle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    No API key configured. AI features will use the default system key with shared rate limits. Add your own key for unlimited usage.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

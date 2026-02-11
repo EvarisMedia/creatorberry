@@ -35,6 +35,21 @@ serve(async (req) => {
     if (!sectionId || !mode || !brandId) throw new Error("Missing required fields: sectionId, mode, brandId");
     if (!MODE_PROMPTS[mode]) throw new Error("Invalid mode. Must be one of: expansion, story, deep_dive, workbook");
 
+    // Look up user's API key
+    let userApiKey: string | null = null;
+    let userTextModel: string | null = null;
+    try {
+      const { data: keyData } = await supabase
+        .from("user_api_keys")
+        .select("gemini_api_key, preferred_text_model")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (keyData?.gemini_api_key) {
+        userApiKey = keyData.gemini_api_key;
+        userTextModel = keyData.preferred_text_model;
+      }
+    } catch (e) { console.log("No user API key found"); }
+
     const systemPrompt = MODE_PROMPTS[mode];
 
     const userPrompt = `
@@ -54,22 +69,37 @@ serve(async (req) => {
 Generate the expanded content now. Write in the brand's voice and tone. Output clean, well-formatted markdown content ready for publication.`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!userApiKey && !LOVABLE_API_KEY) throw new Error("No API key configured");
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
+    let aiResponse: Response;
+    if (userApiKey) {
+      const geminiModel = userTextModel || "gemini-2.5-flash";
+      aiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
+          }),
+        }
+      );
+    } else {
+      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        }),
+      });
+    }
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
@@ -88,7 +118,12 @@ Generate the expanded content now. Write in the brand's voice and tone. Output c
     }
 
     const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content || "";
+    let content: string;
+    if (userApiKey) {
+      content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } else {
+      content = aiData.choices?.[0]?.message?.content || "";
+    }
     const wordCount = content.split(/\s+/).filter(Boolean).length;
 
     // Check for existing content with same section + mode
