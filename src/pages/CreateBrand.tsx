@@ -191,7 +191,7 @@ const CreateBrand = () => {
         <div className="container px-4 h-16 flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-foreground" />
-            <span className="font-bold">Insta Authority</span>
+            <span className="font-bold">Creator OS</span>
           </Link>
           <Link to="/dashboard">
             <Button variant="ghost" size="sm">
