@@ -8,7 +8,7 @@ const Footer = () => {
         <div className="grid md:grid-cols-4 gap-12">
           <div>
             <Link to="/" className="flex items-center gap-2.5 mb-4">
-              <img src={creatorberryLogo} alt="CreatorBerry" className="w-9 h-9 rounded-xl object-contain" />
+              <img src={creatorberryLogo} alt="CreatorBerry" className="w-12 h-12 rounded-xl object-contain" />
             </Link>
             <p className="text-sm text-muted-foreground">Build, validate, and launch digital products with AI-powered tools.</p>
           </div>

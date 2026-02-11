@@ -101,7 +101,7 @@ const Help = () => {
       <aside className="w-64 bg-card border-r border-border flex flex-col shadow-sm">
         <div className="p-5 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
-            <img src={creatorberryLogo} alt="CreatorBerry" className="w-9 h-9 rounded-xl object-contain" />
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-14 h-14 rounded-xl object-contain" />
           </Link>
         </div>
 
