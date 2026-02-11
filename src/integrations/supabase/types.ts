@@ -766,6 +766,100 @@ export type Database = {
           },
         ]
       }
+      pmf_scores: {
+        Row: {
+          combined_score: number
+          created_at: string
+          demand_score: number
+          fit_score: number
+          gap_score: number
+          id: string
+          product_idea_id: string
+          reasoning: Json | null
+          urgency_score: number
+        }
+        Insert: {
+          combined_score?: number
+          created_at?: string
+          demand_score?: number
+          fit_score?: number
+          gap_score?: number
+          id?: string
+          product_idea_id: string
+          reasoning?: Json | null
+          urgency_score?: number
+        }
+        Update: {
+          combined_score?: number
+          created_at?: string
+          demand_score?: number
+          fit_score?: number
+          gap_score?: number
+          id?: string
+          product_idea_id?: string
+          reasoning?: Json | null
+          urgency_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmf_scores_product_idea_id_fkey"
+            columns: ["product_idea_id"]
+            isOneToOne: false
+            referencedRelation: "product_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_ideas: {
+        Row: {
+          brand_id: string
+          created_at: string
+          description: string
+          format: string
+          id: string
+          source_context: string | null
+          status: string
+          target_audience: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          description: string
+          format?: string
+          id?: string
+          source_context?: string | null
+          status?: string
+          target_audience?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          description?: string
+          format?: string
+          id?: string
+          source_context?: string | null
+          status?: string
+          target_audience?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_ideas_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

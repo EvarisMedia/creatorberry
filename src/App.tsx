@@ -21,6 +21,7 @@ import AdminTrainingLibrary from "./pages/AdminTrainingLibrary";
 import AdminSettings from "./pages/AdminSettings";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import ProductIdeas from "./pages/ProductIdeas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/sparks" element={<Sparks />} />
             <Route path="/voice" element={<VoiceProfile />} />
             <Route path="/personas" element={<Personas />} />
+            <Route path="/product-ideas" element={<ProductIdeas />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
