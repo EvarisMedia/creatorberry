@@ -707,6 +707,60 @@ export type Database = {
           },
         ]
       }
+      launch_assets: {
+        Row: {
+          asset_type: string
+          brand_id: string
+          content: Json
+          created_at: string
+          id: string
+          product_outline_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_type?: string
+          brand_id: string
+          content?: Json
+          created_at?: string
+          id?: string
+          product_outline_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_type?: string
+          brand_id?: string
+          content?: Json
+          created_at?: string
+          id?: string
+          product_outline_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "launch_assets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "launch_assets_product_outline_id_fkey"
+            columns: ["product_outline_id"]
+            isOneToOne: false
+            referencedRelation: "product_outlines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outline_sections: {
         Row: {
           created_at: string
