@@ -43,7 +43,7 @@ const ProblemSolutionSection = () => {
           
           {/* Solutions */}
           <div className="p-8 rounded-2xl bg-primary/5 border border-primary/20">
-            <h3 className="text-xl font-semibold mb-6 text-primary">With Creator OS</h3>
+            <h3 className="text-xl font-semibold mb-6 text-primary">With CreatorBerry</h3>
             <ul className="space-y-4">
               {solutions.map((solution, index) => (
                 <li key={index} className="flex items-start gap-3">
@@ -57,7 +57,7 @@ const ProblemSolutionSection = () => {
         
         <div className="text-center mt-12">
           <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-secondary/10 text-secondary font-medium">
-            <span>Creator OS handles the hard parts</span>
+            <span>CreatorBerry handles the hard parts</span>
             <ArrowRight className="w-4 h-4" />
             <span>You focus on your expertise</span>
           </div>

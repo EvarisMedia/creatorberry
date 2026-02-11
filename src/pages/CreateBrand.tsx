@@ -20,6 +20,7 @@ import {
   Sparkles,
   Check
 } from "lucide-react";
+import creatorberryLogo from "@/assets/creatorberry-logo.png";
 
 const timezones = [
   { value: "UTC", label: "UTC" },
@@ -188,8 +189,8 @@ const CreateBrand = () => {
       <header className="border-b-2 border-foreground">
         <div className="container px-4 h-16 flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-foreground" />
-            <span className="font-bold">Creator OS</span>
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-8 h-8 rounded-lg object-contain" />
+            <span className="font-bold">CreatorBerry</span>
           </Link>
           <Link to="/dashboard">
             <Button variant="ghost" size="sm">

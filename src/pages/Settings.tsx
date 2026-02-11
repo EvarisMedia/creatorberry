@@ -40,6 +40,7 @@ import {
   Rocket,
   Library,
 } from "lucide-react";
+import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -140,10 +141,8 @@ export default function Settings() {
       <aside className="w-64 bg-card border-r border-border flex flex-col shadow-sm">
         <div className="p-5 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-lg">Creator OS</span>
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-9 h-9 rounded-xl object-contain" />
+            <span className="font-semibold text-lg">CreatorBerry</span>
           </Link>
         </div>
 

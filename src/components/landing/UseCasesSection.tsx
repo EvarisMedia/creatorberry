@@ -82,7 +82,7 @@ const UseCasesSection = () => {
             Built for Creators Like You
           </h2>
           <p className="text-lg md:text-xl text-muted-foreground">
-            See how different creators use Creator OS to monetize their expertise and build products their audience loves.
+            See how different creators use CreatorBerry to monetize their expertise and build products their audience loves.
           </p>
         </div>
 

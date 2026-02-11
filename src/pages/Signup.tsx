@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
+import creatorberryLogo from "@/assets/creatorberry-logo.png";
 
 const benefits = [
   "Generate validated product ideas with PMF scoring",
@@ -42,8 +43,8 @@ const Signup = () => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-2 mb-12">
-            <div className="w-8 h-8 bg-foreground" />
-            <span className="font-bold text-lg">Creator OS</span>
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-8 h-8 rounded-lg object-contain" />
+            <span className="font-bold text-lg">CreatorBerry</span>
           </Link>
           
           <h1 className="text-3xl font-bold mb-2">Create your account</h1>
