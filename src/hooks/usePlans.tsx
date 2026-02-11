@@ -11,6 +11,8 @@ export interface PlanFeatures {
   sales_pages: boolean;
   kdp: boolean;
   launch_toolkit: boolean;
+  ai_text_models: boolean;
+  ai_image_models: boolean;
 }
 
 export interface Plan {

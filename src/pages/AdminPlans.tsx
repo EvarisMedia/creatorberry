@@ -41,6 +41,8 @@ const DEFAULT_FEATURES: PlanFeatures = {
   sales_pages: false,
   kdp: false,
   launch_toolkit: false,
+  ai_text_models: false,
+  ai_image_models: false,
 };
 
 export default function AdminPlans() {
@@ -197,6 +199,8 @@ export default function AdminPlans() {
                       {plan.features.sales_pages && <Badge variant="outline">Sales Pages</Badge>}
                       {plan.features.kdp && <Badge variant="outline">KDP</Badge>}
                       {plan.features.launch_toolkit && <Badge variant="outline">Launch Toolkit</Badge>}
+                      {plan.features.ai_text_models && <Badge variant="outline">AI Text</Badge>}
+                      {plan.features.ai_image_models && <Badge variant="outline">AI Images</Badge>}
                     </div>
                   </div>
 
@@ -261,6 +265,12 @@ export default function AdminPlans() {
               <FeatureBool label="Sales Pages" featureKey="sales_pages" />
               <FeatureBool label="KDP Publisher" featureKey="kdp" />
               <FeatureBool label="Launch Toolkit" featureKey="launch_toolkit" />
+            </div>
+
+            <div className="border rounded-lg p-4 space-y-3">
+              <p className="font-medium text-sm">AI Access</p>
+              <FeatureBool label="AI Text Models" featureKey="ai_text_models" />
+              <FeatureBool label="AI Image Models" featureKey="ai_image_models" />
             </div>
           </div>
 

@@ -5,8 +5,6 @@ import {
   LayoutDashboard,
   Users,
   CreditCard,
-  Brain,
-  Settings,
   LogOut,
 } from "lucide-react";
 
@@ -14,8 +12,6 @@ const adminSidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Users, label: "Users", href: "/admin/users" },
   { icon: CreditCard, label: "Plans", href: "/admin/plans" },
-  { icon: Brain, label: "AI Training", href: "/admin/training" },
-  { icon: Settings, label: "AI Settings", href: "/admin/settings" },
 ];
 
 export function AdminSidebar() {
