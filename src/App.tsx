@@ -22,6 +22,7 @@ import AdminSettings from "./pages/AdminSettings";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import ProductIdeas from "./pages/ProductIdeas";
+import ProductOutline from "./pages/ProductOutline";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,8 @@ const App = () => (
             <Route path="/voice" element={<VoiceProfile />} />
             <Route path="/personas" element={<Personas />} />
             <Route path="/product-ideas" element={<ProductIdeas />} />
+            <Route path="/outlines" element={<ProductOutline />} />
+            <Route path="/outlines/:outlineId" element={<ProductOutline />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

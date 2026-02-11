@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useBrands } from "@/hooks/useBrands";
-import { usePins } from "@/hooks/usePins";
-import { useBoards } from "@/hooks/useBoards";
+import { useProductIdeas } from "@/hooks/useProductIdeas";
+import { useProductOutlines } from "@/hooks/useProductOutlines";
 import { useContentSources } from "@/hooks/useContentSources";
 import { 
   LayoutDashboard, 
@@ -16,11 +16,9 @@ import {
   ChevronDown,
   Shield,
   Loader2,
-  LayoutGrid,
-  Pin,
-  Image,
+  Lightbulb,
+  FileText,
   Sparkles,
-  Lightbulb
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,18 +31,16 @@ import {
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
-  { icon: Pin, label: "Pins", href: "/pins" },
-  { icon: LayoutGrid, label: "Boards", href: "/boards" },
+  { icon: FileText, label: "Outlines", href: "/outlines" },
   { icon: Rss, label: "Sources", href: "/sources" },
-  { icon: Image, label: "Images", href: "/images" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
 const Dashboard = () => {
   const { user, profile, isAdmin, isLoading, signOut } = useAuth();
   const { brands, currentBrand, isLoading: brandsLoading, selectBrand } = useBrands();
-  const { pins } = usePins(currentBrand?.id || null);
-  const { boards } = useBoards(currentBrand?.id || null);
+  const { ideas } = useProductIdeas(currentBrand?.id || null);
+  const { outlines } = useProductOutlines(currentBrand?.id || null);
   const { sources } = useContentSources(currentBrand?.id || null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,9 +62,12 @@ const Dashboard = () => {
   const isActive = (href: string) => location.pathname === href;
 
   // Stats
-  const draftPins = pins.filter(p => p.status === "draft").length;
-  const approvedPins = pins.filter(p => p.status === "approved").length;
-  const publishedPins = pins.filter(p => p.status === "published").length;
+  const totalIdeas = ideas.length;
+  const topIdeas = ideas
+    .filter((i) => i.pmf_score)
+    .sort((a, b) => (b.pmf_score?.combined_score || 0) - (a.pmf_score?.combined_score || 0))
+    .slice(0, 3);
+  const totalOutlines = outlines.length;
 
   if (isLoading) {
     return (
@@ -82,11 +81,10 @@ const Dashboard = () => {
     <div className="min-h-screen bg-muted/30 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-card border-r border-border flex flex-col shadow-sm">
-        {/* Logo */}
         <div className="p-5 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-pinterest-gradient flex items-center justify-center">
-              <Pin className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-semibold text-lg">Creator OS</span>
           </Link>
@@ -106,8 +104,8 @@ const Dashboard = () => {
                     />
                   ) : (
                     <div 
-                      className="w-8 h-8 rounded-lg flex items-center justify-center font-semibold text-sm text-white"
-                      style={{ background: currentBrand?.primary_color ? `linear-gradient(135deg, ${currentBrand.primary_color}, ${currentBrand.secondary_color || currentBrand.primary_color})` : 'linear-gradient(135deg, hsl(350, 100%, 45%), hsl(350, 80%, 35%))' }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center font-semibold text-sm text-primary-foreground"
+                      style={{ backgroundColor: currentBrand?.primary_color || 'hsl(var(--primary))' }}
                     >
                       {currentBrand?.name?.charAt(0) || "?"}
                     </div>
@@ -138,8 +136,8 @@ const Dashboard = () => {
                       />
                     ) : (
                       <div 
-                        className="w-6 h-6 rounded-md flex items-center justify-center font-semibold text-xs text-white"
-                        style={{ background: brand.primary_color ? `linear-gradient(135deg, ${brand.primary_color}, ${brand.secondary_color || brand.primary_color})` : 'linear-gradient(135deg, hsl(350, 100%, 45%), hsl(350, 80%, 35%))' }}
+                        className="w-6 h-6 rounded-md flex items-center justify-center font-semibold text-xs text-primary-foreground"
+                        style={{ backgroundColor: brand.primary_color || 'hsl(var(--primary))' }}
                       >
                         {brand.name.charAt(0)}
                       </div>
@@ -168,7 +166,7 @@ const Dashboard = () => {
                   to={item.href}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive(item.href)
-                      ? "bg-pinterest-gradient text-white shadow-sm" 
+                      ? "bg-primary text-primary-foreground shadow-sm" 
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   }`}
                 >
@@ -179,14 +177,13 @@ const Dashboard = () => {
             ))}
           </ul>
           
-          {/* Admin Link */}
           {isAdmin && (
             <div className="mt-6 pt-6 border-t border-border">
               <Link
                 to="/admin/users"
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   location.pathname.startsWith('/admin')
-                    ? "bg-pinterest-gradient text-white shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
@@ -201,12 +198,12 @@ const Dashboard = () => {
         <div className="p-4 border-t border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-accent flex items-center justify-center font-semibold text-sm text-primary">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center font-semibold text-sm text-primary">
                 {profile?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
               </div>
               <div className="text-sm">
                 <div className="font-medium">{profile?.full_name || "User"}</div>
-                <div className="text-xs text-muted-foreground">Pro Plan</div>
+                <div className="text-xs text-muted-foreground">Creator</div>
               </div>
             </div>
             <button 
@@ -221,32 +218,30 @@ const Dashboard = () => {
       
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        {/* Header */}
         <header className="p-6 bg-card border-b border-border flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Dashboard</h1>
             <p className="text-muted-foreground">Welcome back, {profile?.full_name?.split(" ")[0] || "there"}</p>
           </div>
-          <Link to="/pins">
+          <Link to="/product-ideas">
             <Button>
               <Sparkles className="w-4 h-4 mr-2" />
-              Generate Pins
+              Generate Ideas
             </Button>
           </Link>
         </header>
         
-        {/* Dashboard Content */}
         <div className="p-6">
           {/* No Brands CTA */}
           {!brandsLoading && brands.length === 0 && (
             <Card className="mb-8 overflow-hidden">
               <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-pinterest-gradient flex items-center justify-center">
-                  <Pin className="w-8 h-8 text-white" />
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Create Your First Brand</h3>
                 <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                  Set up your brand profile to start generating SEO-optimized Pinterest pins that drive traffic.
+                  Set up your brand profile to start generating validated product ideas and outlines.
                 </p>
                 <Link to="/channels/new">
                   <Button>
@@ -260,36 +255,36 @@ const Dashboard = () => {
           
           {/* Stats Grid */}
           <div className="grid md:grid-cols-4 gap-4 mb-8">
-            <Card className="overflow-hidden">
+            <Card>
               <CardHeader className="pb-2">
-                <CardDescription className="text-xs uppercase tracking-wide font-medium">Total Pins</CardDescription>
+                <CardDescription className="text-xs uppercase tracking-wide font-medium">Product Ideas</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-pinterest-gradient">{pins.length}</div>
+                <div className="text-3xl font-bold">{totalIdeas}</div>
               </CardContent>
             </Card>
-            <Card className="overflow-hidden">
+            <Card>
               <CardHeader className="pb-2">
-                <CardDescription className="text-xs uppercase tracking-wide font-medium">Draft Pins</CardDescription>
+                <CardDescription className="text-xs uppercase tracking-wide font-medium">Outlines</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-pinterest-gradient">{draftPins}</div>
+                <div className="text-3xl font-bold">{totalOutlines}</div>
               </CardContent>
             </Card>
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-xs uppercase tracking-wide font-medium">Active Boards</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-pinterest-gradient">{boards.length}</div>
-              </CardContent>
-            </Card>
-            <Card className="overflow-hidden">
+            <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-xs uppercase tracking-wide font-medium">Content Sources</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-pinterest-gradient">{sources.length}</div>
+                <div className="text-3xl font-bold">{sources.length}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="text-xs uppercase tracking-wide font-medium">Brands</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{brands.length}</div>
               </CardContent>
             </Card>
           </div>
@@ -297,28 +292,28 @@ const Dashboard = () => {
           {/* Quick Actions */}
           {currentBrand && (
             <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <Link to="/pins">
+              <Link to="/product-ideas">
                 <Card className="cursor-pointer group hover:shadow-lg transition-all">
                   <CardContent className="p-6 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-accent flex items-center justify-center group-hover:bg-pinterest-gradient transition-all">
-                      <Pin className="w-6 h-6 text-primary group-hover:text-white transition-colors" />
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-all">
+                      <Lightbulb className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">Generate Pins</CardTitle>
-                      <CardDescription>Create SEO-optimized pins</CardDescription>
+                      <CardTitle className="text-lg">Generate Ideas</CardTitle>
+                      <CardDescription>AI-powered product ideas with PMF scoring</CardDescription>
                     </div>
                   </CardContent>
                 </Card>
               </Link>
-              <Link to="/boards">
+              <Link to="/outlines">
                 <Card className="cursor-pointer group hover:shadow-lg transition-all">
                   <CardContent className="p-6 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-accent flex items-center justify-center group-hover:bg-pinterest-gradient transition-all">
-                      <LayoutGrid className="w-6 h-6 text-primary group-hover:text-white transition-colors" />
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-all">
+                      <FileText className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">Manage Boards</CardTitle>
-                      <CardDescription>Organize by keywords</CardDescription>
+                      <CardTitle className="text-lg">Create Outline</CardTitle>
+                      <CardDescription>Structure your product with AI</CardDescription>
                     </div>
                   </CardContent>
                 </Card>
@@ -326,12 +321,12 @@ const Dashboard = () => {
               <Link to="/sources">
                 <Card className="cursor-pointer group hover:shadow-lg transition-all">
                   <CardContent className="p-6 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-accent flex items-center justify-center group-hover:bg-pinterest-gradient transition-all">
-                      <Rss className="w-6 h-6 text-primary group-hover:text-white transition-colors" />
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-all">
+                      <Rss className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">Add Source</CardTitle>
-                      <CardDescription>Connect blog or RSS</CardDescription>
+                      <CardDescription>Connect blog or RSS feed</CardDescription>
                     </div>
                   </CardContent>
                 </Card>
@@ -339,38 +334,31 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Recent Pins Preview */}
-          {currentBrand && pins.length > 0 && (
+          {/* Top Product Ideas */}
+          {topIdeas.length > 0 && (
             <Card className="mb-8">
               <CardHeader className="border-b border-border flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Recent Pins</CardTitle>
-                  <CardDescription>Your latest generated pins</CardDescription>
+                  <CardTitle>Top Product Ideas</CardTitle>
+                  <CardDescription>Highest PMF-scoring ideas</CardDescription>
                 </div>
-                <Link to="/pins">
+                <Link to="/product-ideas">
                   <Button variant="outline" size="sm">View All</Button>
                 </Link>
               </CardHeader>
-              <CardContent className="p-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {pins.slice(0, 6).map((pin) => (
-                    <div key={pin.id} className="aspect-[2/3] rounded-lg bg-muted overflow-hidden group relative">
-                      <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center">
-                        <Pin className="w-6 h-6 text-muted-foreground/50 mb-2" />
-                        <p className="text-[10px] text-muted-foreground line-clamp-3">{pin.title}</p>
-                      </div>
-                      <div className="absolute top-1 right-1">
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                          pin.status === 'approved' ? 'bg-green-500/20 text-green-600' :
-                          pin.status === 'published' ? 'bg-primary/20 text-primary' :
-                          'bg-muted-foreground/20 text-muted-foreground'
-                        }`}>
-                          {pin.status}
-                        </span>
-                      </div>
+              <CardContent className="p-0">
+                {topIdeas.map((idea, i) => (
+                  <div key={idea.id} className={`p-4 flex items-center gap-4 ${i < topIdeas.length - 1 ? "border-b border-border" : ""}`}>
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-primary">
+                      {idea.pmf_score?.combined_score || 0}
                     </div>
-                  ))}
-                </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{idea.title}</div>
+                      <div className="text-sm text-muted-foreground truncate">{idea.description}</div>
+                    </div>
+                    <span className="text-xs bg-secondary px-2 py-1 rounded">{idea.format}</span>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
@@ -379,7 +367,7 @@ const Dashboard = () => {
           <Card>
             <CardHeader className="border-b border-border">
               <CardTitle>Get Started</CardTitle>
-              <CardDescription>Complete these steps to start driving Pinterest traffic</CardDescription>
+              <CardDescription>Complete these steps to create your first digital product</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <Link 
@@ -387,26 +375,12 @@ const Dashboard = () => {
                 className={`block p-4 border-b border-border hover:bg-accent/50 transition-colors ${brands.length > 0 ? "opacity-50" : ""}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${brands.length > 0 ? "bg-pinterest-gradient text-white" : "bg-muted text-muted-foreground"}`}>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${brands.length > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                     {brands.length > 0 ? "✓" : "1"}
                   </div>
                   <div>
                     <div className="font-medium">Set up your brand profile</div>
-                    <div className="text-sm text-muted-foreground">Define your niche, colors, and pin style</div>
-                  </div>
-                </div>
-              </Link>
-              <Link 
-                to="/boards"
-                className={`block p-4 border-b border-border hover:bg-accent/50 transition-colors ${boards.length > 0 ? "opacity-50" : ""}`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${boards.length > 0 ? "bg-pinterest-gradient text-white" : "bg-muted text-muted-foreground"}`}>
-                    {boards.length > 0 ? "✓" : "2"}
-                  </div>
-                  <div>
-                    <div className="font-medium">Create your first board</div>
-                    <div className="text-sm text-muted-foreground">Organize pins by topic and keywords</div>
+                    <div className="text-sm text-muted-foreground">Define your niche, audience, and voice</div>
                   </div>
                 </div>
               </Link>
@@ -415,23 +389,34 @@ const Dashboard = () => {
                 className={`block p-4 border-b border-border hover:bg-accent/50 transition-colors ${sources.length > 0 ? "opacity-50" : ""}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${sources.length > 0 ? "bg-pinterest-gradient text-white" : "bg-muted text-muted-foreground"}`}>
-                    {sources.length > 0 ? "✓" : "3"}
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${sources.length > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {sources.length > 0 ? "✓" : "2"}
                   </div>
                   <div>
                     <div className="font-medium">Add a content source</div>
-                    <div className="text-sm text-muted-foreground">Connect your blog or RSS feed</div>
+                    <div className="text-sm text-muted-foreground">Connect your blog, RSS, or add ideas manually</div>
                   </div>
                 </div>
               </Link>
-              <Link to="/pins" className="block p-4 hover:bg-accent/50 transition-colors cursor-pointer">
+              <Link to="/product-ideas" className={`block p-4 border-b border-border hover:bg-accent/50 transition-colors ${totalIdeas > 0 ? "opacity-50" : ""}`}>
                 <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${pins.length > 0 ? "bg-pinterest-gradient text-white" : "bg-muted text-muted-foreground"}`}>
-                    {pins.length > 0 ? "✓" : "4"}
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${totalIdeas > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {totalIdeas > 0 ? "✓" : "3"}
                   </div>
                   <div>
-                    <div className="font-medium">Generate your first pins</div>
-                    <div className="text-sm text-muted-foreground">Let AI create SEO-optimized Pinterest pins</div>
+                    <div className="font-medium">Generate product ideas</div>
+                    <div className="text-sm text-muted-foreground">AI validates and scores ideas with PMF metrics</div>
+                  </div>
+                </div>
+              </Link>
+              <Link to="/outlines" className={`block p-4 hover:bg-accent/50 transition-colors ${totalOutlines > 0 ? "opacity-50" : ""}`}>
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${totalOutlines > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {totalOutlines > 0 ? "✓" : "4"}
+                  </div>
+                  <div>
+                    <div className="font-medium">Create your first outline</div>
+                    <div className="text-sm text-muted-foreground">Structure your product into chapters and sections</div>
                   </div>
                 </div>
               </Link>

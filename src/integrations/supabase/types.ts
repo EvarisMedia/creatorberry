@@ -572,6 +572,53 @@ export type Database = {
           },
         ]
       }
+      outline_sections: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          outline_id: string
+          section_number: number
+          sort_order: number
+          subsections: Json | null
+          title: string
+          updated_at: string
+          word_count_target: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          outline_id: string
+          section_number?: number
+          sort_order?: number
+          subsections?: Json | null
+          title: string
+          updated_at?: string
+          word_count_target?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          outline_id?: string
+          section_number?: number
+          sort_order?: number
+          subsections?: Json | null
+          title?: string
+          updated_at?: string
+          word_count_target?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outline_sections_outline_id_fkey"
+            columns: ["outline_id"]
+            isOneToOne: false
+            referencedRelation: "product_outlines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pin_templates: {
         Row: {
           brand_id: string | null
@@ -856,6 +903,60 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_outlines: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          product_idea_id: string
+          status: string
+          structure: Json
+          title: string
+          total_word_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          product_idea_id: string
+          status?: string
+          structure?: Json
+          title: string
+          total_word_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          product_idea_id?: string
+          status?: string
+          structure?: Json
+          title?: string
+          total_word_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_outlines_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_outlines_product_idea_id_fkey"
+            columns: ["product_idea_id"]
+            isOneToOne: false
+            referencedRelation: "product_ideas"
             referencedColumns: ["id"]
           },
         ]
