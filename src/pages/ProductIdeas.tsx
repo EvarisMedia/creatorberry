@@ -116,7 +116,6 @@ const ProductIdeas = () => {
         <div className="p-5 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
             <img src={creatorberryLogo} alt="CreatorBerry" className="w-9 h-9 rounded-xl object-contain" />
-            <span className="font-semibold text-lg">CreatorBerry</span>
           </Link>
         </div>
 

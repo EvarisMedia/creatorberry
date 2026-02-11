@@ -9,7 +9,6 @@ const Footer = () => {
           <div>
             <Link to="/" className="flex items-center gap-2.5 mb-4">
               <img src={creatorberryLogo} alt="CreatorBerry" className="w-9 h-9 rounded-xl object-contain" />
-              <span className="font-bold text-lg">CreatorBerry</span>
             </Link>
             <p className="text-sm text-muted-foreground">Build, validate, and launch digital products with AI-powered tools.</p>
           </div>

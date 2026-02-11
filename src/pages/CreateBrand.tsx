@@ -190,7 +190,6 @@ const CreateBrand = () => {
         <div className="container px-4 h-16 flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2">
             <img src={creatorberryLogo} alt="CreatorBerry" className="w-8 h-8 rounded-lg object-contain" />
-            <span className="font-bold">CreatorBerry</span>
           </Link>
           <Link to="/dashboard">
             <Button variant="ghost" size="sm">
