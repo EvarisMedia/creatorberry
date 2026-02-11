@@ -31,6 +31,7 @@ import SalesPageBuilder from "./pages/SalesPageBuilder";
 import LaunchToolkit from "./pages/LaunchToolkit";
 import TemplateLibrary from "./pages/TemplateLibrary";
 import AdminPlans from "./pages/AdminPlans";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,7 @@ const App = () => (
             <Route path="/launch-toolkit" element={<LaunchToolkit />} />
             <Route path="/templates" element={<TemplateLibrary />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/help" element={<Help />} />
             <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
