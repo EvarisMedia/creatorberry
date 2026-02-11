@@ -19,7 +19,8 @@ import {
   LayoutGrid,
   Pin,
   Image,
-  Sparkles
+  Sparkles,
+  Lightbulb
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ import {
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
   { icon: Pin, label: "Pins", href: "/pins" },
   { icon: LayoutGrid, label: "Boards", href: "/boards" },
   { icon: Rss, label: "Sources", href: "/sources" },
