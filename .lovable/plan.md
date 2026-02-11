@@ -1,88 +1,89 @@
 
 
-# Refactor Brand Setup & Product Ideas Workflow
+# Rebrand App to "CreatorBerry"
 
-## Problem Summary
-1. **Brand Voice (Step 3 in CreateBrand)** has social-media-era settings (tone, emoji usage, writing style) that don't serve digital product creation
-2. **Product Ideas** only supports AI generation -- no way to manually add ideas
-3. **Sources page** is disconnected from the product workflow and adds unnecessary complexity
+## Overview
+Rename the entire app from "Creator OS" to "CreatorBerry", add the uploaded logo, and update the color palette to match the logo's strawberry pink and purple tones.
 
-## Recommended Workflow for Product Ideas
-
-Sources as a separate page adds friction without clear value. Instead, the best workflow is:
-
-1. **Brand profile provides the context** -- niche, expertise, target audience, offers (already captured in Step 4)
-2. **Users can manually add their own product ideas** directly on the Product Ideas page
-3. **AI generates ideas using the brand profile** (no separate sources needed)
-4. **Optional: user adds a "seed prompt"** when generating -- a text field where they describe a rough idea, market trend, or topic they want AI to explore
-
-This removes Sources as a required step and makes idea generation more direct.
-
----
+## Brand Colors (from logo)
+- **Primary**: Strawberry Pink -- `hsl(340, 82%, 65%)` (the pink from the berry/text)
+- **Secondary**: Berry Purple -- `hsl(270, 65%, 55%)` (the purple "Creator" text)
+- Gradient: Pink-to-Purple (strawberry theme)
+- Keep the warm, playful feel consistent with the kawaii strawberry mascot
 
 ## Changes
 
-### 1. Refactor Brand Voice Step (CreateBrand.tsx, Step 3)
+### 1. Add Logo Asset
+- Copy `user-uploads://image-2.png` to `src/assets/creatorberry-logo.png`
+- Use as an imported asset in React components
 
-**Remove** the old social-media settings:
-- Tone (professional/conversational/bold/opinionated)
-- Emoji Usage (none/minimal/moderate)
-- Writing Style (short_punchy/long_form/story_driven)
+### 2. Update Color Palette (`src/index.css`)
+- **Primary**: Shift from coral `hsl(0, 100%, 71%)` to strawberry pink `hsl(340, 82%, 65%)`
+- **Secondary**: Adjust purple to `hsl(270, 65%, 55%)` to match logo
+- **Ring/Accent**: Update to match new primary
+- Update gradient utilities (`.bg-creator-gradient`, `.text-creator-gradient`) to use strawberry-pink-to-berry-purple
+- Update dark mode variants accordingly
+- Rename gradient classes from `creator-gradient` to `berry-gradient`
 
-**Replace with** product-creation-relevant fields:
-- **Niche / Industry** (text input) -- "What space do you operate in?"
-- **Your Expertise** (textarea) -- "What topics are you an expert in?"
-- **Content Style** (select: educational / inspirational / tactical / research-backed) -- How your products should feel
-- **Preferred Product Formats** (multi-select checkboxes: Ebook, Course, Templates, Workbook, Coaching, Membership, Printables) -- What formats interest you
+### 3. Update `index.html`
+- Title: "CreatorBerry - Build, Validate & Launch Digital Products"
+- Meta author: "CreatorBerry"
+- OG tags: Update all "Creator OS" references to "CreatorBerry"
 
-The brands table already has `niche`, `content_style` columns. No migration needed for those. The `tone`, `emoji_usage`, `writing_style` columns stay in the DB (backward compatible) but are no longer collected in the wizard.
+### 4. Replace All "Creator OS" Text References (28 files)
+Key files with brand name occurrences:
+- `src/components/landing/Header.tsx` -- Replace Sparkles icon with logo image, rename text
+- `src/components/landing/Footer.tsx` -- Replace icon and text
+- `src/components/landing/HeroSection.tsx` -- Update gradient class names
+- `src/components/landing/CTASection.tsx` -- Update text
+- `src/components/landing/PricingSection.tsx` -- Update gradient classes
+- `src/components/landing/FAQSection.tsx` -- Update gradient classes
+- `src/components/landing/ProblemSolutionSection.tsx` -- Update gradient classes
+- `src/components/landing/CreatorsSection.tsx` -- Update gradient classes
+- `src/components/landing/UseCasesSection.tsx` -- Update text
+- `src/pages/Dashboard.tsx` -- Replace sidebar logo (Sparkles icon to logo image), rename text
+- `src/pages/Auth.tsx` -- Replace logo and text
+- `src/pages/PendingApproval.tsx` -- Replace logo and text
+- `src/pages/Help.tsx` -- Replace logo and all documentation references
+- `src/pages/Analytics.tsx` -- Replace logo and text
+- `src/pages/ProductOutline.tsx` -- Replace logo and text
+- All other pages with sidebar logos (same pattern)
 
-### 2. Add Manual Idea Creation (Product Ideas Page)
+### 5. Update Gradient Class Names (`src/index.css` + all component files)
+- `.bg-creator-gradient` becomes `.bg-berry-gradient`
+- `.text-creator-gradient` becomes `.text-berry-gradient`
+- `.bg-creator-gradient-hover` becomes `.bg-berry-gradient-hover`
+- `.bg-hero-gradient` -- adjust hues to pink/purple
+- `.bg-mesh-gradient` -- adjust radial gradient colors
+- Update all component files referencing these classes
 
-Add an "Add Idea Manually" button next to "Generate Ideas" on the ProductIdeas page header.
-
-**New component: `AddIdeaDialog.tsx`**
-- Title (required)
-- Description (required)
-- Format (select from product formats)
-- Target Audience (optional)
-- Fields map directly to the existing `product_ideas` table -- no migration needed
-
-**Update `useProductIdeas.tsx`** to add a `createIdea` function that inserts directly into the `product_ideas` table with status "new" and no PMF score.
-
-### 3. Enhance Generate Ideas Dialog
-
-Update `GenerateIdeasDialog.tsx` to include:
-- Existing "Number of Ideas" selector
-- **New: "Seed Prompt" textarea** (optional) -- "Describe a topic, trend, or rough idea you want AI to explore"
-- Pass this seed prompt to the edge function
-
-**Update `generate-product-ideas` edge function:**
-- Accept optional `seedPrompt` parameter
-- Include it in the AI prompt when provided: "The creator is particularly interested in: [seedPrompt]"
-- Fix the existing bug where `supabase` and `user` are referenced before being defined
-
-### 4. Remove Sources from Main Sidebar
-
-Since Sources aren't integral to the digital product workflow:
-- Remove "Sources" from `sidebarItems` in both `Dashboard.tsx` and `ProductIdeas.tsx`
-- Keep the `/sources` route and page intact (accessible via URL if needed)
-- This declutters navigation and focuses on the core workflow
-
----
+### 6. Update `tailwind.config.ts`
+- No structural changes needed (colors come from CSS variables)
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/pages/CreateBrand.tsx` | Replace Step 3 voice settings with product-relevant fields (niche, expertise, content style, preferred formats) |
-| `src/components/product-ideas/AddIdeaDialog.tsx` | **New file** -- Manual idea creation dialog |
-| `src/components/product-ideas/GenerateIdeasDialog.tsx` | Add seed prompt textarea |
-| `src/hooks/useProductIdeas.tsx` | Add `createIdea` mutation function |
-| `src/pages/ProductIdeas.tsx` | Add "Add Manually" button, pass seed prompt to generate |
-| `supabase/functions/generate-product-ideas/index.ts` | Accept `seedPrompt`, fix variable ordering bug |
-| `src/pages/Dashboard.tsx` | Remove Sources from sidebar |
+| `src/assets/creatorberry-logo.png` | **New** -- logo asset |
+| `index.html` | Update title, meta tags |
+| `src/index.css` | Update color variables, rename gradient utilities |
+| `src/components/landing/Header.tsx` | Logo image + "CreatorBerry" + gradient classes |
+| `src/components/landing/Footer.tsx` | Logo image + "CreatorBerry" |
+| `src/components/landing/HeroSection.tsx` | Gradient classes |
+| `src/components/landing/CTASection.tsx` | Text + gradient classes |
+| `src/components/landing/PricingSection.tsx` | Gradient classes |
+| `src/components/landing/FAQSection.tsx` | Gradient classes |
+| `src/components/landing/ProblemSolutionSection.tsx` | Gradient classes |
+| `src/components/landing/CreatorsSection.tsx` | Gradient classes |
+| `src/components/landing/UseCasesSection.tsx` | Text |
+| `src/pages/Dashboard.tsx` | Sidebar logo + text |
+| `src/pages/Auth.tsx` | Logo + text |
+| `src/pages/PendingApproval.tsx` | Logo + text |
+| `src/pages/Help.tsx` | Logo + all doc text references |
+| `src/pages/Analytics.tsx` | Logo + text |
+| `src/pages/ProductOutline.tsx` | Logo + text |
+| All remaining pages with sidebar pattern | Logo + text |
 
-## No Database Migration Needed
-All required columns (`niche`, `content_style`, `product_ideas.*`) already exist. The old brand voice columns (`tone`, `emoji_usage`, `writing_style`) remain in the schema but are simply no longer collected.
+## No Database Changes
+This is a purely frontend/visual rebrand.
 
