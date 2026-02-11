@@ -197,7 +197,7 @@ export default function Settings() {
         <div className="p-4 border-b-2 border-foreground">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-foreground" />
-            <span className="font-bold">Authority OS</span>
+            <span className="font-bold">Creator OS</span>
           </Link>
         </div>
 
