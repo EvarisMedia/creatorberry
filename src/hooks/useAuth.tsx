@@ -8,6 +8,7 @@ interface Profile {
   email: string;
   full_name: string | null;
   is_approved: boolean;
+  plan_id: string | null;
   created_at: string;
   updated_at: string;
 }
