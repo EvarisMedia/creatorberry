@@ -1,52 +1,25 @@
 
 
-# Fix: Remove Sources from Dashboard + Clarify Product Location
+# Fix Logo Sizing in Header and Dashboard Sidebar
 
-## Issue 1: "Add Source" Still Showing on Dashboard
+## Problem
+1. **Landing page header**: The logo at `w-40` (10rem) overflows the `h-16` (4rem) header height
+2. **Dashboard sidebar**: The logo container has `p-5` padding, creating excessive white space around the logo
 
-Sources was removed from the sidebar but still appears in three places on the dashboard main content area:
+## Changes
 
-1. **Quick Actions grid** -- "Add Source" card linking to `/sources`
-2. **Stats grid** -- "Content Sources" stat card showing `sources.length`
-3. **Getting Started checklist** -- Step 2 "Add a content source" linking to `/sources`
+### 1. Landing Page Header (`src/components/landing/Header.tsx`)
+- Increase header height from `h-16` to `h-20` (5rem) so the logo fits comfortably
 
-### Fix
+### 2. Dashboard Sidebar (`src/pages/Dashboard.tsx`)
+- Reduce the logo container padding from `p-5` to `p-3` to minimize white space around the logo
+- This same change applies to all other dashboard-style pages that share the same sidebar layout
 
-- Remove the "Add Source" quick action card (replace with a more relevant action, e.g., "KDP Publisher" or "Export Center")
-- Remove the "Content Sources" stat card (replace with something useful like "Exports" or "Images")
-- Remove the "Add a content source" getting started step (renumber remaining steps to 1-3)
-- Remove the `useContentSources` import and `sources` variable since they're no longer needed
-- Remove the `Rss` icon import
-
-### Updated Quick Actions (4 cards)
-1. Generate Ideas (keep)
-2. Create Outline (keep)
-3. Image Studio (keep)
-4. Export Center (new -- replaces "Add Source")
-
-### Updated Stats Grid (4 cards)
-1. Product Ideas (keep)
-2. Outlines (keep)
-3. Brands (keep)
-4. Exports or Images (replaces "Content Sources")
-
-### Updated Getting Started (3 steps)
-1. Set up your brand profile
-2. Generate product ideas
-3. Create your first outline
-
-## Issue 2: Where Created Products Appear
-
-Currently, products created under a brand appear across separate pages:
-- **Product Ideas** at `/product-ideas`
-- **Outlines** at `/outlines`
-- **Exports** at `/export-center`
-
-No changes needed here for now -- the sidebar navigation already provides access to each. The dashboard stats and quick actions will guide users to the right pages.
-
-## Files Modified
+### Files to Update
 
 | File | Change |
 |------|--------|
-| `src/pages/Dashboard.tsx` | Remove Sources references from quick actions, stats, getting started; remove `useContentSources` import; replace with Export Center action |
+| `src/components/landing/Header.tsx` | `h-16` to `h-20` on the container div |
+| `src/pages/Dashboard.tsx` | Logo wrapper `p-5` to `p-3` |
+| All other sidebar pages (~12 files) | Same `p-5` to `p-3` change on the logo container |
 
