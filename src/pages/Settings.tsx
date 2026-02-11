@@ -423,6 +423,8 @@ export default function Settings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview (Latest)</SelectItem>
+                      <SelectItem value="gemini-3-flash-preview">Gemini 3 Flash Preview (Fast + New)</SelectItem>
                       <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</SelectItem>
                       <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro (Best quality)</SelectItem>
                       <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (Fastest)</SelectItem>
@@ -440,6 +442,7 @@ export default function Settings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="gemini-3-pro-image-preview">Gemini 3 Pro Image Preview (Latest)</SelectItem>
                       <SelectItem value="gemini-2.5-flash-image-preview">Gemini 2.5 Flash Image</SelectItem>
                     </SelectContent>
                   </Select>
