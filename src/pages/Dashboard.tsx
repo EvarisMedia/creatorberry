@@ -7,10 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBrands } from "@/hooks/useBrands";
 import { useProductIdeas } from "@/hooks/useProductIdeas";
 import { useProductOutlines } from "@/hooks/useProductOutlines";
-import { useContentSources } from "@/hooks/useContentSources";
 import { 
   LayoutDashboard, 
-  Rss, 
   Settings,
   Plus,
   LogOut,
@@ -59,7 +57,7 @@ const Dashboard = () => {
   const { brands, currentBrand, isLoading: brandsLoading, selectBrand } = useBrands();
   const { ideas } = useProductIdeas(currentBrand?.id || null);
   const { outlines } = useProductOutlines(currentBrand?.id || null);
-  const { sources } = useContentSources(currentBrand?.id || null);
+  
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -288,14 +286,6 @@ const Dashboard = () => {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription className="text-xs uppercase tracking-wide font-medium">Content Sources</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{sources.length}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
                 <CardDescription className="text-xs uppercase tracking-wide font-medium">Brands</CardDescription>
               </CardHeader>
               <CardContent>
@@ -333,15 +323,15 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               </Link>
-              <Link to="/sources">
+              <Link to="/export-center">
                 <Card className="cursor-pointer group hover:shadow-lg transition-all">
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-all">
-                      <Rss className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
+                      <Download className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">Add Source</CardTitle>
-                      <CardDescription>Connect blog or RSS feed</CardDescription>
+                      <CardTitle className="text-lg">Export Center</CardTitle>
+                      <CardDescription>Export your products in any format</CardDescription>
                     </div>
                   </CardContent>
                 </Card>
@@ -412,24 +402,10 @@ const Dashboard = () => {
                   </div>
                 </div>
               </Link>
-              <Link 
-                to="/sources"
-                className={`block p-4 border-b border-border hover:bg-accent/50 transition-colors ${sources.length > 0 ? "opacity-50" : ""}`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${sources.length > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    {sources.length > 0 ? "✓" : "2"}
-                  </div>
-                  <div>
-                    <div className="font-medium">Add a content source</div>
-                    <div className="text-sm text-muted-foreground">Connect your blog, RSS, or add ideas manually</div>
-                  </div>
-                </div>
-              </Link>
               <Link to="/product-ideas" className={`block p-4 border-b border-border hover:bg-accent/50 transition-colors ${totalIdeas > 0 ? "opacity-50" : ""}`}>
                 <div className="flex items-center gap-4">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${totalIdeas > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    {totalIdeas > 0 ? "✓" : "3"}
+                    {totalIdeas > 0 ? "✓" : "2"}
                   </div>
                   <div>
                     <div className="font-medium">Generate product ideas</div>
@@ -440,7 +416,7 @@ const Dashboard = () => {
               <Link to="/outlines" className={`block p-4 hover:bg-accent/50 transition-colors ${totalOutlines > 0 ? "opacity-50" : ""}`}>
                 <div className="flex items-center gap-4">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-medium text-sm ${totalOutlines > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    {totalOutlines > 0 ? "✓" : "4"}
+                    {totalOutlines > 0 ? "✓" : "3"}
                   </div>
                   <div>
                     <div className="font-medium">Create your first outline</div>
