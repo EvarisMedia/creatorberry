@@ -13,6 +13,7 @@ export interface PlanFeatures {
   launch_toolkit: boolean;
   ai_text_models: boolean;
   ai_image_models: boolean;
+  allowed_models: string[];
 }
 
 export interface Plan {
