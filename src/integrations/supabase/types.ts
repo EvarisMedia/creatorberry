@@ -1439,6 +1439,51 @@ export type Database = {
           },
         ]
       }
+      templates: {
+        Row: {
+          category: string
+          created_at: string
+          created_by_admin: boolean | null
+          description: string | null
+          id: string
+          name: string
+          niche: string | null
+          sample_outline: Json
+          tags: string[] | null
+          updated_at: string
+          usage_count: number | null
+          user_id: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by_admin?: boolean | null
+          description?: string | null
+          id?: string
+          name: string
+          niche?: string | null
+          sample_outline?: Json
+          tags?: string[] | null
+          updated_at?: string
+          usage_count?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by_admin?: boolean | null
+          description?: string | null
+          id?: string
+          name?: string
+          niche?: string | null
+          sample_outline?: Json
+          tags?: string[] | null
+          updated_at?: string
+          usage_count?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       training_library: {
         Row: {
           category: string
@@ -1661,6 +1706,45 @@ export type Database = {
           weekly_digest?: boolean | null
         }
         Relationships: []
+      }
+      user_template_library: {
+        Row: {
+          forked_at: string
+          id: string
+          product_outline_id: string | null
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          forked_at?: string
+          id?: string
+          product_outline_id?: string | null
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          forked_at?: string
+          id?: string
+          product_outline_id?: string | null
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_template_library_product_outline_id_fkey"
+            columns: ["product_outline_id"]
+            isOneToOne: false
+            referencedRelation: "product_outlines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_template_library_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       video_sparks: {
         Row: {

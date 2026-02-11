@@ -14,7 +14,7 @@ import { useProductOutlines } from "@/hooks/useProductOutlines";
 import { useLaunchAssets } from "@/hooks/useLaunchAssets";
 import {
   LayoutDashboard, Rss, Settings, Sparkles, Lightbulb, FileText, Palette,
-  Download, BookOpen, ShoppingCart, Rocket, Plus, Loader2, Trash2, Copy,
+  Download, BookOpen, ShoppingCart, Rocket, Library, Plus, Loader2, Trash2, Copy,
   Mail, MessageSquare, Globe, Mic, ChevronDown, LogOut, Shield, Check,
 } from "lucide-react";
 import {
@@ -30,6 +30,7 @@ const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
   { icon: FileText, label: "Outlines", href: "/outlines" },
+  { icon: Library, label: "Templates", href: "/templates" },
   { icon: Palette, label: "Image Studio", href: "/image-studio" },
   { icon: Download, label: "Export Center", href: "/export-center" },
   { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },

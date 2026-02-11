@@ -29,6 +29,7 @@ import ExportCenter from "./pages/ExportCenter";
 import KDPPublisher from "./pages/KDPPublisher";
 import SalesPageBuilder from "./pages/SalesPageBuilder";
 import LaunchToolkit from "./pages/LaunchToolkit";
+import TemplateLibrary from "./pages/TemplateLibrary";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/kdp" element={<KDPPublisher />} />
             <Route path="/sales-pages" element={<SalesPageBuilder />} />
             <Route path="/launch-toolkit" element={<LaunchToolkit />} />
+            <Route path="/templates" element={<TemplateLibrary />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
