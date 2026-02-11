@@ -26,6 +26,7 @@ import ProductOutline from "./pages/ProductOutline";
 import ContentEditor from "./pages/ContentEditor";
 import ImageStudio from "./pages/ImageStudio";
 import ExportCenter from "./pages/ExportCenter";
+import KDPPublisher from "./pages/KDPPublisher";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/content-editor/:sectionId" element={<ContentEditor />} />
             <Route path="/image-studio" element={<ImageStudio />} />
             <Route path="/export-center" element={<ExportCenter />} />
+            <Route path="/kdp" element={<KDPPublisher />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

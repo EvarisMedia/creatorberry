@@ -632,6 +632,81 @@ export type Database = {
           },
         ]
       }
+      kdp_metadata: {
+        Row: {
+          asin: string | null
+          brand_id: string
+          categories: string[] | null
+          created_at: string
+          description: string | null
+          ebook_price: number | null
+          id: string
+          keywords: string[] | null
+          pricing_analysis: Json | null
+          print_price: number | null
+          product_outline_id: string
+          royalty_tier: string | null
+          status: string
+          subtitle: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asin?: string | null
+          brand_id: string
+          categories?: string[] | null
+          created_at?: string
+          description?: string | null
+          ebook_price?: number | null
+          id?: string
+          keywords?: string[] | null
+          pricing_analysis?: Json | null
+          print_price?: number | null
+          product_outline_id: string
+          royalty_tier?: string | null
+          status?: string
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asin?: string | null
+          brand_id?: string
+          categories?: string[] | null
+          created_at?: string
+          description?: string | null
+          ebook_price?: number | null
+          id?: string
+          keywords?: string[] | null
+          pricing_analysis?: Json | null
+          print_price?: number | null
+          product_outline_id?: string
+          royalty_tier?: string | null
+          status?: string
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kdp_metadata_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kdp_metadata_product_outline_id_fkey"
+            columns: ["product_outline_id"]
+            isOneToOne: false
+            referencedRelation: "product_outlines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outline_sections: {
         Row: {
           created_at: string

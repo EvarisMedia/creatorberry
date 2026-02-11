@@ -21,6 +21,7 @@ import {
   Sparkles,
   Palette,
   Download,
+  BookOpen,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -36,6 +37,7 @@ const sidebarItems = [
   { icon: FileText, label: "Outlines", href: "/outlines" },
   { icon: Palette, label: "Image Studio", href: "/image-studio" },
   { icon: Download, label: "Export Center", href: "/export-center" },
+  { icon: BookOpen, label: "KDP Publisher", href: "/kdp" },
   { icon: Rss, label: "Sources", href: "/sources" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];

@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.export-product]
 verify_jwt = false
+
+[functions.generate-kdp-metadata]
+verify_jwt = false
