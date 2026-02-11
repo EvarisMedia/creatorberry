@@ -1,114 +1,32 @@
 
+# Clean Up Settings Page
 
-# Settings Update: API Keys & AI Configuration
+## Problem
+The Settings page has an outdated left sidebar with old navigation links (Content, Sources, Images, Schedule, Analytics) that don't match the current app navigation. It also contains many settings sections that are irrelevant to this product-building app (RSS management, scheduling preferences, multi-type generation, image preferences, notifications).
 
-## Overview
-Add a new "AI Configuration" section to the Settings page where users can store their own Gemini API key and select preferred AI models for text and image generation. Also add the API key storage infrastructure (database table + RLS) and update all edge functions to use user-provided keys.
+## Changes
 
-## What Changes
+### 1. Replace the old sidebar with the current app sidebar
+Remove the hardcoded old sidebar (lines 204-323) and replace it with the same sidebar used in Dashboard.tsx, which includes: Dashboard, Product Ideas, Outlines, Templates, Image Studio, Export Center, KDP Publisher, Sales Pages, Launch Toolkit, Sources, Settings.
 
-### 1. Database: `user_api_keys` table
-Create a new table to securely store per-user API keys:
-- `id` (uuid, PK)
-- `user_id` (uuid, unique, references auth.users)
-- `gemini_api_key` (text, encrypted at rest by Supabase)
-- `preferred_text_model` (text, default `gemini-2.5-flash`)
-- `preferred_image_model` (text, default `gemini-2.5-flash-image-preview`)
-- `created_at`, `updated_at` (timestamps)
+### 2. Remove irrelevant settings sections
+Remove the following cards that are leftover from a social media content tool and not relevant:
+- **Content Generation** (posts per source, post length, post type, media format, creativity, CTA toggle)
+- **Multi-Type Generation** (mixed types, enabled post types)
+- **Scheduling Preferences** (posting times, posts per week, auto-schedule, weekends)
+- **Source Management** (RSS refresh, max items, auto-generate, freshness)
+- **Image Preferences** (image style, image type, auto-generate images)
+- **Notifications** (email notifications, weekly digest, reminders, alerts)
 
-RLS policies: users can only read/update/insert their own row.
+### 3. Keep these sections
+- **Profile** -- name, email, account created
+- **AI Configuration** -- Gemini API key, model selection, connection test
+- **Account** -- sign out button
 
-### 2. New Hook: `useUserApiKeys`
-A React hook to:
-- Fetch the user's API key record (masked display -- only show last 4 chars)
-- Save/update API key and model preferences
-- Provide helper to check if a key is configured
-
-### 3. Settings Page: New "AI Configuration" Card
-Add a new card section between "Profile" and "Content Generation" with:
-- **Gemini API Key** -- password-type input field with save button. Shows masked value if already set, with a "Change" button.
-- **Instructions link** -- brief note on how to get a key from Google AI Studio (https://aistudio.google.com/apikey)
-- **Preferred Text Model** -- dropdown with options: Gemini 2.5 Flash (default), Gemini 2.5 Pro, Gemini 2.5 Flash Lite
-- **Preferred Image Model** -- dropdown with options: Gemini 2.5 Flash Image (default)
-- **Connection test** button -- calls a lightweight edge function to verify the key works
-
-### 4. Edge Function: `verify-api-key`
-A small edge function that takes the user's stored Gemini key and makes a minimal API call to verify it works, returning success/failure.
-
-### 5. Update Existing Edge Functions
-Modify all AI-calling edge functions (generate-posts, generate-image, generate-outline, copilot-chat, etc.) to:
-1. Look up the calling user's `gemini_api_key` from `user_api_keys`
-2. Use the user's key to call Google Gemini API directly (not Lovable AI gateway)
-3. Respect the user's `preferred_text_model` / `preferred_image_model` selection
-4. Fall back to `LOVABLE_API_KEY` + Lovable gateway if no user key is configured
-
----
-
-## Technical Details
-
-### Database Migration SQL
-```sql
-CREATE TABLE public.user_api_keys (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  gemini_api_key text,
-  preferred_text_model text DEFAULT 'gemini-2.5-flash',
-  preferred_image_model text DEFAULT 'gemini-2.5-flash-image-preview',
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE public.user_api_keys ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users manage own keys" ON public.user_api_keys
-  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
-CREATE TRIGGER update_user_api_keys_updated_at
-  BEFORE UPDATE ON public.user_api_keys
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-```
-
-### Edge Function Pattern (per function update)
-```typescript
-// Inside each edge function, after auth:
-const { data: keyData } = await supabaseClient
-  .from('user_api_keys')
-  .select('gemini_api_key, preferred_text_model')
-  .eq('user_id', userId)
-  .maybeSingle();
-
-let apiUrl, apiKey, model;
-if (keyData?.gemini_api_key) {
-  apiUrl = 'https://generativelanguage.googleapis.com/v1beta/...';
-  apiKey = keyData.gemini_api_key;
-  model = keyData.preferred_text_model;
-} else {
-  apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-  apiKey = Deno.env.get('LOVABLE_API_KEY');
-  model = 'google/gemini-2.5-flash';
-}
-```
-
-### Files to Create
-- `src/hooks/useUserApiKeys.tsx`
-- `supabase/functions/verify-api-key/index.ts`
-
-### Files to Modify
-- `src/pages/Settings.tsx` -- add AI Configuration card
-- `src/hooks/useUserSettings.tsx` -- minor type updates if needed
-- `supabase/config.toml` -- register verify-api-key function
-- All 12+ edge functions in `supabase/functions/` -- add user key lookup logic
-
-### Model Options Presented in Settings
-**Text Models:**
-| Value | Label |
-|-------|-------|
-| `gemini-2.5-flash` | Gemini 2.5 Flash (Recommended) |
-| `gemini-2.5-pro` | Gemini 2.5 Pro (Best quality) |
-| `gemini-2.5-flash-lite` | Gemini 2.5 Flash Lite (Fastest) |
-
-**Image Models:**
-| Value | Label |
-|-------|-------|
-| `gemini-2.5-flash-image-preview` | Gemini 2.5 Flash Image |
-
+### Technical Details
+- **File modified:** `src/pages/Settings.tsx`
+- Remove unused imports: `useUserSettings`, `ALL_POST_TYPES`, `ALL_MEDIA_FORMATS`, `useBrands`, `Slider`, `Checkbox`, `Switch`, various icon imports, `DropdownMenu` components, and constants (`POST_LENGTHS`, `IMAGE_STYLES`, `IMAGE_TYPES`, `RSS_REFRESH_OPTIONS`, `FRESHNESS_OPTIONS`, `POSTING_TIMES`, `REMINDER_OPTIONS`)
+- Replace old `sidebarItems` array with the Dashboard's navigation items
+- Add brand switcher dropdown matching Dashboard layout
+- Add active route highlighting using `useLocation`
+- The page will go from ~983 lines to approximately 350 lines
