@@ -23,6 +23,7 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import ProductIdeas from "./pages/ProductIdeas";
 import ProductOutline from "./pages/ProductOutline";
+import ContentEditor from "./pages/ContentEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,8 @@ const App = () => (
             <Route path="/product-ideas" element={<ProductIdeas />} />
             <Route path="/outlines" element={<ProductOutline />} />
             <Route path="/outlines/:outlineId" element={<ProductOutline />} />
+            <Route path="/content-editor" element={<ContentEditor />} />
+            <Route path="/content-editor/:sectionId" element={<ContentEditor />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

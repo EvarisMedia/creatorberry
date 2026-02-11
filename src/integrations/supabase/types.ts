@@ -393,6 +393,66 @@ export type Database = {
           },
         ]
       }
+      expanded_content: {
+        Row: {
+          brand_id: string
+          content: string
+          created_at: string
+          id: string
+          mode: string
+          outline_section_id: string
+          style: string | null
+          tone: string | null
+          updated_at: string
+          user_id: string
+          version: number | null
+          word_count: number | null
+        }
+        Insert: {
+          brand_id: string
+          content: string
+          created_at?: string
+          id?: string
+          mode: string
+          outline_section_id: string
+          style?: string | null
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+          version?: number | null
+          word_count?: number | null
+        }
+        Update: {
+          brand_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          mode?: string
+          outline_section_id?: string
+          style?: string | null
+          tone?: string | null
+          updated_at?: string
+          user_id?: string
+          version?: number | null
+          word_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expanded_content_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expanded_content_outline_section_id_fkey"
+            columns: ["outline_section_id"]
+            isOneToOne: false
+            referencedRelation: "outline_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_images: {
         Row: {
           brand_id: string

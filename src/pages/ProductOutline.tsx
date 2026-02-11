@@ -37,6 +37,7 @@ const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
   { icon: FileText, label: "Outlines", href: "/outlines" },
+  { icon: BookOpen, label: "Content", href: "/content-editor" },
   { icon: Rss, label: "Sources", href: "/sources" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
@@ -251,6 +252,7 @@ const ProductOutlinePage = () => {
                     section={section}
                     index={i}
                     onUpdate={handleSectionUpdate}
+                    outlineId={activeOutline.id}
                   />
                 ))}
 
