@@ -7,12 +7,12 @@ import {
 
 const faqs = [
   {
-    question: "Do I need to be tech-savvy to use Creator OS?",
-    answer: "Not at all! Creator OS is designed for non-technical creators. If you can write an email, you can create a digital product. The AI handles all the complex stuff—formatting, design, structure—so you can focus on your expertise."
+    question: "Do I need to be tech-savvy to use CreatorBerry?",
+    answer: "Not at all! CreatorBerry is designed for non-technical creators. If you can write an email, you can create a digital product. The AI handles all the complex stuff—formatting, design, structure—so you can focus on your expertise."
   },
   {
     question: "What is the API key I need?",
-    answer: "Creator OS uses Google's Gemini AI for content generation. You'll need a free Gemini API key from Google AI Studio (takes 2 minutes to get). This means zero AI costs for us, which is why we can offer lifetime pricing instead of expensive subscriptions."
+    answer: "CreatorBerry uses Google's Gemini AI for content generation. You'll need a free Gemini API key from Google AI Studio (takes 2 minutes to get). This means zero AI costs for us, which is why we can offer lifetime pricing instead of expensive subscriptions."
   },
   {
     question: "Can I upgrade my plan later?",
@@ -28,11 +28,11 @@ const faqs = [
   },
   {
     question: "Is there a refund policy?",
-    answer: "Yes! We offer a 30-day money-back guarantee. If Creator OS doesn't help you create better products faster, just email us for a full refund. No questions asked."
+    answer: "Yes! We offer a 30-day money-back guarantee. If CreatorBerry doesn't help you create better products faster, just email us for a full refund. No questions asked."
   },
   {
     question: "What kind of products can I create?",
-    answer: "Ebooks, guides, workbooks, slide decks, template packs, checklists, and more. If it's a digital product that teaches or helps people, Creator OS can help you build it."
+    answer: "Ebooks, guides, workbooks, slide decks, template packs, checklists, and more. If it's a digital product that teaches or helps people, CreatorBerry can help you build it."
   },
   {
     question: "Do you offer team or agency plans?",
@@ -49,7 +49,7 @@ const FAQSection = () => {
             Frequently Asked <span className="text-creator-gradient">Questions</span>
           </h2>
           <p className="text-lg text-muted-foreground">
-            Everything you need to know about Creator OS
+            Everything you need to know about CreatorBerry
           </p>
         </div>
         

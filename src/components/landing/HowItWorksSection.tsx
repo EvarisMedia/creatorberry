@@ -42,7 +42,7 @@ const HowItWorksSection = () => {
           {/* Desktop Layout */}
           <div className="hidden md:grid md:grid-cols-4 gap-6 relative">
             {/* Connecting Line */}
-            <div className="absolute top-16 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-creator-coral via-creator-magenta to-creator-purple" />
+            <div className="absolute top-16 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-primary via-secondary to-primary" />
             
             {steps.map((step, index) => (
               <div key={index} className="relative flex flex-col items-center text-center">
@@ -66,7 +66,7 @@ const HowItWorksSection = () => {
               <div key={index} className="relative flex gap-5">
                 {/* Vertical Line */}
                 {index < steps.length - 1 && (
-                  <div className="absolute left-10 top-24 bottom-0 w-0.5 bg-gradient-to-b from-creator-coral to-creator-magenta" />
+                  <div className="absolute left-10 top-24 bottom-0 w-0.5 bg-gradient-to-b from-primary to-secondary" />
                 )}
                 
                 {/* Step Number with Icon */}

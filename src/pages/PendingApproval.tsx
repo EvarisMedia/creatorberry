@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Clock, LogOut, RefreshCw } from "lucide-react";
+import creatorberryLogo from "@/assets/creatorberry-logo.png";
 
 const PendingApproval = () => {
   const { user, profile, isLoading, signOut } = useAuth();
@@ -30,8 +31,8 @@ const PendingApproval = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-8">
       <div className="max-w-md w-full text-center">
         <Link to="/" className="inline-flex items-center gap-2 mb-12">
-          <div className="w-8 h-8 bg-foreground" />
-          <span className="font-bold text-lg">Creator OS</span>
+          <img src={creatorberryLogo} alt="CreatorBerry" className="w-8 h-8 rounded-lg object-contain" />
+          <span className="font-bold text-lg">CreatorBerry</span>
         </Link>
         
         <div className="w-20 h-20 mx-auto mb-8 border-4 border-foreground flex items-center justify-center">
@@ -42,7 +43,7 @@ const PendingApproval = () => {
         
         <p className="text-muted-foreground mb-8 leading-relaxed">
           Your account has been created successfully! An administrator needs to approve 
-          your access before you can start using Creator OS.
+          your access before you can start using CreatorBerry.
         </p>
         
         <div className="border-2 border-foreground p-6 mb-8 bg-secondary">

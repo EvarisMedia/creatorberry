@@ -5,9 +5,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Creator OS Design System
-   Vibrant, creative palette for digital creators
-   Primary: Coral/Magenta gradient
+/* CreatorBerry Design System
+   Strawberry pink and berry purple palette
+   Primary: Strawberry Pink
+   Secondary: Berry Purple
    All colors in HSL format
 */
 
@@ -22,20 +23,20 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 15% 13%;
 
-    /* Vibrant Coral as primary - #FF6B6B = hsl(0, 100%, 71%) */
-    --primary: 0 100% 71%;
+    /* Strawberry Pink as primary */
+    --primary: 340 82% 65%;
     --primary-foreground: 0 0% 100%;
 
-    /* Deep Purple for secondary - #7C3AED */
-    --secondary: 263 84% 58%;
+    /* Berry Purple for secondary */
+    --secondary: 270 65% 55%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
     /* Warm gradient accent */
-    --accent: 263 84% 96%;
-    --accent-foreground: 263 84% 40%;
+    --accent: 270 65% 96%;
+    --accent-foreground: 270 65% 40%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
@@ -43,23 +44,23 @@
     /* Soft borders */
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 0 100% 71%;
+    --ring: 340 82% 65%;
 
     /* Rounded corners */
     --radius: 1rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 15% 13%;
-    --sidebar-primary: 0 100% 71%;
+    --sidebar-primary: 340 82% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 263 84% 96%;
-    --sidebar-accent-foreground: 263 84% 40%;
+    --sidebar-accent: 270 65% 96%;
+    --sidebar-accent-foreground: 270 65% 40%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 0 100% 71%;
+    --sidebar-ring: 340 82% 65%;
 
-    /* Chart colors with creator palette */
-    --chart-1: 0 100% 71%;
-    --chart-2: 263 84% 58%;
+    /* Chart colors with berry palette */
+    --chart-1: 340 82% 65%;
+    --chart-2: 270 65% 55%;
     --chart-3: 36 100% 50%;
     --chart-4: 173 58% 39%;
     --chart-5: 214 89% 52%;
@@ -94,36 +95,36 @@
     --popover: 220 15% 10%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 0 100% 71%;
+    --primary: 340 82% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 263 84% 58%;
+    --secondary: 270 65% 55%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 220 15% 15%;
     --muted-foreground: 220 9% 65%;
 
-    --accent: 263 60% 20%;
-    --accent-foreground: 263 84% 85%;
+    --accent: 270 50% 20%;
+    --accent-foreground: 270 65% 85%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 15% 18%;
     --input: 220 15% 18%;
-    --ring: 0 100% 71%;
+    --ring: 340 82% 65%;
 
     --sidebar-background: 220 15% 9%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 100% 71%;
+    --sidebar-primary: 340 82% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 263 60% 20%;
-    --sidebar-accent-foreground: 263 84% 85%;
+    --sidebar-accent: 270 50% 20%;
+    --sidebar-accent-foreground: 270 65% 85%;
     --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 0 100% 71%;
+    --sidebar-ring: 340 82% 65%;
 
-    --chart-1: 0 100% 71%;
-    --chart-2: 263 84% 65%;
+    --chart-1: 340 82% 65%;
+    --chart-2: 270 65% 65%;
     --chart-3: 36 100% 60%;
     --chart-4: 173 58% 50%;
     --chart-5: 214 89% 60%;
@@ -152,31 +153,59 @@
   }
 }
 
-/* Creator OS Gradient Utilities */
+/* CreatorBerry Gradient Utilities */
 @layer utilities {
-  /* Primary gradient: Coral to Magenta */
+  /* Primary gradient: Strawberry Pink to Berry Purple */
+  .bg-berry-gradient {
+    background: linear-gradient(
+      135deg, 
+      hsl(340, 82%, 65%) 0%,
+      hsl(270, 65%, 55%) 100%
+    );
+  }
+
+  /* Keep old class name for backward compat */
   .bg-creator-gradient {
     background: linear-gradient(
       135deg, 
-      hsl(0, 100%, 71%) 0%,
-      hsl(320, 85%, 55%) 100%
+      hsl(340, 82%, 65%) 0%,
+      hsl(270, 65%, 55%) 100%
+    );
+  }
+
+  .bg-berry-gradient-hover {
+    background: linear-gradient(
+      135deg, 
+      hsl(340, 82%, 58%) 0%,
+      hsl(270, 65%, 48%) 100%
     );
   }
 
   .bg-creator-gradient-hover {
     background: linear-gradient(
       135deg, 
-      hsl(0, 100%, 65%) 0%,
-      hsl(320, 85%, 50%) 100%
+      hsl(340, 82%, 58%) 0%,
+      hsl(270, 65%, 48%) 100%
     );
   }
 
   /* Text gradient */
+  .text-berry-gradient {
+    background: linear-gradient(
+      135deg, 
+      hsl(340, 82%, 65%) 0%,
+      hsl(270, 65%, 55%) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
   .text-creator-gradient {
     background: linear-gradient(
       135deg, 
-      hsl(0, 100%, 71%) 0%,
-      hsl(320, 85%, 55%) 100%
+      hsl(340, 82%, 65%) 0%,
+      hsl(270, 65%, 55%) 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -187,16 +216,16 @@
   .bg-purple-gradient {
     background: linear-gradient(
       135deg, 
-      hsl(263, 84%, 58%) 0%,
-      hsl(280, 80%, 45%) 100%
+      hsl(270, 65%, 55%) 0%,
+      hsl(290, 60%, 45%) 100%
     );
   }
 
   .text-purple-gradient {
     background: linear-gradient(
       135deg, 
-      hsl(263, 84%, 58%) 0%,
-      hsl(280, 80%, 45%) 100%
+      hsl(270, 65%, 55%) 0%,
+      hsl(290, 60%, 45%) 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -207,9 +236,9 @@
   .bg-hero-gradient {
     background: linear-gradient(
       180deg,
-      hsl(0, 100%, 98%) 0%,
-      hsl(320, 100%, 98%) 50%,
-      hsl(263, 100%, 98%) 100%
+      hsl(340, 100%, 98%) 0%,
+      hsl(300, 100%, 98%) 50%,
+      hsl(270, 100%, 98%) 100%
     );
   }
 
@@ -217,10 +246,10 @@
   .bg-animated-gradient {
     background: linear-gradient(
       270deg,
-      hsl(0, 100%, 71%),
-      hsl(320, 85%, 55%),
-      hsl(263, 84%, 58%),
-      hsl(0, 100%, 71%)
+      hsl(340, 82%, 65%),
+      hsl(300, 70%, 55%),
+      hsl(270, 65%, 55%),
+      hsl(340, 82%, 65%)
     );
     background-size: 400% 400%;
     animation: gradient-flow 8s ease infinite;
@@ -230,18 +259,18 @@
   .bg-mesh-gradient {
     background-color: hsl(0, 0%, 100%);
     background-image: 
-      radial-gradient(at 40% 20%, hsl(0, 100%, 95%) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, hsl(320, 100%, 95%) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, hsl(263, 100%, 95%) 0px, transparent 50%);
+      radial-gradient(at 40% 20%, hsl(340, 100%, 95%) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsl(300, 100%, 95%) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(270, 100%, 95%) 0px, transparent 50%);
   }
 
   /* Glow effects */
   .glow-primary {
-    box-shadow: 0 0 40px hsl(0, 100%, 71%, 0.3);
+    box-shadow: 0 0 40px hsl(340, 82%, 65%, 0.3);
   }
 
   .glow-secondary {
-    box-shadow: 0 0 40px hsl(263, 84%, 58%, 0.3);
+    box-shadow: 0 0 40px hsl(270, 65%, 55%, 0.3);
   }
 
   /* Masonry grid for layouts */

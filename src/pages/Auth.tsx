@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Check, Loader2 } from "lucide-react";
+import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -165,8 +166,8 @@ const Auth = () => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-2 mb-12">
-            <div className="w-8 h-8 bg-foreground" />
-            <span className="font-bold text-lg">Creator OS</span>
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-8 h-8 rounded-lg object-contain" />
+            <span className="font-bold text-lg">CreatorBerry</span>
           </Link>
           
           <h1 className="text-3xl font-bold mb-2">

@@ -48,6 +48,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import creatorberryLogo from "@/assets/creatorberry-logo.png";
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -100,10 +101,8 @@ const Help = () => {
       <aside className="w-64 bg-card border-r border-border flex flex-col shadow-sm">
         <div className="p-5 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-lg">Creator OS</span>
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-9 h-9 rounded-xl object-contain" />
+            <span className="font-semibold text-lg">CreatorBerry</span>
           </Link>
         </div>
 
@@ -223,7 +222,7 @@ const Help = () => {
             <HelpCircle className="w-6 h-6 text-primary" />
             <h1 className="text-2xl font-semibold">Help & Resources</h1>
           </div>
-          <p className="text-muted-foreground">Complete guide to building and launching digital products with Creator OS</p>
+          <p className="text-muted-foreground">Complete guide to building and launching digital products with CreatorBerry</p>
         </header>
 
         <div className="p-6 max-w-4xl space-y-6">
@@ -246,7 +245,7 @@ const Help = () => {
                 <AccordionItem value="account-setup" className="border rounded-xl px-4">
                   <AccordionTrigger className="hover:no-underline">Account Setup</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground space-y-2">
-                    <p>After signing up, your account will be reviewed by an admin. Once approved, you'll have full access to Creator OS.</p>
+                    <p>After signing up, your account will be reviewed by an admin. Once approved, you'll have full access to CreatorBerry.</p>
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Sign up with your email and password</li>
                       <li>Wait for admin approval (you'll see a pending screen)</li>
@@ -258,7 +257,7 @@ const Help = () => {
                 <AccordionItem value="first-brand" className="border rounded-xl px-4">
                   <AccordionTrigger className="hover:no-underline">Creating Your First Brand</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground space-y-2">
-                    <p>Brands are the foundation of Creator OS. Each brand represents a distinct audience, voice, and content niche.</p>
+                    <p>Brands are the foundation of CreatorBerry. Each brand represents a distinct audience, voice, and content niche.</p>
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Click <strong>"Add New Brand"</strong> in the sidebar brand selector</li>
                       <li>Fill in your brand name, niche, and target audience</li>
@@ -654,7 +653,7 @@ const Help = () => {
                 </div>
                 <div>
                   <CardTitle>Frequently Asked Questions</CardTitle>
-                  <CardDescription>Common questions about Creator OS</CardDescription>
+                  <CardDescription>Common questions about CreatorBerry</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -663,7 +662,7 @@ const Help = () => {
                 <AccordionItem value="faq-1" className="border rounded-xl px-4">
                   <AccordionTrigger className="hover:no-underline">What API key do I need?</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground">
-                    Creator OS uses Google's Gemini AI for content generation. You'll need a free Gemini API key from Google AI Studio. Go to <strong>Settings → API Keys</strong> to enter it. Without this key, AI features like idea generation and content expansion won't work.
+                    CreatorBerry uses Google's Gemini AI for content generation. You'll need a free Gemini API key from Google AI Studio. Go to <strong>Settings → API Keys</strong> to enter it. Without this key, AI features like idea generation and content expansion won't work.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="faq-2" className="border rounded-xl px-4">
@@ -675,7 +674,7 @@ const Help = () => {
                 <AccordionItem value="faq-3" className="border rounded-xl px-4">
                   <AccordionTrigger className="hover:no-underline">What product formats are supported?</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground">
-                    Creator OS supports ebooks, guides, workbooks, slide decks, template packs, checklists, courses, and more. You can select the format when generating ideas or creating outlines.
+                    CreatorBerry supports ebooks, guides, workbooks, slide decks, template packs, checklists, courses, and more. You can select the format when generating ideas or creating outlines.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="faq-4" className="border rounded-xl px-4">
@@ -709,7 +708,7 @@ const Help = () => {
                 </div>
                 <div>
                   <CardTitle>Tips & Best Practices</CardTitle>
-                  <CardDescription>Get the most out of Creator OS</CardDescription>
+                  <CardDescription>Get the most out of CreatorBerry</CardDescription>
                 </div>
               </div>
             </CardHeader>

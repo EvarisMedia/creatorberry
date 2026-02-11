@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useBrands } from "@/hooks/useBrands";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -111,8 +112,8 @@ export default function Analytics() {
       <aside className="w-64 border-r-2 border-foreground bg-background flex flex-col">
         <div className="p-4 border-b-2 border-foreground">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-foreground" />
-            <span className="font-bold">Creator OS</span>
+            <img src={creatorberryLogo} alt="CreatorBerry" className="w-8 h-8 rounded-lg object-contain" />
+            <span className="font-bold">CreatorBerry</span>
           </Link>
         </div>
 
