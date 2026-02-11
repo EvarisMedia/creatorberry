@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,20 @@ import { Loader2, Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
+const AVAILABLE_MODELS = [
+  { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash Preview", category: "text" },
+  { value: "google/gemini-3-pro-preview", label: "Gemini 3 Pro Preview", category: "text" },
+  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro", category: "text" },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", category: "text" },
+  { value: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", category: "text" },
+  { value: "openai/gpt-5", label: "GPT-5", category: "text" },
+  { value: "openai/gpt-5-mini", label: "GPT-5 Mini", category: "text" },
+  { value: "openai/gpt-5-nano", label: "GPT-5 Nano", category: "text" },
+  { value: "openai/gpt-5.2", label: "GPT-5.2", category: "text" },
+  { value: "google/gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image", category: "image" },
+  { value: "google/gemini-3-pro-image-preview", label: "Gemini 3 Pro Image", category: "image" },
+];
+
 const DEFAULT_FEATURES: PlanFeatures = {
   max_products: 3,
   max_outlines: 5,
@@ -43,6 +58,7 @@ const DEFAULT_FEATURES: PlanFeatures = {
   launch_toolkit: false,
   ai_text_models: false,
   ai_image_models: false,
+  allowed_models: [],
 };
 
 export default function AdminPlans() {
@@ -129,8 +145,18 @@ export default function AdminPlans() {
     }
   };
 
-  const updateFeature = (key: keyof PlanFeatures, value: number | boolean) => {
+  const updateFeature = (key: keyof PlanFeatures, value: number | boolean | string[]) => {
     setFeatures((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const toggleModel = (modelValue: string) => {
+    setFeatures((prev) => {
+      const current = prev.allowed_models || [];
+      const next = current.includes(modelValue)
+        ? current.filter((m) => m !== modelValue)
+        : [...current, modelValue];
+      return { ...prev, allowed_models: next };
+    });
   };
 
   const FeatureBool = ({ label, featureKey }: { label: string; featureKey: keyof PlanFeatures }) => (
@@ -199,9 +225,18 @@ export default function AdminPlans() {
                       {plan.features.sales_pages && <Badge variant="outline">Sales Pages</Badge>}
                       {plan.features.kdp && <Badge variant="outline">KDP</Badge>}
                       {plan.features.launch_toolkit && <Badge variant="outline">Launch Toolkit</Badge>}
-                      {plan.features.ai_text_models && <Badge variant="outline">AI Text</Badge>}
-                      {plan.features.ai_image_models && <Badge variant="outline">AI Images</Badge>}
                     </div>
+                    {(plan.features.allowed_models?.length > 0) && (
+                      <div className="mt-2">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">AI Models ({plan.features.allowed_models.length})</p>
+                        <div className="flex flex-wrap gap-1">
+                          {plan.features.allowed_models.map((m) => {
+                            const model = AVAILABLE_MODELS.find((am) => am.value === m);
+                            return <Badge key={m} variant="secondary" className="text-xs">{model?.label || m}</Badge>;
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <p className="text-xs text-muted-foreground">
@@ -268,9 +303,29 @@ export default function AdminPlans() {
             </div>
 
             <div className="border rounded-lg p-4 space-y-3">
-              <p className="font-medium text-sm">AI Access</p>
-              <FeatureBool label="AI Text Models" featureKey="ai_text_models" />
-              <FeatureBool label="AI Image Models" featureKey="ai_image_models" />
+              <p className="font-medium text-sm">AI Models</p>
+              <p className="text-xs text-muted-foreground">Text Generation</p>
+              {AVAILABLE_MODELS.filter((m) => m.category === "text").map((model) => (
+                <div key={model.value} className="flex items-center gap-2">
+                  <Checkbox
+                    id={model.value}
+                    checked={(features.allowed_models || []).includes(model.value)}
+                    onCheckedChange={() => toggleModel(model.value)}
+                  />
+                  <Label htmlFor={model.value} className="text-sm font-normal cursor-pointer">{model.label}</Label>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground pt-2">Image Generation</p>
+              {AVAILABLE_MODELS.filter((m) => m.category === "image").map((model) => (
+                <div key={model.value} className="flex items-center gap-2">
+                  <Checkbox
+                    id={model.value}
+                    checked={(features.allowed_models || []).includes(model.value)}
+                    onCheckedChange={() => toggleModel(model.value)}
+                  />
+                  <Label htmlFor={model.value} className="text-sm font-normal cursor-pointer">{model.label}</Label>
+                </div>
+              ))}
             </div>
           </div>
 
