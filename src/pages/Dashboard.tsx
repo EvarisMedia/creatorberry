@@ -20,6 +20,7 @@ import {
   FileText,
   Sparkles,
   Palette,
+  Download,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ const sidebarItems = [
   { icon: Lightbulb, label: "Product Ideas", href: "/product-ideas" },
   { icon: FileText, label: "Outlines", href: "/outlines" },
   { icon: Palette, label: "Image Studio", href: "/image-studio" },
+  { icon: Download, label: "Export Center", href: "/export-center" },
   { icon: Rss, label: "Sources", href: "/sources" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
