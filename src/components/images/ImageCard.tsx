@@ -34,18 +34,17 @@ export function ImageCard({ image, onDelete }: ImageCardProps) {
   };
 
   const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "quote_card":
-        return "Quote Card";
-      case "visual":
-        return "Visual";
-      case "banner":
-        return "Banner";
-      case "carousel_slide":
-        return "Carousel Slide";
-      default:
-        return type;
-    }
+    const labels: Record<string, string> = {
+      quote_card: "Quote Card",
+      visual: "Visual",
+      banner: "Banner",
+      carousel_slide: "Carousel Slide",
+      book_cover: "Book Cover",
+      chapter_illustration: "Chapter Art",
+      worksheet_bg: "Worksheet BG",
+      social_promo: "Social Promo",
+    };
+    return labels[type] || type;
   };
 
   return (
