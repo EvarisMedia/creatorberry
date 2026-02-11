@@ -26,6 +26,7 @@ import {
   Rocket,
   Library,
   Bot,
+  HelpCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,6 +48,7 @@ const sidebarItems = [
   { icon: ShoppingCart, label: "Sales Pages", href: "/sales-pages" },
   { icon: Rocket, label: "Launch Toolkit", href: "/launch-toolkit" },
   { icon: Rss, label: "Sources", href: "/sources" },
+  { icon: HelpCircle, label: "Help & Resources", href: "/help" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
