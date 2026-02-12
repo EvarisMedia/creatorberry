@@ -19,8 +19,8 @@ import {
   Bookmark,
   BookmarkCheck,
   X,
+  Loader2,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,10 +53,11 @@ interface ProductIdeaCardProps {
   idea: ProductIdea;
   onStatusChange: (id: string, status: string) => void;
   onDelete: (id: string) => void;
+  onStartBuilding?: (idea: ProductIdea) => void;
+  isBuildingId?: string | null;
 }
 
-export const ProductIdeaCard = ({ idea, onStatusChange, onDelete }: ProductIdeaCardProps) => {
-  const navigate = useNavigate();
+export const ProductIdeaCard = ({ idea, onStatusChange, onDelete, onStartBuilding, isBuildingId }: ProductIdeaCardProps) => {
   const Icon = formatIcons[idea.format] || Lightbulb;
   const pmf = idea.pmf_score;
   const status = statusConfig[idea.status] || statusConfig.new;
@@ -125,18 +126,25 @@ export const ProductIdeaCard = ({ idea, onStatusChange, onDelete }: ProductIdeaC
               Save
             </Button>
           )}
-          {(idea.status === "saved" || idea.status === "in_progress") && (
+          {(idea.status === "saved" || idea.status === "new") && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                onStatusChange(idea.id, "in_progress");
-                navigate("/outlines");
-              }}
+              onClick={() => onStartBuilding?.(idea)}
+              disabled={isBuildingId === idea.id}
               className="text-primary hover:text-primary hover:bg-primary/10"
             >
-              <ArrowRight className="w-4 h-4 mr-1" />
-              {idea.status === "in_progress" ? "Continue Building" : "Start Building"}
+              {isBuildingId === idea.id ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  Building...
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="w-4 h-4 mr-1" />
+                  Start Building
+                </>
+              )}
             </Button>
           )}
           {idea.status !== "dismissed" && (

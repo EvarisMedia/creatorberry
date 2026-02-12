@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useBrands } from "@/hooks/useBrands";
-import { useProductIdeas } from "@/hooks/useProductIdeas";
+import { useProductIdeas, ProductIdea } from "@/hooks/useProductIdeas";
+import { useProductOutlines } from "@/hooks/useProductOutlines";
 import { ProductIdeaCard } from "@/components/product-ideas/ProductIdeaCard";
 import { GenerateIdeasDialog } from "@/components/product-ideas/GenerateIdeasDialog";
 import { AddIdeaDialog } from "@/components/product-ideas/AddIdeaDialog";
@@ -63,7 +64,9 @@ const ProductIdeas = () => {
   const { user, profile, isAdmin, isLoading, signOut } = useAuth();
   const { brands, currentBrand, isLoading: brandsLoading, selectBrand } = useBrands();
   const { ideas, isLoading: ideasLoading, isGenerating, generateIdeas, createIdea, updateIdeaStatus, deleteIdea } = useProductIdeas(currentBrand?.id || null);
+  const { generateOutline, isGenerating: isGeneratingOutline } = useProductOutlines(currentBrand?.id || null);
   const navigate = useNavigate();
+  const [buildingIdeaId, setBuildingIdeaId] = useState<string | null>(null);
   const location = useLocation();
 
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
@@ -88,6 +91,17 @@ const ProductIdeas = () => {
   const handleGenerate = async (numberOfIdeas: number, seedPrompt?: string) => {
     if (!currentBrand) return;
     await generateIdeas(currentBrand, numberOfIdeas, seedPrompt);
+  };
+
+  const handleStartBuilding = async (idea: ProductIdea) => {
+    if (!currentBrand) return;
+    setBuildingIdeaId(idea.id);
+    updateIdeaStatus(idea.id, "in_progress");
+    const result = await generateOutline(idea, currentBrand);
+    setBuildingIdeaId(null);
+    if (result) {
+      navigate("/outlines");
+    }
   };
 
   const handleAddIdea = async (idea: { title: string; description: string; format: string; target_audience: string }) => {
@@ -326,6 +340,8 @@ const ProductIdeas = () => {
                   idea={idea}
                   onStatusChange={updateIdeaStatus}
                   onDelete={deleteIdea}
+                  onStartBuilding={handleStartBuilding}
+                  isBuildingId={buildingIdeaId}
                 />
               ))}
             </div>
