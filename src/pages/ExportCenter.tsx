@@ -74,10 +74,31 @@ const formatOptions = [
     badge: "Web",
   },
   {
+    value: "pdf",
+    label: "PDF",
+    description: "Print-ready document, ideal for ebooks and handouts",
+    icon: FileText,
+    badge: "eBook",
+  },
+  {
+    value: "docx",
+    label: "Word Document",
+    description: "Editable .docx file for Microsoft Word and Google Docs",
+    icon: FileType,
+    badge: "Editable",
+  },
+  {
+    value: "epub",
+    label: "ePub",
+    description: "Standard ebook format for Kindle, Apple Books, and more",
+    icon: BookOpen,
+    badge: "eBook",
+  },
+  {
     value: "txt",
     label: "Plain Text",
     description: "Simple text format, compatible with any editor",
-    icon: FileType,
+    icon: FileDown,
     badge: null,
   },
   {
