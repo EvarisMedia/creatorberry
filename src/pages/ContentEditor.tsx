@@ -8,10 +8,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBrands } from "@/hooks/useBrands";
 import { useProductOutlines, OutlineSection } from "@/hooks/useProductOutlines";
 import { useContentExpansion, EXPANSION_MODES, ExpansionMode, ExpandedContent } from "@/hooks/useContentExpansion";
+import { useGeneratedImages, GeneratedImage } from "@/hooks/useGeneratedImages";
+import { GenerateSectionImageDialog } from "@/components/content/GenerateSectionImageDialog";
 import {
   LayoutDashboard, Settings, Plus, LogOut, ChevronDown, Shield, Loader2,
   Lightbulb, FileText, BookOpen, ArrowLeft, Sparkles, PenTool, Check, Trash2, RefreshCw,
-  Palette, Download, ShoppingCart, Rocket, Library, HelpCircle,
+  Palette, Download, ShoppingCart, Rocket, Library, HelpCircle, ImageIcon,
 } from "lucide-react";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import {
@@ -41,6 +43,7 @@ const ContentEditorPage = () => {
   const { contents, isLoading: contentsLoading, isGenerating, expandSection, updateContent, deleteContent, getContentByMode } = useContentExpansion(sectionId || null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { fetchImagesForSection, deleteImage } = useGeneratedImages(currentBrand?.id || undefined);
 
   const [section, setSection] = useState<OutlineSection | null>(null);
   const [outlineTitle, setOutlineTitle] = useState("");
@@ -48,6 +51,14 @@ const ContentEditorPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [loadingSection, setLoadingSection] = useState(true);
+  const [sectionImages, setSectionImages] = useState<GeneratedImage[]>([]);
+
+  const loadSectionImages = async () => {
+    if (sectionId) {
+      const imgs = await fetchImagesForSection(sectionId);
+      setSectionImages(imgs);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/auth");
@@ -67,6 +78,7 @@ const ContentEditorPage = () => {
         }
         setLoadingSection(false);
       });
+      loadSectionImages();
     } else {
       setLoadingSection(false);
     }
@@ -166,17 +178,26 @@ const ContentEditorPage = () => {
       {/* Main */}
       <main className="flex-1 overflow-auto">
         <header className="p-6 bg-card border-b border-border">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-semibold">{section?.title || "Content Editor"}</h1>
-              <p className="text-muted-foreground text-sm">
-                {outlineTitle && `From: ${outlineTitle}`}
-                {section && ` · Target: ${section.word_count_target.toLocaleString()} words`}
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-semibold">{section?.title || "Content Editor"}</h1>
+                <p className="text-muted-foreground text-sm">
+                  {outlineTitle && `From: ${outlineTitle}`}
+                  {section && ` · Target: ${section.word_count_target.toLocaleString()} words`}
+                </p>
+              </div>
             </div>
+            {section && currentBrand && (
+              <GenerateSectionImageDialog
+                section={section}
+                brand={currentBrand}
+                onImageGenerated={loadSectionImages}
+              />
+            )}
           </div>
         </header>
 
@@ -293,6 +314,47 @@ const ContentEditorPage = () => {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              )}
+
+              {/* Section Images Gallery */}
+              {sectionImages.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-primary" /> Section Images
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {sectionImages.map((img) => (
+                      <Card key={img.id} className="overflow-hidden">
+                        <div className="aspect-video relative">
+                          <img src={img.image_url} alt={img.prompt} className="w-full h-full object-cover" />
+                        </div>
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between">
+                            <Badge variant="outline" className="text-xs">{img.image_type}</Badge>
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="ghost" asChild>
+                                <a href={img.image_url} download target="_blank" rel="noopener noreferrer">
+                                  <Download className="w-3 h-3" />
+                                </a>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive"
+                                onClick={async () => {
+                                  const success = await deleteImage(img.id);
+                                  if (success) setSectionImages((prev) => prev.filter((i) => i.id !== img.id));
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

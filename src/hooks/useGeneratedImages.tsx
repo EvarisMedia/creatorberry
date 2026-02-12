@@ -24,6 +24,7 @@ interface GenerateImageParams {
   style: string;
   image_type: string;
   post_id?: string;
+  section_id?: string;
 }
 
 export function useGeneratedImages(brandId?: string) {
@@ -96,7 +97,8 @@ export function useGeneratedImages(brandId?: string) {
           image_type: params.image_type,
           quote_text: params.quote_text || null,
           style: params.style,
-        })
+          section_id: params.section_id || null,
+        } as any)
         .select()
         .single();
 
@@ -208,6 +210,24 @@ export function useGeneratedImages(brandId?: string) {
     return images.find((img) => img.post_id === postId);
   };
 
+  const getImagesForSection = (sectionId: string): GeneratedImage[] => {
+    return images.filter((img) => (img as any).section_id === sectionId);
+  };
+
+  const fetchImagesForSection = async (sectionId: string): Promise<GeneratedImage[]> => {
+    if (!user) return [];
+    const { data, error } = await (supabase
+      .from("generated_images")
+      .select("*") as any)
+      .eq("section_id", sectionId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Error fetching section images:", error);
+      return [];
+    }
+    return (data || []) as GeneratedImage[];
+  };
+
   return {
     images,
     isLoading,
@@ -217,5 +237,7 @@ export function useGeneratedImages(brandId?: string) {
     deleteImage,
     attachToPost,
     getImageForPost,
+    getImagesForSection,
+    fetchImagesForSection,
   };
 }

@@ -17,6 +17,12 @@ interface GenerateImageRequest {
   style: string;
   image_type: string;
   custom_prompt?: string;
+  section_context?: {
+    title: string;
+    description?: string;
+    subsections?: string[];
+  };
+  custom_context?: string;
 }
 
 serve(async (req) => {
@@ -27,7 +33,7 @@ serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    const { brand, quote_text, style, image_type, custom_prompt }: GenerateImageRequest = await req.json();
+    const { brand, quote_text, style, image_type, custom_prompt, section_context, custom_context }: GenerateImageRequest = await req.json();
 
     let prompt = "";
 
@@ -150,6 +156,31 @@ Design requirements:
 - Mockup style showing a digital product (ebook, course, template)
 - Professional and premium feel
 - Clear visual hierarchy
+- Ultra high resolution`;
+    } else if (image_type === "section_infographic") {
+      const subsectionsList = section_context?.subsections?.length
+        ? `\nKey topics to visualize:\n${section_context.subsections.map((s: string) => `- ${s}`).join("\n")}`
+        : "";
+      prompt = `Create a professional explainer/infographic-style image for a section of a digital product with the following specifications:
+- Brand: ${brand.name}
+- Primary color: ${brand.primary_color || "#000000"}
+- Secondary color: ${brand.secondary_color || "#ffffff"}
+- Tone: ${brand.tone || "professional"}
+- Style: ${style}
+- Section title: "${section_context?.title || quote_text}"
+${section_context?.description ? `- Section description: "${section_context.description}"` : ""}
+${subsectionsList}
+${custom_context ? `- Additional context: ${custom_context}` : ""}
+
+Design requirements:
+- Conceptual infographic/explainer visual representing the topic
+- Use icons, diagrams, or abstract representations of the concepts
+- ${style} design aesthetic with clean visual hierarchy
+- Brand colors as dominant palette
+- Horizontal format (16:9 aspect ratio)
+- Educational and informative feel
+- No lengthy text — focus on visual storytelling
+- Suitable as an in-content illustration for an ebook or course
 - Ultra high resolution`;
     } else if (custom_prompt) {
       prompt = custom_prompt;

@@ -504,6 +504,7 @@ export type Database = {
           post_id: string | null
           prompt: string
           quote_text: string | null
+          section_id: string | null
           style: string | null
           updated_at: string
           user_id: string
@@ -517,6 +518,7 @@ export type Database = {
           post_id?: string | null
           prompt: string
           quote_text?: string | null
+          section_id?: string | null
           style?: string | null
           updated_at?: string
           user_id: string
@@ -530,6 +532,7 @@ export type Database = {
           post_id?: string | null
           prompt?: string
           quote_text?: string | null
+          section_id?: string | null
           style?: string | null
           updated_at?: string
           user_id?: string
@@ -547,6 +550,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "generated_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_images_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "outline_sections"
             referencedColumns: ["id"]
           },
         ]

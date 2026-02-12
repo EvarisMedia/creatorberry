@@ -1,0 +1,1 @@
+ALTER TABLE public.generated_images ADD COLUMN section_id UUID REFERENCES public.outline_sections(id) ON DELETE SET NULL;
