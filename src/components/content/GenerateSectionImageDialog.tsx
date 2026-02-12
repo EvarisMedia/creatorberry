@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Brand } from "@/hooks/useBrands";
 import { OutlineSection } from "@/hooks/useProductOutlines";
+import { downloadImageBlob } from "@/lib/downloadImage";
 
 const IMAGE_TYPES = [
   { value: "section_infographic", label: "Explainer / Infographic", description: "Conceptual visual explaining the section topic" },
@@ -23,9 +24,10 @@ interface Props {
   section: OutlineSection;
   brand: Brand;
   onImageGenerated: () => void;
+  onInsertImage?: (imageUrl: string, altText?: string) => void;
 }
 
-export function GenerateSectionImageDialog({ section, brand, onImageGenerated }: Props) {
+export function GenerateSectionImageDialog({ section, brand, onImageGenerated, onInsertImage }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -89,6 +91,11 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated }:
       setGeneratedImageUrl(image_url);
       toast({ title: "Success", description: "Section image generated!" });
       onImageGenerated();
+
+      // Auto-insert into content
+      if (onInsertImage) {
+        onInsertImage(image_url, section.title);
+      }
     } catch (error) {
       console.error("Error generating image:", error);
       toast({
@@ -103,10 +110,8 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated }:
 
   const handleDownload = () => {
     if (!generatedImageUrl) return;
-    const link = document.createElement("a");
-    link.href = generatedImageUrl;
-    link.download = `${section.title.replace(/\s+/g, "-").toLowerCase()}-image.png`;
-    link.click();
+    const filename = `${section.title.replace(/\s+/g, "-").toLowerCase()}-image.png`;
+    downloadImageBlob(generatedImageUrl, filename);
   };
 
   return (
