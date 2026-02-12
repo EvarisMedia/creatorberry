@@ -76,7 +76,29 @@ export function useProductExports(brandId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ["product-exports", brandId] });
       
       // Trigger download
-      const blob = new Blob([data.content], { type: data.mimeType });
+      let blob: Blob;
+      if (data.encoding === "base64") {
+        const binaryString = atob(data.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        blob = new Blob([bytes], { type: data.mimeType });
+      } else if (data.extension === "pdf") {
+        // PDF via print-styled HTML: open in new window for print-to-PDF
+        const printWindow = window.open("", "_blank");
+        if (printWindow) {
+          printWindow.document.write(data.content);
+          printWindow.document.close();
+          printWindow.focus();
+          printWindow.print();
+        }
+        toast.success("PDF print dialog opened!");
+        return;
+      } else {
+        blob = new Blob([data.content], { type: data.mimeType });
+      }
+      
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
