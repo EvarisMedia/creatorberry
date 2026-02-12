@@ -1,63 +1,89 @@
 
-
-# Add "Generate Section Image" to Content Editor
+# Insert Section Images into Content and Include in Exports
 
 ## Overview
-Add a "Generate Section Image" button inside the Content Editor that creates explainer/infographic-style images contextually tied to each outline section. The section's title, description, and content are used as AI context for the image prompt.
+Three issues to fix: (1) generated images should be inserted into the expanded content so they appear inline, (2) the download workflow needs to use fetch+blob instead of broken cross-origin `<a download>`, and (3) the export function must include section images in the exported ebook.
 
 ## Changes
 
-### 1. Database Migration: Add `section_id` column to `generated_images`
-- Add an optional `section_id` column (UUID, nullable) referencing `outline_sections(id)` with ON DELETE SET NULL
-- This links generated images to specific outline sections
-
-### 2. New Component: `GenerateSectionImageDialog`
+### 1. Insert Image into Expanded Content After Generation
 **File:** `src/components/content/GenerateSectionImageDialog.tsx`
 
-A dialog triggered from the Content Editor that:
-- Accepts the current section (title, description, subsections) and brand as props
-- Offers two image types: **Explainer/Infographic** and **Chapter Illustration**
-- Offers style selection (Modern, Minimal, Bold, Elegant, Tech, Creative)
-- Optionally lets the user provide additional context or a focus keyword
-- Calls the existing `generate-image` edge function with `image_type: "chapter_illustration"` (already supported in the backend)
-- Saves the generated image to `generated_images` with the `section_id` set
-- Shows a preview of the generated image with download option
+After a section image is successfully generated:
+- Find the latest expanded content for this section from the database
+- Insert a Markdown image tag (`![Section Image](url)`) at the end of the content (or at cursor position)
+- Update the `expanded_content` record with the image embedded
+- If no expanded content exists yet, show a toast telling the user to generate content first, then the image will be added to the gallery for manual insertion later
 
-### 3. Update `generate-image` Edge Function
-**File:** `supabase/functions/generate-image/index.ts`
+**File:** `src/pages/ContentEditor.tsx`
+- Add an "Insert into Content" button on each image in the Section Images gallery
+- Clicking it appends `![image alt](image_url)` to the latest expanded content for the active mode
+- Refresh content display after insertion
 
-- Add a new `image_type: "section_infographic"` prompt template that creates explainer-style visuals based on section context:
-  - Takes section title, description, subsections as input
-  - Generates a conceptual infographic/explainer image
-- Accept an optional `section_context` field in the request body to enrich the prompt
-
-### 4. Update `useGeneratedImages` Hook
-**File:** `src/hooks/useGeneratedImages.tsx`
-
-- Add `section_id` to the `GenerateImageParams` interface
-- Pass `section_id` when saving to the database
-- Add a `getImagesForSection(sectionId)` helper method to fetch images linked to a section
-
-### 5. Update Content Editor Page
+### 2. Fix Download Workflow
+**File:** `src/components/content/GenerateSectionImageDialog.tsx`
 **File:** `src/pages/ContentEditor.tsx`
 
-- Import and render `GenerateSectionImageDialog` in the header area (next to the section info card)
-- Below the generated content cards, add a "Section Images" area that displays any images generated for this section
-- Each image shows a thumbnail with options to view full size, download, or delete
-- Images are fetched using `useGeneratedImages` filtered by `section_id`
+Replace the broken cross-origin `<a href download>` pattern with a proper fetch-and-save approach:
+```
+async function handleDownload(url, filename) {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(blobUrl);
+}
+```
 
-## User Flow
-1. User navigates to Content Editor for a section (via "Expand" on an outline)
-2. They see a "Generate Section Image" button in the header
-3. Clicking opens a dialog pre-filled with section context
-4. User selects image type (Infographic or Chapter Illustration) and style
-5. AI generates a contextual image using the section's topic
-6. Image appears in the dialog preview and is saved to the section
-7. All section images appear in a gallery below the expanded content
+### 3. Include Section Images in Export
+**File:** `supabase/functions/export-product/index.ts`
 
-## Technical Notes
-- Reuses the existing `generate-image` edge function -- just adds a new prompt template
-- The `generated-images` storage bucket already exists and is public
-- No new edge functions needed
-- The `chapter_illustration` image type already exists in the backend; we add `section_infographic` for the new explainer style
+Update `fetchOutlineWithContent` to also fetch images:
+- Query `generated_images` where `section_id` is in the list of section IDs
+- Group images by `section_id`
 
+Update `generateMarkdown` to embed images:
+- After inserting the section's text content, append any associated images as Markdown image references: `![Chapter illustration](image_url)`
+- For HTML export, the AI conversion will naturally render these as `<img>` tags
+
+### 4. Auto-Insert on Generation
+**File:** `src/components/content/GenerateSectionImageDialog.tsx`
+
+After successful image generation:
+- Call a new prop `onInsertImage(imageUrl: string)` passed from ContentEditor
+- ContentEditor implements this by appending the image markdown to the latest content version of the active mode
+
+**File:** `src/pages/ContentEditor.tsx`
+- Add `handleInsertImage(imageUrl: string)` function that:
+  1. Gets the latest content for the active mode
+  2. Appends `\n\n![Section Image](imageUrl)\n` to the content
+  3. Calls `updateContent` to save
+  4. Refreshes the content display
+- Pass this as `onInsertImage` prop to `GenerateSectionImageDialog`
+- Add an "Insert" button on each gallery image that calls the same function
+
+## Technical Details
+
+### Content Editor changes (ContentEditor.tsx)
+- New function: `handleInsertImage(imageUrl: string, altText?: string)`
+- New prop on GenerateSectionImageDialog: `onInsertImage`
+- New "Insert into Content" button on gallery images (only shown when content exists for active mode)
+
+### Export function changes (export-product/index.ts)
+- New query in `fetchOutlineWithContent`: fetch from `generated_images` where `section_id IN (sectionIds)`
+- New parameter `imagesMap` in `generateMarkdown` — maps section_id to array of image URLs
+- Images appended after section text content as `![image](url)`
+
+### Download fix
+- Utility function `downloadImageBlob(url, filename)` used in both the dialog and gallery
+- Replaces all `<a href download>` patterns
+
+## User Flow After Changes
+1. User expands a section (generates content)
+2. User clicks "Generate Section Image" and creates an image
+3. The image is automatically inserted at the end of the expanded content as a Markdown image
+4. User can also manually insert gallery images via "Insert" button
+5. When exporting the ebook, all section images are included inline in the output
