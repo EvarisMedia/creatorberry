@@ -20,6 +20,7 @@ import {
   BookmarkCheck,
   X,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +56,7 @@ interface ProductIdeaCardProps {
 }
 
 export const ProductIdeaCard = ({ idea, onStatusChange, onDelete }: ProductIdeaCardProps) => {
+  const navigate = useNavigate();
   const Icon = formatIcons[idea.format] || Lightbulb;
   const pmf = idea.pmf_score;
   const status = statusConfig[idea.status] || statusConfig.new;
@@ -123,15 +125,18 @@ export const ProductIdeaCard = ({ idea, onStatusChange, onDelete }: ProductIdeaC
               Save
             </Button>
           )}
-          {idea.status === "saved" && (
+          {(idea.status === "saved" || idea.status === "in_progress") && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onStatusChange(idea.id, "in_progress")}
+              onClick={() => {
+                onStatusChange(idea.id, "in_progress");
+                navigate("/outlines");
+              }}
               className="text-primary hover:text-primary hover:bg-primary/10"
             >
               <ArrowRight className="w-4 h-4 mr-1" />
-              Start Building
+              {idea.status === "in_progress" ? "Continue Building" : "Start Building"}
             </Button>
           )}
           {idea.status !== "dismissed" && (
