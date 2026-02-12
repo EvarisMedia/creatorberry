@@ -44,10 +44,25 @@ async function fetchOutlineWithContent(supabase: any, outlineId: string, userId:
     }
   }
 
-  return { outline, sections, contentMap };
+  // Fetch section images
+  const { data: sectionImages } = await supabase
+    .from("generated_images")
+    .select("*")
+    .in("section_id", sectionIds.length > 0 ? sectionIds : ["none"])
+    .order("created_at", { ascending: true });
+
+  const imagesMap: Record<string, any[]> = {};
+  for (const img of (sectionImages || [])) {
+    if (!imagesMap[img.section_id]) {
+      imagesMap[img.section_id] = [];
+    }
+    imagesMap[img.section_id].push(img);
+  }
+
+  return { outline, sections, contentMap, imagesMap };
 }
 
-function generateMarkdown(outline: any, sections: any[], contentMap: Record<string, any>, settings: any) {
+function generateMarkdown(outline: any, sections: any[], contentMap: Record<string, any>, imagesMap: Record<string, any[]>, settings: any) {
   let md = `# ${outline.title}\n\n`;
 
   if (settings.includeToc) {
@@ -70,6 +85,12 @@ function generateMarkdown(outline: any, sections: any[], contentMap: Record<stri
       md += `${content.content}\n\n`;
     } else {
       md += `*(Content not yet expanded)*\n\n`;
+    }
+
+    // Include section images
+    const sectionImgs = imagesMap[section.id] || [];
+    for (const img of sectionImgs) {
+      md += `![${img.image_type === 'chapter_illustration' ? 'Chapter Illustration' : 'Section Infographic'}](${img.image_url})\n\n`;
     }
 
     if (section.subsections) {
@@ -193,12 +214,12 @@ serve(async (req) => {
     console.log(`Exporting outline ${outlineId} as ${format}`);
 
     // Fetch all content
-    const { outline, sections, contentMap } = await fetchOutlineWithContent(
+    const { outline, sections, contentMap, imagesMap } = await fetchOutlineWithContent(
       supabase, outlineId, user.id
     );
 
     // Generate markdown first (base format)
-    const markdown = generateMarkdown(outline, sections, contentMap, {
+    const markdown = generateMarkdown(outline, sections, contentMap, imagesMap, {
       includeToc: settings.includeToc !== false,
       ...settings,
     });

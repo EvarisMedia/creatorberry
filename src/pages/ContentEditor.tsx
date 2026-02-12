@@ -13,8 +13,9 @@ import { GenerateSectionImageDialog } from "@/components/content/GenerateSection
 import {
   LayoutDashboard, Settings, Plus, LogOut, ChevronDown, Shield, Loader2,
   Lightbulb, FileText, BookOpen, ArrowLeft, Sparkles, PenTool, Check, Trash2, RefreshCw,
-  Palette, Download, ShoppingCart, Rocket, Library, HelpCircle, ImageIcon,
+  Palette, Download, ShoppingCart, Rocket, Library, HelpCircle, ImageIcon, ImagePlus,
 } from "lucide-react";
+import { downloadImageBlob } from "@/lib/downloadImage";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -102,6 +103,32 @@ const ContentEditorPage = () => {
     if (!editingId) return;
     const success = await updateContent(editingId, { content: editContent });
     if (success) setEditingId(null);
+  };
+
+  const handleInsertImage = async (imageUrl: string, altText?: string) => {
+    const modeContents = getContentByMode(activeMode);
+    if (modeContents.length === 0) {
+      // Try any mode
+      const allModes: ExpansionMode[] = ["expansion", "story", "deep_dive", "workbook"];
+      for (const mode of allModes) {
+        const mc = getContentByMode(mode);
+        if (mc.length > 0) {
+          const latest = mc[0];
+          const imageMarkdown = `\n\n![${altText || "Section Image"}](${imageUrl})\n`;
+          await updateContent(latest.id, { content: latest.content + imageMarkdown });
+          return;
+        }
+      }
+      // No content at all — just notify
+      return;
+    }
+    const latest = modeContents[0];
+    const imageMarkdown = `\n\n![${altText || "Section Image"}](${imageUrl})\n`;
+    const newContent = latest.content + imageMarkdown;
+    await updateContent(latest.id, { content: newContent });
+    if (editingId === latest.id) {
+      setEditContent(newContent);
+    }
   };
 
   const currentModeContents = getContentByMode(activeMode);
@@ -196,6 +223,7 @@ const ContentEditorPage = () => {
                 section={section}
                 brand={currentBrand}
                 onImageGenerated={loadSectionImages}
+                onInsertImage={handleInsertImage}
               />
             )}
           </div>
@@ -333,10 +361,21 @@ const ContentEditorPage = () => {
                           <div className="flex items-center justify-between">
                             <Badge variant="outline" className="text-xs">{img.image_type}</Badge>
                             <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" asChild>
-                                <a href={img.image_url} download target="_blank" rel="noopener noreferrer">
-                                  <Download className="w-3 h-3" />
-                                </a>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Insert into content"
+                                onClick={() => handleInsertImage(img.image_url, img.quote_text || section?.title)}
+                              >
+                                <ImagePlus className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Download"
+                                onClick={() => downloadImageBlob(img.image_url, `${(img.quote_text || "image").replace(/\s+/g, "-")}.png`)}
+                              >
+                                <Download className="w-3 h-3" />
                               </Button>
                               <Button
                                 size="sm"
