@@ -20,6 +20,7 @@ import {
   BookmarkCheck,
   X,
   Loader2,
+  Undo2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -120,7 +121,7 @@ export const ProductIdeaCard = ({ idea, onStatusChange, onDelete, onStartBuildin
               variant="ghost"
               size="sm"
               onClick={() => onStatusChange(idea.id, "saved")}
-              className="text-primary hover:text-primary hover:bg-primary/10"
+              className="h-8 text-primary hover:text-primary hover:bg-primary/10"
             >
               <Bookmark className="w-4 h-4 mr-1" />
               Save
@@ -132,7 +133,7 @@ export const ProductIdeaCard = ({ idea, onStatusChange, onDelete, onStartBuildin
               size="sm"
               onClick={() => onStartBuilding?.(idea)}
               disabled={isBuildingId === idea.id}
-              className="text-primary hover:text-primary hover:bg-primary/10"
+              className="h-8 text-primary hover:text-primary hover:bg-primary/10"
             >
               {isBuildingId === idea.id ? (
                 <>
@@ -147,12 +148,23 @@ export const ProductIdeaCard = ({ idea, onStatusChange, onDelete, onStartBuildin
               )}
             </Button>
           )}
+          {idea.status === "dismissed" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onStatusChange(idea.id, "new")}
+              className="h-8 text-primary hover:text-primary hover:bg-primary/10"
+            >
+              <Undo2 className="w-4 h-4 mr-1" />
+              Restore
+            </Button>
+          )}
           {idea.status !== "dismissed" && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onStatusChange(idea.id, "dismissed")}
-              className="text-muted-foreground hover:text-muted-foreground"
+              className="h-8 text-muted-foreground hover:text-muted-foreground"
             >
               <X className="w-4 h-4 mr-1" />
               Dismiss
