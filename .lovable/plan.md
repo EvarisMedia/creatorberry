@@ -1,89 +1,111 @@
 
-# Insert Section Images into Content and Include in Exports
+
+# Add PDF, Word Document, and ePub Export Formats
 
 ## Overview
-Three issues to fix: (1) generated images should be inserted into the expanded content so they appear inline, (2) the download workflow needs to use fetch+blob instead of broken cross-origin `<a download>`, and (3) the export function must include section images in the exported ebook.
+Extend the Export Center to support three new professional formats: **PDF**, **Word Document (.docx)**, and **ePub**. These complement the existing Markdown, HTML, Plain Text, and JSON options.
+
+Since generating binary file formats (PDF, DOCX, EPUB) requires server-side libraries, the edge function will use AI to produce well-structured HTML, then convert it to the target format using Deno-compatible libraries. For formats where robust Deno libraries are limited (DOCX, EPUB), we'll generate the files as structured XML/ZIP archives directly.
 
 ## Changes
 
-### 1. Insert Image into Expanded Content After Generation
-**File:** `src/components/content/GenerateSectionImageDialog.tsx`
+### 1. Update Export Center UI
+**File:** `src/pages/ExportCenter.tsx`
 
-After a section image is successfully generated:
-- Find the latest expanded content for this section from the database
-- Insert a Markdown image tag (`![Section Image](url)`) at the end of the content (or at cursor position)
-- Update the `expanded_content` record with the image embedded
-- If no expanded content exists yet, show a toast telling the user to generate content first, then the image will be added to the gallery for manual insertion later
+Add three new format cards to `formatOptions`:
+- **PDF** -- "Print-ready document, ideal for ebooks and handouts" (badge: "eBook")
+- **Word Document** -- "Editable .docx file for Microsoft Word and Google Docs" (badge: "Editable")
+- **ePub** -- "Standard ebook format for Kindle, Apple Books, and more" (badge: "eBook")
 
-**File:** `src/pages/ContentEditor.tsx`
-- Add an "Insert into Content" button on each image in the Section Images gallery
-- Clicking it appends `![image alt](image_url)` to the latest expanded content for the active mode
-- Refresh content display after insertion
+Import a couple extra icons from lucide-react (`BookOpen`, `FileText` or reuse existing ones).
 
-### 2. Fix Download Workflow
-**File:** `src/components/content/GenerateSectionImageDialog.tsx`
-**File:** `src/pages/ContentEditor.tsx`
+### 2. Update Edge Function: `export-product/index.ts`
 
-Replace the broken cross-origin `<a href download>` pattern with a proper fetch-and-save approach:
+**Add to valid formats list:**
 ```
-async function handleDownload(url, filename) {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = blobUrl;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(blobUrl);
-}
+const validFormats = ["markdown", "html", "txt", "json", "pdf", "docx", "epub"];
 ```
 
-### 3. Include Section Images in Export
-**File:** `supabase/functions/export-product/index.ts`
+**PDF generation:**
+- Use AI to convert markdown to a complete, print-styled HTML document (reuse existing HTML logic)
+- Return the HTML with a special flag so the client-side can render it to PDF using the already-installed `jspdf` library
+- The response will include `content` (styled HTML), `mimeType: "application/pdf"`, and `extension: "pdf"`
+- Alternatively, generate a clean HTML and let the client handle PDF conversion via `jspdf` or `window.print()`
 
-Update `fetchOutlineWithContent` to also fetch images:
-- Query `generated_images` where `section_id` is in the list of section IDs
-- Group images by `section_id`
+**DOCX generation:**
+- Generate a minimal DOCX file as a ZIP archive containing the required XML structure (Office Open XML)
+- Use the content as the document body
+- Return as base64-encoded content
 
-Update `generateMarkdown` to embed images:
-- After inserting the section's text content, append any associated images as Markdown image references: `![Chapter illustration](image_url)`
-- For HTML export, the AI conversion will naturally render these as `<img>` tags
+**ePub generation:**
+- Generate a minimal EPUB file (which is a ZIP archive with XHTML content, OPF manifest, and container.xml)
+- Structure chapters from the outline sections
+- Return as base64-encoded content
 
-### 4. Auto-Insert on Generation
-**File:** `src/components/content/GenerateSectionImageDialog.tsx`
+### 3. Update Client-Side Download Logic
+**File:** `src/hooks/useProductExports.tsx`
 
-After successful image generation:
-- Call a new prop `onInsertImage(imageUrl: string)` passed from ContentEditor
-- ContentEditor implements this by appending the image markdown to the latest content version of the active mode
+Update `onSuccess` handler to detect binary formats:
+- For text-based formats (md, html, txt, json): use existing Blob approach
+- For binary formats (pdf, docx, epub): decode base64 content and create a binary Blob with the correct MIME type
+- PDF: `application/pdf`
+- DOCX: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+- EPUB: `application/epub+zip`
 
-**File:** `src/pages/ContentEditor.tsx`
-- Add `handleInsertImage(imageUrl: string)` function that:
-  1. Gets the latest content for the active mode
-  2. Appends `\n\n![Section Image](imageUrl)\n` to the content
-  3. Calls `updateContent` to save
-  4. Refreshes the content display
-- Pass this as `onInsertImage` prop to `GenerateSectionImageDialog`
-- Add an "Insert" button on each gallery image that calls the same function
+### 4. PDF Client-Side Approach (Preferred)
+Since server-side PDF generation in Deno is limited, use a hybrid approach:
+- The edge function returns styled HTML (same as the html format but with print-optimized CSS)
+- The client uses the already-installed `jspdf` library to convert the HTML to a PDF
+- This keeps the edge function simple and leverages the existing dependency
 
 ## Technical Details
 
-### Content Editor changes (ContentEditor.tsx)
-- New function: `handleInsertImage(imageUrl: string, altText?: string)`
-- New prop on GenerateSectionImageDialog: `onInsertImage`
-- New "Insert into Content" button on gallery images (only shown when content exists for active mode)
+### Edge Function Changes
+- Add `generateDocx()` function: creates a minimal OOXML ZIP archive with the content as a Word document
+- Add `generateEpub()` function: creates a valid EPUB 3 archive with chapters mapped to outline sections
+- Both return base64-encoded strings to safely transmit binary data via JSON
+- The response format adds a `encoding: "base64"` field for binary formats
 
-### Export function changes (export-product/index.ts)
-- New query in `fetchOutlineWithContent`: fetch from `generated_images` where `section_id IN (sectionIds)`
-- New parameter `imagesMap` in `generateMarkdown` — maps section_id to array of image URLs
-- Images appended after section text content as `![image](url)`
+### Client-Side Changes
+- Detect `data.encoding === "base64"` in the download handler
+- Convert base64 to Uint8Array, then to Blob for download
+- For PDF: render the returned HTML into an iframe, then use `jspdf` to capture it
 
-### Download fix
-- Utility function `downloadImageBlob(url, filename)` used in both the dialog and gallery
-- Replaces all `<a href download>` patterns
+### EPUB Structure
+```text
+mimetype
+META-INF/container.xml
+OEBPS/content.opf
+OEBPS/toc.ncx
+OEBPS/chapter-1.xhtml
+OEBPS/chapter-2.xhtml
+...
+```
 
-## User Flow After Changes
-1. User expands a section (generates content)
-2. User clicks "Generate Section Image" and creates an image
-3. The image is automatically inserted at the end of the expanded content as a Markdown image
-4. User can also manually insert gallery images via "Insert" button
-5. When exporting the ebook, all section images are included inline in the output
+### DOCX Structure
+```text
+[Content_Types].xml
+_rels/.rels
+word/document.xml
+word/_rels/document.xml.rels
+word/styles.xml
+```
+
+## Format Summary
+
+| Format | Method | Output |
+|--------|--------|--------|
+| Markdown | Direct text | .md |
+| HTML | AI-styled | .html |
+| Plain Text | Strip markdown | .txt |
+| JSON | Structured | .json |
+| PDF | Client-side from styled HTML | .pdf |
+| DOCX | Server-side OOXML ZIP | .docx |
+| ePub | Server-side EPUB ZIP | .epub |
+
+## User Flow
+1. User selects an outline and picks PDF, DOCX, or ePub format
+2. Clicks "Export" button
+3. Edge function generates the content and returns it
+4. Client downloads the file in the selected format
+
