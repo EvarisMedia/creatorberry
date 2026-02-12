@@ -1,41 +1,41 @@
 
-# Auto-Generate Outline on "Start Building"
+# Fix Dismissed Ideas Undo + Button Alignment
 
 ## Problem
-Currently, clicking "Start Building" only changes the idea status and navigates to the Outlines page. The user then has to manually click "Generate Outline" and select the idea again. This is redundant -- "Start Building" should trigger outline generation automatically.
+1. **No undo for dismissed ideas**: Once an idea is dismissed, there's no way to bring it back -- the card only shows a Delete button.
+2. **Button alignment**: The action buttons (Save, Start Building, Dismiss) are not vertically aligned/centered properly in the footer row.
 
 ## Changes
 
-### 1. Update ProductIdeaCard to accept and call an `onStartBuilding` callback
-**File:** `src/components/product-ideas/ProductIdeaCard.tsx`
-- Add a new prop `onStartBuilding: (idea: ProductIdea) => void`
-- On "Start Building" click, call `onStartBuilding(idea)` instead of just changing status and navigating
-- Remove the "Continue Building" variant -- the button only shows for `saved` or `new` status ideas (once outline is generated, the idea moves to `outlined` status and won't show this button)
-- Keep the button label as just "Start Building"
+### File: `src/components/product-ideas/ProductIdeaCard.tsx`
 
-### 2. Wire up outline generation in ProductIdeas page
-**File:** `src/pages/ProductIdeas.tsx`
-- Import `useProductOutlines` hook
-- Create a `handleStartBuilding` function that:
-  1. Updates the idea status to `in_progress`
-  2. Calls `generateOutline(idea, selectedBrand)` from the outlines hook
-  3. On success, navigates to `/outlines` where the generated outline will be visible
-- Pass `handleStartBuilding` as the `onStartBuilding` prop to each `ProductIdeaCard`
-- Show a loading/generating state while the outline is being created (e.g., a toast or spinner overlay)
+**1. Add "Restore" button for dismissed ideas**
+- When `idea.status === "dismissed"`, show a "Restore" button that sets the status back to `"new"`
+- Uses an `Undo2` icon from lucide-react
+- Styled consistently with the other ghost buttons
 
-### 3. Remove redundant "in_progress" status display
-**File:** `src/components/product-ideas/ProductIdeaCard.tsx`
-- Since clicking "Start Building" now immediately generates the outline and the idea status becomes `outlined`, the `in_progress` status becomes a brief transitional state
-- The button should be disabled/show a spinner while generation is in progress
+**2. Fix button alignment**
+- Add `items-center` to the action bar container (already present, but buttons themselves need consistent sizing)
+- Add `h-8` to all action buttons for uniform height
+- Add `flex items-center` to ensure icon + text align on the same baseline
 
-## Expected Flow After Fix
-1. User clicks "Start Building" on a product idea
-2. A loading spinner appears on the button
-3. The outline is generated via the AI backend function
-4. User is automatically redirected to `/outlines` where the new outline appears
-5. The idea status updates to `outlined`
+### Visual Result
 
-## Technical Notes
-- The `generateOutline` function from `useProductOutlines` already handles the API call, toast notifications, and error handling
-- The `generate-outline` edge function already updates the idea status to `outlined` upon success
-- No backend changes needed -- only frontend wiring
+**Before (dismissed card):**
+```
+[Delete icon]
+```
+
+**After (dismissed card):**
+```
+[Restore]                    [Delete icon]
+```
+
+**Before (new card buttons):**
+```
+[Save] [Start Building] [Dismiss]     [Delete]
+```
+Buttons may have uneven heights/alignment.
+
+**After:**
+All buttons share `h-8` height and `flex items-center` for perfect vertical alignment.
