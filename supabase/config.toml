@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.verify-api-key]
 verify_jwt = false
+
+[functions.ai-edit-content]
+verify_jwt = false
