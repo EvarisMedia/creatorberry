@@ -17,6 +17,7 @@ interface GenerateImageRequest {
   style: string;
   image_type: string;
   custom_prompt?: string;
+  aspect_ratio?: string;
   section_context?: {
     title: string;
     description?: string;
@@ -33,7 +34,7 @@ serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    const { brand, quote_text, style, image_type, custom_prompt, section_context, custom_context }: GenerateImageRequest = await req.json();
+    const { brand, quote_text, style, image_type, custom_prompt, aspect_ratio, section_context, custom_context }: GenerateImageRequest = await req.json();
 
     let prompt = "";
 
@@ -121,6 +122,7 @@ Design requirements:
 - Clean and elegant, suitable as a chapter divider in an ebook or course
 - No text in the image, purely visual
 - Subtle, sophisticated design elements
+${aspect_ratio ? `- Use ${aspect_ratio} aspect ratio` : '- Horizontal banner format (16:9 aspect ratio)'}
 - Ultra high resolution`;
     } else if (image_type === "worksheet_bg") {
       prompt = `Create a subtle, professional worksheet background pattern with the following specifications:
@@ -181,6 +183,7 @@ Design requirements:
 - Educational and informative feel
 - No lengthy text — focus on visual storytelling
 - Suitable as an in-content illustration for an ebook or course
+${aspect_ratio ? `- Use ${aspect_ratio} aspect ratio` : ''}
 - Ultra high resolution`;
     } else if (custom_prompt) {
       prompt = custom_prompt;

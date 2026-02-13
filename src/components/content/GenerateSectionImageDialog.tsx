@@ -16,9 +16,20 @@ import { downloadImageBlob } from "@/lib/downloadImage";
 const IMAGE_TYPES = [
   { value: "section_infographic", label: "Explainer / Infographic", description: "Conceptual visual explaining the section topic" },
   { value: "chapter_illustration", label: "Chapter Illustration", description: "Artistic illustration for the chapter header" },
+  { value: "diagram", label: "Diagram / Flowchart", description: "Process or concept diagram" },
+  { value: "concept_map", label: "Concept Map", description: "Visual connections between ideas" },
+  { value: "quote_card", label: "Quote Card", description: "Stylized quote or key takeaway card" },
 ];
 
-const STYLES = ["Modern", "Minimal", "Bold", "Elegant", "Tech", "Creative"];
+const STYLES = ["Modern", "Minimal", "Bold", "Elegant", "Tech", "Creative", "Watercolor", "3D Render", "Flat Design", "Vintage"];
+
+const ASPECT_RATIOS = [
+  { value: "16:9", label: "Landscape (16:9)" },
+  { value: "1:1", label: "Square (1:1)" },
+  { value: "9:16", label: "Portrait (9:16)" },
+  { value: "4:3", label: "Wide (4:3)" },
+  { value: "2:3", label: "Book Cover (2:3)" },
+];
 
 interface Props {
   section: OutlineSection;
@@ -33,6 +44,7 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
   const [open, setOpen] = useState(false);
   const [imageType, setImageType] = useState("section_infographic");
   const [style, setStyle] = useState("Modern");
+  const [aspectRatio, setAspectRatio] = useState("16:9");
   const [extraContext, setExtraContext] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
@@ -60,6 +72,7 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
           quote_text: section.title,
           style,
           image_type: imageType,
+          aspect_ratio: aspectRatio,
           section_context: sectionContext,
           ...(extraContext ? { custom_context: extraContext } : {}),
         },
@@ -172,6 +185,19 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
                 </Badge>
               ))}
             </div>
+          </div>
+
+          {/* Aspect Ratio */}
+          <div className="space-y-2">
+            <Label>Aspect Ratio</Label>
+            <Select value={aspectRatio} onValueChange={setAspectRatio}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ASPECT_RATIOS.map((ar) => (
+                  <SelectItem key={ar.value} value={ar.value}>{ar.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Extra context */}
