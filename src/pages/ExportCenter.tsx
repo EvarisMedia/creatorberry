@@ -108,6 +108,13 @@ const formatOptions = [
     icon: Braces,
     badge: "Dev",
   },
+  {
+    value: "csv",
+    label: "CSV / Google Sheets",
+    description: "Spreadsheet-ready format for Google Sheets and Excel",
+    icon: FileDown,
+    badge: "Sheets",
+  },
 ];
 
 function formatFileSize(bytes: number | null) {
@@ -393,14 +400,27 @@ export default function ExportCenter() {
                           </div>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteExport.mutate(exp.id)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {exp.file_url && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                          >
+                            <a href={exp.file_url} download className="text-muted-foreground hover:text-primary">
+                              <Download className="w-4 h-4" />
+                            </a>
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteExport.mutate(exp.id)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
