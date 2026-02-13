@@ -1,134 +1,162 @@
 
 
-# Fix Export Download + Rich Content Editor with Images and PDF Styling
+# Transform Content Editor into a Visual Rich Text Editor with Integrated AI and Image Tools
 
-## Problem Summary
-1. **Download button hidden**: Export history records have `file_url = null` because exports return content inline without saving a file URL. The condition `{exp.file_url && ...}` always hides the button.
-2. **Images show as markdown code**: "Insert into Content" appends `![text](url)` as raw text in a `<Textarea>`, not as a rendered image.
-3. **No aspect ratio/style options** in the Generate Section Image dialog.
-4. **No PDF styling controls** in the Content Editor.
+## Workflow Analysis -- What's Broken and Missing
+
+### Current State (Problems)
+1. **Editing is raw Markdown in a textarea** -- When you click "Edit", you see raw `![alt](url)` code, `**bold**`, `### headings` etc. This is unusable for non-technical creators.
+2. **Image generation is disconnected** -- The "Generate Section Image" button sits alone in the header. There's no way to insert an image at a specific position within the content.
+3. **No inline AI editing** -- You can only regenerate the entire section. Can't select a paragraph and say "rewrite this" or "make this simpler."
+4. **No formatting toolbar** -- No quick buttons for bold, italic, headings, lists, etc.
+5. **No section navigation** -- To edit a different section, you have to go back to the Outlines page and click "Expand" on another section. There's no sidebar or navigation within the editor.
+6. **PDF styling panel is disconnected** -- It sits below the content with no visual preview of how settings affect the output.
+7. **No image upload option** -- Only AI generation. Can't upload your own images.
+8. **Insert Image always appends to the end** -- No cursor-position insertion.
 
 ---
 
-## Changes
+## Plan
 
-### 1. Fix Export History Download Button
-**File:** `src/pages/ExportCenter.tsx`
-
-Remove the `{exp.file_url && ...}` condition. Instead, always show the download button. When clicked, it re-triggers the export (same outline + format) to generate and download the file again. Since `file_url` is never populated (content is returned inline), the button should use the `exportProduct` mutation with the stored `product_outline_id` and `format` from the history record.
-
-Alternatively (simpler): Always show the download button but instead of relying on `file_url`, store the export format/outlineId on each record and re-export on click. Since re-exporting is slow, the better approach is to just always show the download icon and make it trigger a re-export toast message explaining the re-download.
-
-**Simplest fix**: Remove the `exp.file_url` condition so the button is always visible. Change the `<a href>` approach to an `onClick` that calls `exportProduct.mutate({ outlineId: exp.product_outline_id, format: exp.format })`.
-
-### 2. Rich Content Display with Visual Images
+### 1. Visual Rich Text Editing (Replace Textarea with WYSIWYG)
 **File:** `src/pages/ContentEditor.tsx`
 
-Replace the plain `<Textarea>` editing and raw `whitespace-pre-wrap` display with a rich content renderer:
+Replace the raw `<Textarea>` edit mode with a visual editing experience:
+- When user clicks "Edit", show the content in a `contentEditable` div that preserves the visual rendering (headings render as headings, images as images, bold as bold)
+- Add a **floating formatting toolbar** that appears on text selection with: Bold, Italic, Heading (H1/H2/H3), Bullet List, Numbered List, Quote, Code
+- Clicking a format button wraps the selected text with the appropriate markdown and re-renders
+- Images remain visually rendered during editing -- clicking an image shows resize/delete/reposition controls
+- Save converts the visual state back to markdown for storage
 
-- **View mode**: Parse the content string and render markdown images (`![alt](url)`) as actual `<img>` tags inline within the text. Use a simple regex-based renderer that splits content by image patterns and renders text as `<p>` and images as `<img>`.
-- **Edit mode**: Keep the `<Textarea>` for raw editing, but add a toolbar above it with an "Insert Image" button that opens a picker to select from the section gallery or generate a new one. This inserts the markdown tag at the cursor position.
-- **"Insert into Content" button**: When clicked, it still appends `![](url)` to the content string, but the view mode will render it as an actual image.
+**New component:** `src/components/content/ContentToolbar.tsx`
+- Sticky toolbar above the editor with formatting buttons
+- "Insert Image" dropdown with two options: "Upload Image" and "Generate with AI"
+- "AI Edit" button that opens AI editing options
 
-Create a new component `src/components/content/RichContentRenderer.tsx`:
-- Takes a content string (markdown)
-- Splits by `![alt](url)` patterns
-- Renders text segments as formatted paragraphs and image patterns as `<img>` elements
-- Supports basic markdown formatting (bold, italic, headings)
+### 2. Inline AI Editing Tools
+**File:** `src/components/content/AIEditToolbar.tsx` (New)
 
-### 3. Add Aspect Ratio and Enhanced Style Options to Image Generation
-**File:** `src/components/content/GenerateSectionImageDialog.tsx`
+When user selects text in the editor, show an AI floating menu with:
+- **Rewrite** -- Rephrase the selected text
+- **Expand** -- Make the selection longer with more detail
+- **Simplify** -- Make it simpler and clearer
+- **Change Tone** -- Dropdown: Professional, Casual, Academic, Storytelling
+- **Custom Instruction** -- Free-text input for any AI edit request
 
-Add new state and UI controls:
-- **Aspect Ratio selector**: Options like "Square (1:1)", "Landscape (16:9)", "Portrait (9:16)", "Wide (4:3)", "Book Cover (2:3)"
-- **More image types**: Add "Diagram", "Concept Map", "Quote Card" to the existing list
-- **More styles**: Add "Watercolor", "3D Render", "Flat Design", "Vintage" to the style badges
-- Pass the `aspect_ratio` parameter to the `generate-image` edge function
+**File:** `supabase/functions/ai-edit-content/index.ts` (New edge function)
+- Accepts: `selectedText`, `instruction` (rewrite/expand/simplify/custom), `context` (surrounding content), `brandContext`
+- Returns: edited text replacement
+- Uses the Lovable AI gateway
 
-**File:** `supabase/functions/generate-image/index.ts`
-- Accept `aspect_ratio` parameter and include it in the image generation prompt/parameters
-
-### 4. PDF Styling Options in Content Editor
+### 3. Integrated Image Insertion at Cursor Position
 **File:** `src/pages/ContentEditor.tsx`
 
-Add a collapsible "PDF Styling" panel below the content area (or as a tab):
-- **Font Family**: Serif, Sans-serif, Monospace
-- **Font Size**: Small, Medium, Large
-- **Heading Color**: Color picker (defaults to brand primary color)
-- **Page Layout**: Single column, Two column
-- **Include Cover Page**: Toggle
-- **Include TOC**: Toggle
-- **Header/Footer text**: Optional inputs
+Replace the disconnected header button with inline image tools:
+- **Toolbar "Insert Image" button** with dropdown:
+  - "Generate with AI" -- Opens the existing GenerateSectionImageDialog but inserts at cursor position instead of appending
+  - "From Gallery" -- Shows existing section images in a popover for quick re-insertion
+- Track cursor/caret position in the editor so images insert where the user's cursor is, not at the end
+- After insertion, the image immediately renders visually in the editor
 
-Store these as local state or in a `content_styling` field. When exporting to PDF, pass these settings to the export function.
+### 4. Section Navigation Sidebar
+**File:** `src/pages/ContentEditor.tsx`
 
-Create a new component `src/components/content/PDFStyleSettings.tsx`:
-- Renders the styling controls
-- Returns a settings object
-- Saved per-section or per-outline
+Add a section navigation panel (right sidebar or tabs) so creators can:
+- See all sections of the current outline in a mini-list
+- Click any section to switch to it without leaving the editor
+- See which sections have content generated (checkmark) vs. empty
+- "Generate All" button to batch-expand all remaining sections
 
-### 5. CSV Export Support
-**File:** `supabase/functions/export-product/index.ts`
+### 5. Live PDF Preview Integration
+**File:** `src/components/content/PDFStyleSettings.tsx`
+**File:** `src/pages/ContentEditor.tsx`
 
-Add `"csv"` to valid formats. Generate CSV with columns: Chapter Number, Title, Description, Content, Word Count, Subsections.
+Move PDF styling from a collapsed panel to a "Preview" tab:
+- Add a **Tabs** component: "Edit" | "Preview"
+- "Edit" tab shows the visual editor
+- "Preview" tab shows a simulated page layout with the current PDF style settings applied (font, colors, layout, headers/footers)
+- Changes to PDF settings instantly update the preview
+
+### 6. Image Upload Support
+**File:** `src/pages/ContentEditor.tsx`
+
+Allow uploading custom images (not just AI-generated):
+- Upload button in the toolbar triggers a file picker
+- Image is uploaded to storage and the URL is inserted into content at cursor position
+- Supports drag-and-drop onto the editor area
 
 ---
 
 ## Technical Details
 
-### RichContentRenderer Component
-```text
-Input: "Some text\n\n![Image](https://...)\n\nMore text"
-
-Output:
-+---------------------------+
-| Some text                 |
-|                           |
-| [Rendered <img> element]  |
-|                           |
-| More text                 |
-+---------------------------+
+### Content Toolbar Component
+```
+ContentToolbar
+  [B] [I] [H1] [H2] [H3] [UL] [OL] [Quote] [---]  |  [Insert Image v] [AI Edit v]
+                                                         - Generate AI
+                                                         - Upload
+                                                         - From Gallery
 ```
 
-The renderer uses a regex split on `!\[([^\]]*)\]\(([^)]+)\)` to separate text and image segments, rendering each appropriately.
+### AI Edit Edge Function
+- Endpoint: `ai-edit-content`
+- Method: POST
+- Body: `{ selectedText, instruction, fullContent, brandContext }`
+- Response: `{ editedText }`
+- Uses Lovable AI gateway (no user API key needed)
 
-### Export History Download Fix
-- Remove `{exp.file_url && ...}` guard
-- Add onClick handler that calls `exportProduct.mutate()` with the record's outline ID and format
-- Show a loading spinner while re-exporting
+### Cursor Position Tracking
+- Use `window.getSelection()` in the contentEditable div to track caret position
+- When inserting an image, calculate the markdown offset from the visual position
+- Insert `![alt](url)` at the correct position in the markdown string
+- Re-render the content
 
-### Image Generation Dialog Enhancements
-- New `aspectRatio` state with Select dropdown
-- Values: `"1:1"`, `"16:9"`, `"9:16"`, `"4:3"`, `"2:3"`
-- Passed in the edge function body as `aspect_ratio`
-- Extended STYLES array with more options
-- Extended IMAGE_TYPES array with more types
-
-### PDF Style Settings
-- New component with form controls for font, colors, layout
-- Settings object shape:
-```text
-{
-  fontFamily: "serif" | "sans-serif" | "mono",
-  fontSize: "small" | "medium" | "large",
-  headingColor: "#hexcolor",
-  layout: "single" | "two-column",
-  includeCoverPage: boolean,
-  includeToc: boolean,
-  headerText: string,
-  footerText: string
-}
-```
-- Passed to export function via `settings` parameter
+### Section Navigation Data
+- Fetch all sections for the current outline (already available via `fetchOutlineWithSections`)
+- For each section, check if `expanded_content` exists via a lightweight query
+- Display as a mini sidebar list with status indicators
 
 ### Files to Create
-- `src/components/content/RichContentRenderer.tsx`
-- `src/components/content/PDFStyleSettings.tsx`
+- `src/components/content/ContentToolbar.tsx` -- Formatting toolbar
+- `src/components/content/AIEditToolbar.tsx` -- AI editing floating menu
+- `supabase/functions/ai-edit-content/index.ts` -- AI text editing endpoint
 
 ### Files to Modify
-- `src/pages/ContentEditor.tsx` (rich renderer, PDF settings panel, image toolbar)
-- `src/pages/ExportCenter.tsx` (download button fix)
-- `src/components/content/GenerateSectionImageDialog.tsx` (aspect ratio, more styles/types)
-- `supabase/functions/export-product/index.ts` (CSV format, PDF styling params)
-- `supabase/functions/generate-image/index.ts` (accept aspect_ratio)
+- `src/pages/ContentEditor.tsx` -- Major refactor: visual editor, section nav, preview tab, image upload, cursor tracking
+- `src/components/content/RichContentRenderer.tsx` -- Make it editable (contentEditable mode)
+- `src/components/content/PDFStyleSettings.tsx` -- Integrate into preview tab
+- `src/components/content/GenerateSectionImageDialog.tsx` -- Accept cursor position for targeted insertion
+
+### Approach
+Since adding a full rich text library (Tiptap, Slate, etc.) is a large dependency, we'll use a pragmatic approach:
+- Use `contentEditable` on the rendered HTML output from `RichContentRenderer`
+- Intercept formatting commands via `document.execCommand` for basic formatting
+- On save, serialize the HTML back to markdown
+- This gives a visual editing feel without a heavy library dependency
+
+### Section Navigation Shape
+```
++------------------+----------------------------+
+| Section Nav      | Content Editor             |
+|                  |                            |
+| [x] Ch 1: Intro | [Toolbar: B I H1 H2 ...]  |
+| [x] Ch 2: Setup | [Visual content here...]   |
+| [ ] Ch 3: Core  |                            |
+| [ ] Ch 4: Tips   |                            |
+|                  | [Preview tab shows PDF]    |
+| [Generate All]  |                            |
++------------------+----------------------------+
+```
+
+## Summary of Changes
+| Change | Impact |
+|--------|--------|
+| Visual WYSIWYG editing | Replaces raw textarea with rendered editable content |
+| Formatting toolbar | Bold, italic, headings, lists with one click |
+| Inline AI editing | Select text and rewrite/expand/simplify |
+| Cursor-position image insertion | Images go where you want, not at the end |
+| Image upload | Upload your own images, not just AI |
+| Section navigation | Switch sections without leaving editor |
+| PDF preview tab | See how your export will look while editing |
+| New edge function | AI-powered text editing |
 
