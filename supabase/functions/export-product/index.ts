@@ -406,6 +406,28 @@ Return ONLY the HTML, no explanation.`
     };
   }
 
+  if (format === "csv") {
+    const rows: string[] = [];
+    rows.push(["Chapter", "Title", "Description", "Word Count", "Subsections", "Content"].map(h => `"${h}"`).join(","));
+    (sections || []).forEach((section: any, i: number) => {
+      const content = (contentMap || {})[section.id];
+      const subs = Array.isArray(section.subsections)
+        ? section.subsections.map((s: any) => (typeof s === "string" ? s : s.title || "")).join("; ")
+        : "";
+      const contentText = content?.content?.replace(/"/g, '""') || "";
+      const wordCount = content?.word_count || 0;
+      rows.push([
+        `"${i + 1}"`,
+        `"${(section.title || "").replace(/"/g, '""')}"`,
+        `"${(section.description || "").replace(/"/g, '""')}"`,
+        `"${wordCount}"`,
+        `"${subs.replace(/"/g, '""')}"`,
+        `"${contentText}"`,
+      ].join(","));
+    });
+    return { content: rows.join("\n"), mimeType: "text/csv", extension: "csv" };
+  }
+
   throw new Error(`Unsupported format: ${format}`);
 }
 
@@ -438,7 +460,7 @@ serve(async (req) => {
       throw new Error("outlineId and format are required");
     }
 
-    const validFormats = ["markdown", "html", "txt", "json", "pdf", "docx", "epub"];
+    const validFormats = ["markdown", "html", "txt", "json", "pdf", "docx", "epub", "csv"];
     if (!validFormats.includes(format)) {
       throw new Error(`Invalid format. Supported: ${validFormats.join(", ")}`);
     }

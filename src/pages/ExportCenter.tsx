@@ -401,17 +401,16 @@ export default function ExportCenter() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        {exp.file_url && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            asChild
-                          >
-                            <a href={exp.file_url} download className="text-muted-foreground hover:text-primary">
-                              <Download className="w-4 h-4" />
-                            </a>
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => exportProduct.mutate({ outlineId: exp.product_outline_id, format: exp.format, settings: exp.export_settings || {} })}
+                          disabled={exportProduct.isPending}
+                          className="text-muted-foreground hover:text-primary"
+                          title="Re-download"
+                        >
+                          {exportProduct.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

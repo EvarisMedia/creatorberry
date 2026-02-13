@@ -10,6 +10,8 @@ import { useProductOutlines, OutlineSection } from "@/hooks/useProductOutlines";
 import { useContentExpansion, EXPANSION_MODES, ExpansionMode, ExpandedContent } from "@/hooks/useContentExpansion";
 import { useGeneratedImages, GeneratedImage } from "@/hooks/useGeneratedImages";
 import { GenerateSectionImageDialog } from "@/components/content/GenerateSectionImageDialog";
+import { RichContentRenderer } from "@/components/content/RichContentRenderer";
+import { PDFStyleSettings, DEFAULT_PDF_STYLE_CONFIG, PDFStyleConfig } from "@/components/content/PDFStyleSettings";
 import {
   LayoutDashboard, Settings, Plus, LogOut, ChevronDown, Shield, Loader2,
   Lightbulb, FileText, BookOpen, ArrowLeft, Sparkles, PenTool, Check, Trash2, RefreshCw,
@@ -53,7 +55,7 @@ const ContentEditorPage = () => {
   const [editContent, setEditContent] = useState("");
   const [loadingSection, setLoadingSection] = useState(true);
   const [sectionImages, setSectionImages] = useState<GeneratedImage[]>([]);
-
+  const [pdfStyleConfig, setPdfStyleConfig] = useState<PDFStyleConfig>(DEFAULT_PDF_STYLE_CONFIG);
   const loadSectionImages = async () => {
     if (sectionId) {
       const imgs = await fetchImagesForSection(sectionId);
@@ -335,15 +337,16 @@ const ContentEditorPage = () => {
                         {editingId === item.id ? (
                           <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={20} className="font-mono text-sm" />
                         ) : (
-                          <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap text-sm">
-                            {item.content}
-                          </div>
+                          <RichContentRenderer content={item.content} />
                         )}
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               )}
+
+              {/* PDF Styling Settings */}
+              <PDFStyleSettings config={pdfStyleConfig} onChange={setPdfStyleConfig} />
 
               {/* Section Images Gallery */}
               {sectionImages.length > 0 && (
