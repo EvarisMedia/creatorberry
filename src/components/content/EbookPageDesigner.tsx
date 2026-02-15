@@ -8,6 +8,7 @@ import { EbookPage } from "./EbookPage";
 import { PageLayoutPicker } from "./PageLayoutPicker";
 import { EbookPageData, LayoutType, PageSizeKey, PAGE_SIZES, LayoutWireframe } from "./ebookLayouts";
 import { PDFStyleConfig } from "./PDFStyleSettings";
+import { GenerateSectionImageDialog } from "./GenerateSectionImageDialog";
 
 interface Props {
   content: string;
@@ -20,24 +21,30 @@ interface Props {
   };
   pageSize: PageSizeKey;
   pdfStyle: PDFStyleConfig;
-  contentId: string; // expanded_content id for saving
+  contentId: string;
+  brand?: any;
+  section?: any;
+  onPagesChange?: (pages: EbookPageData[]) => void;
 }
 
-export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSize, pdfStyle, contentId }: Props) {
+export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSize, pdfStyle, contentId, brand, section, onPagesChange }: Props) {
   const [pages, setPages] = useState<EbookPageData[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedPageIndex, setSelectedPageIndex] = useState(0);
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [showImageDialog, setShowImageDialog] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [mainScale, setMainScale] = useState(0.6);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
 
   // Calculate scale based on container width
   useEffect(() => {
     const updateScale = () => {
       if (mainRef.current) {
-        const containerWidth = mainRef.current.clientWidth - 48; // padding
+        const containerWidth = mainRef.current.clientWidth - 48;
         const pageWidth = PAGE_SIZES[pageSize].width;
         const scale = Math.min(containerWidth / pageWidth, 1);
         setMainScale(scale);
@@ -62,8 +69,10 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
       .single();
 
     if (data?.page_layouts && Array.isArray(data.page_layouts) && (data.page_layouts as any[]).length > 0) {
-      setPages(data.page_layouts as unknown as EbookPageData[]);
+      const loadedPages = data.page_layouts as unknown as EbookPageData[];
+      setPages(loadedPages);
       setHasLoaded(true);
+      onPagesChange?.(loadedPages);
     } else {
       generateLayouts();
     }
@@ -77,14 +86,8 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("auto-layout-ebook", {
-        body: {
-          content,
-          pageSize,
-          brandContext: brandContext || {},
-          sectionTitle,
-        },
+        body: { content, pageSize, brandContext: brandContext || {}, sectionTitle },
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
@@ -107,6 +110,7 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
       setSelectedPageIndex(0);
       setHasLoaded(true);
       await saveLayouts(generatedPages);
+      onPagesChange?.(generatedPages);
       toast({ title: "Pages designed!", description: `${generatedPages.length} pages created by AI.` });
     } catch (err: any) {
       console.error("Auto-layout error:", err);
@@ -123,12 +127,74 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
       .eq("id", contentId);
   };
 
+  // Debounced save
+  const debouncedSave = useCallback((updatedPages: EbookPageData[]) => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveLayouts(updatedPages);
+    }, 500);
+  }, [contentId]);
+
+  const updatePageContent = (pageIndex: number, field: string, value: string) => {
+    const updated = pages.map((p, i) =>
+      i === pageIndex ? { ...p, content: { ...p.content, [field]: value } } : p
+    );
+    setPages(updated);
+    onPagesChange?.(updated);
+    debouncedSave(updated);
+  };
+
+  const updatePageItem = (pageIndex: number, itemIndex: number, value: string) => {
+    const updated = pages.map((p, i) => {
+      if (i !== pageIndex) return p;
+      const items = [...(p.content.items || [])];
+      items[itemIndex] = value;
+      return { ...p, content: { ...p.content, items } };
+    });
+    setPages(updated);
+    onPagesChange?.(updated);
+    debouncedSave(updated);
+  };
+
   const handleLayoutChange = (layout: LayoutType) => {
     const updated = pages.map((p, i) =>
       i === selectedPageIndex ? { ...p, layout } : p
     );
     setPages(updated);
+    onPagesChange?.(updated);
     saveLayouts(updated);
+  };
+
+  const handleImageAction = (action: "generate" | "upload" | "remove") => {
+    if (action === "generate") {
+      setShowImageDialog(true);
+    } else if (action === "upload") {
+      fileInputRef.current?.click();
+    } else if (action === "remove") {
+      updatePageContent(selectedPageIndex, "image", "");
+    }
+  };
+
+  const handleImageGenerated = (imageUrl: string) => {
+    updatePageContent(selectedPageIndex, "image", imageUrl);
+    setShowImageDialog(false);
+  };
+
+  const handleFileUpload = async (file: File) => {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) return;
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${user.id}/pages/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("generated-images").upload(path, file);
+    if (error) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("generated-images").getPublicUrl(path);
+    if (urlData?.publicUrl) {
+      updatePageContent(selectedPageIndex, "image", urlData.publicUrl);
+      toast({ title: "Image uploaded" });
+    }
   };
 
   const thumbnailScale = 0.15;
@@ -180,12 +246,7 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
                 }`}
               >
                 <div className="relative">
-                  <EbookPage
-                    page={page}
-                    pageSize={pageSize}
-                    pdfStyle={pdfStyle}
-                    scale={thumbnailScale}
-                  />
+                  <EbookPage page={page} pageSize={pageSize} pdfStyle={pdfStyle} scale={thumbnailScale} />
                   <div className="absolute bottom-0 left-0 right-0 bg-background/80 text-[9px] text-center py-0.5 font-medium">
                     {i + 1}
                   </div>
@@ -203,7 +264,7 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
             <LayoutGrid className="w-3 h-3 mr-1" /> Change Layout
           </Button>
           <span className="text-xs text-muted-foreground">
-            Page {selectedPageIndex + 1} of {pages.length}
+            Page {selectedPageIndex + 1} of {pages.length} — Click text to edit
           </span>
         </div>
 
@@ -214,6 +275,10 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
             pdfStyle={pdfStyle}
             scale={mainScale}
             isSelected
+            editable
+            onFieldChange={(field, value) => updatePageContent(selectedPageIndex, field, value)}
+            onItemChange={(idx, value) => updatePageItem(selectedPageIndex, idx, value)}
+            onImageAction={handleImageAction}
           />
         )}
       </div>
@@ -227,6 +292,29 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
           onSelect={handleLayoutChange}
         />
       )}
+
+      {/* Image generate dialog */}
+      {showImageDialog && section && brand && (
+        <GenerateSectionImageDialog
+          section={section}
+          brand={brand}
+          onImageGenerated={async () => {}}
+          onInsertImage={(url) => handleImageGenerated(url)}
+        />
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileUpload(file);
+          e.target.value = "";
+        }}
+      />
     </div>
   );
 }

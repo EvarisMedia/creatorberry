@@ -60,6 +60,10 @@ interface PageRenderProps {
     headingColor: string;
     fontSize: string;
   };
+  editable?: boolean;
+  onFieldChange?: (field: string, value: string) => void;
+  onItemChange?: (index: number, value: string) => void;
+  onImageAction?: (action: "generate" | "upload" | "remove") => void;
 }
 
 // Wireframe thumbnail for the layout picker
@@ -199,8 +203,142 @@ export function LayoutWireframe({ type }: { type: LayoutType }) {
   }
 }
 
+// Editable text helper
+function EditableText({
+  value,
+  field,
+  editable,
+  onFieldChange,
+  className,
+  style,
+  as: Tag = "div",
+}: {
+  value?: string;
+  field: string;
+  editable?: boolean;
+  onFieldChange?: (field: string, value: string) => void;
+  className?: string;
+  style?: React.CSSProperties;
+  as?: keyof JSX.IntrinsicElements;
+}) {
+  if (!value && !editable) return null;
+  const El = Tag as any;
+  if (editable) {
+    return (
+      <El
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={(e: React.FocusEvent<HTMLElement>) =>
+          onFieldChange?.(field, e.currentTarget.textContent || "")
+        }
+        className={`${className || ""} outline-none hover:ring-1 hover:ring-primary/30 focus:ring-2 focus:ring-primary/50 rounded px-0.5 cursor-text`}
+        style={style}
+      >
+        {value || `[${field}]`}
+      </El>
+    );
+  }
+  return <El className={className} style={style}>{value}</El>;
+}
+
+// Image slot with overlay
+function ImageSlot({
+  src,
+  editable,
+  onImageAction,
+  className,
+}: {
+  src?: string;
+  editable?: boolean;
+  onImageAction?: (action: "generate" | "upload" | "remove") => void;
+  className?: string;
+}) {
+  const [hovered, setHovered] = React.useState(false);
+
+  return (
+    <div
+      className={`relative ${className || ""}`}
+      onMouseEnter={() => editable && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {src ? (
+        <img src={src} alt="" className="w-full h-full object-cover rounded" />
+      ) : (
+        <div className={`w-full h-full ${editable ? "border-2 border-dashed border-primary/30" : "bg-muted"} rounded flex items-center justify-center text-muted-foreground text-xs`}>
+          {editable ? "Click to add image" : "Image"}
+        </div>
+      )}
+      {editable && hovered && (
+        <div className="absolute inset-0 bg-background/80 rounded flex items-center justify-center gap-1">
+          <button
+            onClick={() => onImageAction?.("generate")}
+            className="px-2 py-1 text-[10px] bg-primary text-primary-foreground rounded hover:bg-primary/90"
+          >
+            Generate
+          </button>
+          <button
+            onClick={() => onImageAction?.("upload")}
+            className="px-2 py-1 text-[10px] bg-secondary text-secondary-foreground rounded hover:bg-secondary/90"
+          >
+            Upload
+          </button>
+          {src && (
+            <button
+              onClick={() => onImageAction?.("remove")}
+              className="px-2 py-1 text-[10px] bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      )}
+      {editable && !src && !hovered && (
+        <button
+          onClick={() => onImageAction?.("upload")}
+          className="absolute inset-0 rounded cursor-pointer"
+        />
+      )}
+    </div>
+  );
+}
+
+// Editable list items
+function EditableItems({
+  items,
+  editable,
+  onItemChange,
+  renderItem,
+}: {
+  items: string[];
+  editable?: boolean;
+  onItemChange?: (index: number, value: string) => void;
+  renderItem: (item: string, index: number, editEl?: React.ReactNode) => React.ReactNode;
+}) {
+  return (
+    <>
+      {(items || []).map((item, i) => {
+        if (editable) {
+          const editEl = (
+            <span
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={(e) => onItemChange?.(i, e.currentTarget.textContent || "")}
+              className="outline-none hover:ring-1 hover:ring-primary/30 focus:ring-2 focus:ring-primary/50 rounded px-0.5 cursor-text"
+            >
+              {item}
+            </span>
+          );
+          return <React.Fragment key={i}>{renderItem(item, i, editEl)}</React.Fragment>;
+        }
+        return <React.Fragment key={i}>{renderItem(item, i)}</React.Fragment>;
+      })}
+    </>
+  );
+}
+
 // Actual page renderer
-export function renderPageLayout({ content, style }: PageRenderProps, layout: LayoutType) {
+export function renderPageLayout(props: PageRenderProps, layout: LayoutType) {
+  const { content, style, editable, onFieldChange, onItemChange, onImageAction } = props;
   const headingStyle = { color: style.headingColor, fontFamily: style.fontFamily };
   const bodyStyle = { fontFamily: style.fontFamily, fontSize: style.fontSize };
 
@@ -208,29 +346,27 @@ export function renderPageLayout({ content, style }: PageRenderProps, layout: La
     case "title":
       return (
         <div className="flex flex-col items-center justify-center h-full text-center px-12" style={bodyStyle}>
-          <h1 className="text-3xl font-bold mb-4 leading-tight" style={headingStyle}>{content.heading || "Untitled"}</h1>
-          {content.subheading && <p className="text-lg text-muted-foreground">{content.subheading}</p>}
-          {content.attribution && <p className="text-sm text-muted-foreground mt-8">{content.attribution}</p>}
+          <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-3xl font-bold mb-4 leading-tight" style={headingStyle} as="h1" />
+          <EditableText value={content.subheading} field="subheading" editable={editable} onFieldChange={onFieldChange} className="text-lg text-muted-foreground" as="p" />
+          <EditableText value={content.attribution} field="attribution" editable={editable} onFieldChange={onFieldChange} className="text-sm text-muted-foreground mt-8" as="p" />
         </div>
       );
 
     case "chapter-opener":
       return (
         <div className="flex flex-col items-center justify-center h-full text-center px-10" style={bodyStyle}>
-          {content.subheading && <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">{content.subheading}</p>}
-          <h1 className="text-2xl font-bold mb-4" style={headingStyle}>{content.heading || "Chapter"}</h1>
+          <EditableText value={content.subheading} field="subheading" editable={editable} onFieldChange={onFieldChange} className="text-xs uppercase tracking-widest text-muted-foreground mb-2" as="p" />
+          <EditableText value={content.heading || "Chapter"} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-2xl font-bold mb-4" style={headingStyle} as="h1" />
           <div className="w-16 h-px bg-border mb-4" />
-          {content.body && <p className="text-sm leading-relaxed text-muted-foreground max-w-[80%]">{content.body}</p>}
+          <EditableText value={content.body} field="body" editable={editable} onFieldChange={onFieldChange} className="text-sm leading-relaxed text-muted-foreground max-w-[80%]" as="p" />
         </div>
       );
 
     case "full-text":
       return (
         <div className="flex flex-col h-full px-10 py-8" style={bodyStyle}>
-          {content.heading && <h2 className="text-xl font-bold mb-4" style={headingStyle}>{content.heading}</h2>}
-          {content.body && (
-            <div className="text-sm leading-relaxed whitespace-pre-wrap flex-1 overflow-hidden">{content.body}</div>
-          )}
+          <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-xl font-bold mb-4" style={headingStyle} as="h2" />
+          <EditableText value={content.body} field="body" editable={editable} onFieldChange={onFieldChange} className="text-sm leading-relaxed whitespace-pre-wrap flex-1 overflow-hidden" />
         </div>
       );
 
@@ -238,32 +374,20 @@ export function renderPageLayout({ content, style }: PageRenderProps, layout: La
       return (
         <div className="flex h-full gap-4 px-6 py-6" style={bodyStyle}>
           <div className="flex-1 flex flex-col">
-            {content.heading && <h2 className="text-lg font-bold mb-3" style={headingStyle}>{content.heading}</h2>}
-            {content.body && <p className="text-sm leading-relaxed flex-1 overflow-hidden">{content.body}</p>}
+            <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-lg font-bold mb-3" style={headingStyle} as="h2" />
+            <EditableText value={content.body} field="body" editable={editable} onFieldChange={onFieldChange} className="text-sm leading-relaxed flex-1 overflow-hidden" as="p" />
           </div>
-          <div className="w-[40%] shrink-0">
-            {content.image ? (
-              <img src={content.image} alt="" className="w-full h-full object-cover rounded" />
-            ) : (
-              <div className="w-full h-full bg-muted rounded flex items-center justify-center text-muted-foreground text-xs">Image</div>
-            )}
-          </div>
+          <ImageSlot src={content.image} editable={editable} onImageAction={onImageAction} className="w-[40%] shrink-0" />
         </div>
       );
 
     case "image-text":
       return (
         <div className="flex h-full gap-4 px-6 py-6" style={bodyStyle}>
-          <div className="w-[40%] shrink-0">
-            {content.image ? (
-              <img src={content.image} alt="" className="w-full h-full object-cover rounded" />
-            ) : (
-              <div className="w-full h-full bg-muted rounded flex items-center justify-center text-muted-foreground text-xs">Image</div>
-            )}
-          </div>
+          <ImageSlot src={content.image} editable={editable} onImageAction={onImageAction} className="w-[40%] shrink-0" />
           <div className="flex-1 flex flex-col">
-            {content.heading && <h2 className="text-lg font-bold mb-3" style={headingStyle}>{content.heading}</h2>}
-            {content.body && <p className="text-sm leading-relaxed flex-1 overflow-hidden">{content.body}</p>}
+            <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-lg font-bold mb-3" style={headingStyle} as="h2" />
+            <EditableText value={content.body} field="body" editable={editable} onFieldChange={onFieldChange} className="text-sm leading-relaxed flex-1 overflow-hidden" as="p" />
           </div>
         </div>
       );
@@ -271,30 +395,16 @@ export function renderPageLayout({ content, style }: PageRenderProps, layout: La
     case "full-image":
       return (
         <div className="flex flex-col h-full" style={bodyStyle}>
-          <div className="flex-1 relative">
-            {content.image ? (
-              <img src={content.image} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground">No image</div>
-            )}
-          </div>
-          {content.heading && (
-            <div className="px-6 py-3 text-center">
-              <p className="text-xs text-muted-foreground italic">{content.heading}</p>
-            </div>
-          )}
+          <ImageSlot src={content.image} editable={editable} onImageAction={onImageAction} className="flex-1" />
+          <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="px-6 py-3 text-center text-xs text-muted-foreground italic" as="p" />
         </div>
       );
 
     case "two-column":
       return (
         <div className="flex flex-col h-full px-8 py-6" style={bodyStyle}>
-          {content.heading && <h2 className="text-lg font-bold mb-4" style={headingStyle}>{content.heading}</h2>}
-          {content.body && (
-            <div className="text-sm leading-relaxed flex-1 overflow-hidden" style={{ columns: 2, columnGap: "1.5rem" }}>
-              {content.body}
-            </div>
-          )}
+          <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-lg font-bold mb-4" style={headingStyle} as="h2" />
+          <EditableText value={content.body} field="body" editable={editable} onFieldChange={onFieldChange} className="text-sm leading-relaxed flex-1 overflow-hidden" style={{ columns: 2, columnGap: "1.5rem" }} />
         </div>
       );
 
@@ -302,24 +412,27 @@ export function renderPageLayout({ content, style }: PageRenderProps, layout: La
       return (
         <div className="flex flex-col items-center justify-center h-full px-12 text-center" style={bodyStyle}>
           <div className="text-4xl text-muted-foreground/30 mb-2">"</div>
-          <blockquote className="text-lg italic leading-relaxed mb-4" style={headingStyle}>
-            {content.quote || content.body || "Quote text"}
-          </blockquote>
-          {content.attribution && <p className="text-sm text-muted-foreground">— {content.attribution}</p>}
+          <EditableText value={content.quote || content.body || "Quote text"} field="quote" editable={editable} onFieldChange={onFieldChange} className="text-lg italic leading-relaxed mb-4" style={headingStyle} as="blockquote" />
+          <EditableText value={content.attribution ? `— ${content.attribution}` : undefined} field="attribution" editable={editable} onFieldChange={onFieldChange} className="text-sm text-muted-foreground" as="p" />
         </div>
       );
 
     case "checklist":
       return (
         <div className="flex flex-col h-full px-10 py-8" style={bodyStyle}>
-          {content.heading && <h2 className="text-lg font-bold mb-4" style={headingStyle}>{content.heading}</h2>}
+          <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-lg font-bold mb-4" style={headingStyle} as="h2" />
           <div className="space-y-2 flex-1 overflow-hidden">
-            {(content.items || []).map((item, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <div className="w-4 h-4 border-2 border-muted-foreground/30 rounded mt-0.5 shrink-0" />
-                <span className="text-sm">{item}</span>
-              </div>
-            ))}
+            <EditableItems
+              items={content.items || []}
+              editable={editable}
+              onItemChange={onItemChange}
+              renderItem={(item, i, editEl) => (
+                <div className="flex items-start gap-2">
+                  <div className="w-4 h-4 border-2 border-muted-foreground/30 rounded mt-0.5 shrink-0" />
+                  {editEl || <span className="text-sm">{item}</span>}
+                </div>
+              )}
+            />
           </div>
         </div>
       );
@@ -327,16 +440,21 @@ export function renderPageLayout({ content, style }: PageRenderProps, layout: La
     case "key-takeaways":
       return (
         <div className="flex flex-col h-full px-10 py-8" style={bodyStyle}>
-          {content.heading && <h2 className="text-lg font-bold mb-4" style={headingStyle}>{content.heading}</h2>}
+          <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-lg font-bold mb-4" style={headingStyle} as="h2" />
           <div className="space-y-3 flex-1 overflow-hidden">
-            {(content.items || []).map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                  {i + 1}
+            <EditableItems
+              items={content.items || []}
+              editable={editable}
+              onItemChange={onItemChange}
+              renderItem={(item, i, editEl) => (
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                    {i + 1}
+                  </div>
+                  {editEl || <span className="text-sm leading-relaxed">{item}</span>}
                 </div>
-                <span className="text-sm leading-relaxed">{item}</span>
-              </div>
-            ))}
+              )}
+            />
           </div>
         </div>
       );
@@ -344,11 +462,22 @@ export function renderPageLayout({ content, style }: PageRenderProps, layout: La
     case "call-to-action":
       return (
         <div className="flex flex-col items-center justify-center h-full px-12 text-center" style={bodyStyle}>
-          {content.heading && <h2 className="text-2xl font-bold mb-3" style={headingStyle}>{content.heading}</h2>}
-          {content.body && <p className="text-sm text-muted-foreground mb-6 max-w-[80%]">{content.body}</p>}
+          <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-2xl font-bold mb-3" style={headingStyle} as="h2" />
+          <EditableText value={content.body} field="body" editable={editable} onFieldChange={onFieldChange} className="text-sm text-muted-foreground mb-6 max-w-[80%]" as="p" />
           {content.subheading && (
             <div className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
-              {content.subheading}
+              {editable ? (
+                <span
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={(e) => onFieldChange?.("subheading", e.currentTarget.textContent || "")}
+                  className="outline-none"
+                >
+                  {content.subheading}
+                </span>
+              ) : (
+                content.subheading
+              )}
             </div>
           )}
         </div>
@@ -358,8 +487,8 @@ export function renderPageLayout({ content, style }: PageRenderProps, layout: La
     default:
       return (
         <div className="flex flex-col h-full px-10 py-8" style={bodyStyle}>
-          {content.heading && <h2 className="text-lg font-bold mb-4" style={headingStyle}>{content.heading}</h2>}
-          {content.body && <p className="text-sm leading-relaxed">{content.body}</p>}
+          <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-lg font-bold mb-4" style={headingStyle} as="h2" />
+          <EditableText value={content.body} field="body" editable={editable} onFieldChange={onFieldChange} className="text-sm leading-relaxed" as="p" />
         </div>
       );
   }

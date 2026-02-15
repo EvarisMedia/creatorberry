@@ -13,7 +13,8 @@ import { RichContentRenderer } from "@/components/content/RichContentRenderer";
 import { PDFStyleSettings, DEFAULT_PDF_STYLE_CONFIG, PDFStyleConfig } from "@/components/content/PDFStyleSettings";
 import { ContentToolbar } from "@/components/content/ContentToolbar";
 import { EbookPageDesigner } from "@/components/content/EbookPageDesigner";
-import { PageSizeKey } from "@/components/content/ebookLayouts";
+import { EbookPage } from "@/components/content/EbookPage";
+import { PageSizeKey, EbookPageData } from "@/components/content/ebookLayouts";
 import { AIEditToolbar } from "@/components/content/AIEditToolbar";
 import {
   LayoutDashboard, Settings, Plus, LogOut, ChevronDown, Shield, Loader2,
@@ -69,6 +70,7 @@ const ContentEditorPage = () => {
   const [sectionImages, setSectionImages] = useState<GeneratedImage[]>([]);
   const [pdfStyleConfig, setPdfStyleConfig] = useState<PDFStyleConfig>(DEFAULT_PDF_STYLE_CONFIG);
   const [editorTab, setEditorTab] = useState("edit");
+  const [designedPages, setDesignedPages] = useState<EbookPageData[]>([]);
 
   // AI Edit state
   const [selectedText, setSelectedText] = useState("");
@@ -88,6 +90,7 @@ const ContentEditorPage = () => {
       setSectionImages(imgs);
     }
   };
+
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/auth");
@@ -261,6 +264,22 @@ const ContentEditorPage = () => {
   };
 
   const currentModeContents = getContentByMode(activeMode);
+
+  // Load saved page layouts for preview
+  useEffect(() => {
+    const loadPageLayouts = async () => {
+      if (!currentModeContents[0]?.id) return;
+      const { data } = await supabase
+        .from("expanded_content")
+        .select("page_layouts")
+        .eq("id", currentModeContents[0].id)
+        .single();
+      if (data?.page_layouts && Array.isArray(data.page_layouts) && (data.page_layouts as any[]).length > 0) {
+        setDesignedPages(data.page_layouts as unknown as EbookPageData[]);
+      }
+    };
+    loadPageLayouts();
+  }, [currentModeContents[0]?.id]);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -623,6 +642,9 @@ const ContentEditorPage = () => {
                           pageSize={(pdfStyleConfig.pageSize || "6x9") as PageSizeKey}
                           pdfStyle={pdfStyleConfig}
                           contentId={currentModeContents[0].id}
+                          brand={currentBrand}
+                          section={section}
+                          onPagesChange={(p) => setDesignedPages(p)}
                         />
                       ) : (
                         <div className="text-center py-12 text-muted-foreground">
@@ -632,35 +654,51 @@ const ContentEditorPage = () => {
                     </TabsContent>
 
                     <TabsContent value="preview">
-                      {/* PDF Preview with styling applied */}
                       <Card>
                         <CardContent className="p-0">
                           <PDFStyleSettings config={pdfStyleConfig} onChange={setPdfStyleConfig} />
-                          <div
-                            className="p-8 border-t border-border"
-                            style={{
-                              fontFamily: pdfStyleConfig.fontFamily === "serif" ? "Georgia, serif" : pdfStyleConfig.fontFamily === "mono" ? "'Courier New', monospace" : "system-ui, sans-serif",
-                              fontSize: pdfStyleConfig.fontSize === "small" ? "14px" : pdfStyleConfig.fontSize === "large" ? "18px" : "16px",
-                            }}
-                          >
-                            {pdfStyleConfig.headerText && (
-                              <div className="text-xs text-muted-foreground border-b border-border pb-2 mb-6">{pdfStyleConfig.headerText}</div>
-                            )}
-                            {pdfStyleConfig.includeCoverPage && (
-                              <div className="text-center mb-8 pb-8 border-b border-border">
-                                <h1 className="text-3xl font-bold mb-2" style={{ color: pdfStyleConfig.headingColor }}>{section.title}</h1>
-                                <p className="text-muted-foreground">{outlineTitle}</p>
+                          <div className="p-6 border-t border-border">
+                            {designedPages.length > 0 ? (
+                              <div className="flex flex-col items-center gap-6">
+                                {designedPages.map((page, i) => (
+                                  <div key={page.id} className="relative">
+                                    <EbookPage
+                                      page={page}
+                                      pageSize={(pdfStyleConfig.pageSize || "6x9") as PageSizeKey}
+                                      pdfStyle={pdfStyleConfig}
+                                      scale={0.85}
+                                    />
+                                    <div className="text-center text-xs text-muted-foreground mt-1">Page {i + 1}</div>
+                                  </div>
+                                ))}
                               </div>
-                            )}
-                            <div className={pdfStyleConfig.layout === "two-column" ? "columns-2 gap-8" : ""}>
-                              {currentModeContents[0] && (
-                                <div style={{ color: "inherit" }}>
-                                  <RichContentRenderer content={currentModeContents[0].content} />
+                            ) : (
+                              <div
+                                style={{
+                                  fontFamily: pdfStyleConfig.fontFamily === "serif" ? "Georgia, serif" : pdfStyleConfig.fontFamily === "mono" ? "'Courier New', monospace" : "system-ui, sans-serif",
+                                  fontSize: pdfStyleConfig.fontSize === "small" ? "14px" : pdfStyleConfig.fontSize === "large" ? "18px" : "16px",
+                                }}
+                              >
+                                {pdfStyleConfig.headerText && (
+                                  <div className="text-xs text-muted-foreground border-b border-border pb-2 mb-6">{pdfStyleConfig.headerText}</div>
+                                )}
+                                {pdfStyleConfig.includeCoverPage && section && (
+                                  <div className="text-center mb-8 pb-8 border-b border-border">
+                                    <h1 className="text-3xl font-bold mb-2" style={{ color: pdfStyleConfig.headingColor }}>{section.title}</h1>
+                                    <p className="text-muted-foreground">{outlineTitle}</p>
+                                  </div>
+                                )}
+                                <div className={pdfStyleConfig.layout === "two-column" ? "columns-2 gap-8" : ""}>
+                                  {currentModeContents[0] && (
+                                    <div style={{ color: "inherit" }}>
+                                      <RichContentRenderer content={currentModeContents[0].content} />
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                            {pdfStyleConfig.footerText && (
-                              <div className="text-xs text-muted-foreground border-t border-border pt-2 mt-6">{pdfStyleConfig.footerText}</div>
+                                {pdfStyleConfig.footerText && (
+                                  <div className="text-xs text-muted-foreground border-t border-border pt-2 mt-6">{pdfStyleConfig.footerText}</div>
+                                )}
+                              </div>
                             )}
                           </div>
                         </CardContent>

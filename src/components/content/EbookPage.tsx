@@ -8,9 +8,13 @@ interface Props {
   scale: number;
   isSelected?: boolean;
   onClick?: () => void;
+  editable?: boolean;
+  onFieldChange?: (field: string, value: string) => void;
+  onItemChange?: (index: number, value: string) => void;
+  onImageAction?: (action: "generate" | "upload" | "remove") => void;
 }
 
-export function EbookPage({ page, pageSize, pdfStyle, scale, isSelected, onClick }: Props) {
+export function EbookPage({ page, pageSize, pdfStyle, scale, isSelected, onClick, editable, onFieldChange, onItemChange, onImageAction }: Props) {
   const dims = PAGE_SIZES[pageSize];
   const fontFamily = pdfStyle.fontFamily === "serif" ? "Georgia, serif" : pdfStyle.fontFamily === "mono" ? "'Courier New', monospace" : "system-ui, sans-serif";
   const fontSize = pdfStyle.fontSize === "small" ? "14px" : pdfStyle.fontSize === "large" ? "18px" : "16px";
@@ -25,7 +29,7 @@ export function EbookPage({ page, pageSize, pdfStyle, scale, isSelected, onClick
       onClick={onClick}
     >
       <div
-        className={`bg-background border shadow-md overflow-hidden cursor-pointer transition-all ${isSelected ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"}`}
+        className={`bg-background border shadow-md overflow-hidden ${editable ? "" : "cursor-pointer"} transition-all ${isSelected ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"}`}
         style={{
           width: dims.width,
           height: dims.height,
@@ -37,6 +41,10 @@ export function EbookPage({ page, pageSize, pdfStyle, scale, isSelected, onClick
           {
             content: page.content,
             style: { fontFamily, headingColor: pdfStyle.headingColor, fontSize },
+            editable,
+            onFieldChange,
+            onItemChange,
+            onImageAction,
           },
           page.layout
         )}
