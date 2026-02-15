@@ -1,144 +1,100 @@
 
 
-# AI-Powered Auto Layout for Ebook Pages
+# Fix Preview to Show Page Layouts + Add Inline Editing to Page Designer
 
-## How It Works
+## Problems
 
-When a creator enters the "Page Design" tab, the system sends the section content to an AI function that analyzes headings, paragraphs, images, lists, and quotes -- then returns a complete page-by-page layout assignment. The creator sees fully designed pages immediately, and can swap any page's layout manually if they want something different.
+1. **Preview tab ignores page layouts**: The Preview tab (line 634-668) renders content using `RichContentRenderer` with basic PDF styling. It does not show the actual page layouts created in the "Page Design" tab. Creators design pages in one tab but see something completely different in Preview.
 
-## Flow
+2. **Page layouts are read-only**: The `EbookPage` component renders static text and images. Creators cannot click on a heading, body text, or image within a page layout to edit it directly. They have to go back to the Edit tab, modify raw markdown, and hope it maps correctly.
 
-1. Creator clicks **"Page Design"** tab
-2. System calls the `auto-layout-ebook` edge function with the section's markdown content and PDF style settings
-3. AI analyzes the content structure and returns an array of pages, each with a recommended layout template and the content slotted into that template's fields (heading, body, image, items, quote, etc.)
-4. Pages render instantly with the AI-chosen layouts
-5. Creator can click any page and choose **"Change Layout"** to pick a different template -- the content re-flows into the new layout automatically
-
-## AI Layout Logic (Edge Function)
-
-The AI receives the full markdown content and a list of available layout templates with descriptions. It returns structured output using tool calling:
-
-```
-Input:
-- Full markdown content of the section
-- Available layouts: title, chapter-opener, full-text, text-image, image-text, full-image, two-column, quote, checklist, key-takeaways, call-to-action, blank
-- Page size (6x9, 8.5x11, etc.)
-- Brand context (tone, style)
-
-Output (via tool calling):
-[
-  { layout: "chapter-opener", heading: "...", subheading: "..." },
-  { layout: "text-image", heading: "...", body: "...", image: "url-from-content" },
-  { layout: "full-text", heading: "...", body: "..." },
-  { layout: "quote", quote: "...", attribution: "..." },
-  { layout: "key-takeaways", heading: "...", items: ["...", "..."] },
-  ...
-]
-```
-
-The AI makes smart decisions like:
-- Detecting a strong opening sentence and assigning "chapter-opener"
-- Spotting blockquotes and assigning "quote" layout
-- Pairing images with adjacent text into "text-image" layouts
-- Converting bullet lists into "key-takeaways" or "checklist" pages
-- Splitting long text blocks across multiple "full-text" pages based on word count per page
+---
 
 ## Changes
 
-### 1. New Edge Function: auto-layout-ebook
-**File:** `supabase/functions/auto-layout-ebook/index.ts`
-
-- Accepts: `content` (markdown), `pageSize`, `brandContext`, `availableLayouts`
-- Uses Lovable AI gateway with tool calling to get structured layout assignments
-- Returns: array of page objects with layout type and slotted content
-- Uses `google/gemini-3-flash-preview` for speed
-
-### 2. New Components (Ebook Designer)
-**File:** `src/components/content/EbookPageDesigner.tsx`
-- On mount, calls the auto-layout function if no saved layouts exist
-- Shows a loading state ("Designing your pages...") while AI processes
-- Renders the returned pages using the scaling approach (fixed page dimensions, CSS transform)
-- Thumbnail sidebar for page navigation
-- "Change Layout" button on each page opens PageLayoutPicker
-- "Regenerate Layout" button to re-run AI on the whole section
-
-**File:** `src/components/content/EbookPage.tsx`
-- Renders a single page with the assigned layout template
-- Applies PDF style settings (font, colors)
-- Content is editable inline
-
-**File:** `src/components/content/PageLayoutPicker.tsx`
-- Visual gallery of layout templates as wireframe thumbnails
-- Click to swap the current page's layout -- content re-maps to the new template's fields
-
-**File:** `src/components/content/ebookLayouts.tsx`
-- Layout template definitions with render functions and wireframe thumbnails
-- 12 templates: title, chapter-opener, full-text, text-image, image-text, full-image, two-column, quote, checklist, key-takeaways, call-to-action, blank
-
-### 3. Integration in ContentEditor
+### 1. Preview Tab Shows Page Layouts
 **File:** `src/pages/ContentEditor.tsx`
-- Add "Page Design" tab alongside Edit and Preview
-- When tab is selected, mount EbookPageDesigner with the current section content
-- Save page layout data to the `expanded_content` record (new `page_layouts` JSONB column)
 
-### 4. Database Migration
-- Add `page_layouts JSONB DEFAULT NULL` column to `expanded_content` table
-- Stores the array of page objects so layouts persist between sessions
+Replace the current Preview tab content with a vertical scroll of all designed pages rendered at a readable scale using `EbookPage`. This shows the exact same layouts from the Page Design tab, styled with the current PDF settings, in a continuous scroll view -- like a print preview.
 
-### 5. Page Size in PDF Settings
-**File:** `src/components/content/PDFStyleSettings.tsx`
-- Add page size selector: 6x9", 5.5x8.5", 8.5x11", 8x8" square
-- This value is passed to the auto-layout function and affects page dimensions in the designer
+- Load saved `page_layouts` from the `expanded_content` record
+- Render each page sequentially using `EbookPage` with PDF style settings applied
+- Keep the `PDFStyleSettings` controls at the top so users can adjust font/colors and see changes instantly
+- If no page layouts exist yet, fall back to the current `RichContentRenderer` preview
+
+### 2. Inline Editing in Page Designer
+**File:** `src/components/content/EbookPageDesigner.tsx`
+**File:** `src/components/content/ebookLayouts.tsx`
+
+Make all text fields in page layouts editable:
+
+- **Text editing**: Each text element (heading, subheading, body, quote, attribution, list items) becomes a `contentEditable` span/div when the page is selected. Clicking on text allows direct typing.
+- **Image editing**: Clicking an image slot shows overlay buttons: "Generate New", "Upload", "Remove". Clicking the placeholder on empty image slots opens the same options.
+- **Auto-save**: After editing, changes are debounced and saved to the `page_layouts` JSONB column.
+
+The approach:
+- Add `onContentChange` callback prop to `EbookPage`
+- In `ebookLayouts.tsx`, modify `renderPageLayout` to accept an `editable` flag and `onFieldChange(field, value)` callback
+- When `editable=true`, text elements use `contentEditable` divs with `onBlur` to capture changes
+- Image slots show an overlay with edit/upload/remove buttons when hovered
+
+### 3. Image Management in Page Layouts
+**File:** `src/components/content/EbookPageDesigner.tsx`
+
+Add image controls for layout slots that support images (text-image, image-text, full-image):
+- Hover overlay on image areas with "Generate", "Upload", "Remove" buttons
+- Generate opens the existing `GenerateSectionImageDialog`
+- Upload triggers a file picker
+- Selected/generated image URL is saved into the page's `content.image` field
+- Changes persist to the database immediately
+
+---
 
 ## Technical Details
 
-### Scaling (Lovable Slides Pattern)
-Each page renders at fixed pixel dimensions (e.g., 432x648 for 6x9") and scales to fit the editor container using `transform: scale(containerWidth / pageWidth)`. The parent container has `overflow: hidden` and `position: relative`.
+### Preview Tab Update
+The Preview tab will:
+1. Read `page_layouts` from the current content record (already loaded in `EbookPageDesigner`)
+2. Render pages vertically with `EbookPage` at a comfortable reading scale
+3. Show `PDFStyleSettings` above for live adjustments
+4. Add page numbers between pages
 
-### AI Tool Calling Schema
-The edge function uses tool calling to ensure structured output:
+### Editable Page Layout Rendering
+The `renderPageLayout` function gains two new props:
+- `editable: boolean` -- enables contentEditable on text elements
+- `onFieldChange: (field: string, value: string) => void` -- called when text is edited
+
+Each text element becomes:
 ```
-tools: [{
-  type: "function",
-  function: {
-    name: "design_ebook_pages",
-    parameters: {
-      type: "object",
-      properties: {
-        pages: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              layout: { type: "string", enum: [...all layout names] },
-              heading: { type: "string" },
-              subheading: { type: "string" },
-              body: { type: "string" },
-              image: { type: "string" },
-              items: { type: "array", items: { type: "string" } },
-              quote: { type: "string" },
-              attribution: { type: "string" }
-            }
-          }
-        }
-      }
-    }
-  }
-}]
+<div
+  contentEditable={editable}
+  suppressContentEditableWarning
+  onBlur={(e) => onFieldChange("heading", e.currentTarget.textContent || "")}
+>
+  {content.heading}
+</div>
 ```
 
-### Files to Create
-- `supabase/functions/auto-layout-ebook/index.ts`
-- `src/components/content/EbookPageDesigner.tsx`
-- `src/components/content/EbookPage.tsx`
-- `src/components/content/PageLayoutPicker.tsx`
-- `src/components/content/ebookLayouts.tsx`
+List items (checklist, key-takeaways) use individual contentEditable spans per item, with the ability to add/remove items.
+
+### Image Slot Overlay
+For layouts with image slots, when `editable=true`:
+- The image area gets a hover overlay with action buttons
+- Empty slots show a dashed border with "Add Image" prompt
+- Clicking triggers a callback that the parent (`EbookPageDesigner`) handles
+
+### Auto-Save with Debounce
+Content changes in the page designer are debounced (500ms) before saving to the database. This prevents excessive writes while the user is typing.
 
 ### Files to Modify
-- `src/pages/ContentEditor.tsx` -- Add Page Design tab
-- `src/components/content/PDFStyleSettings.tsx` -- Add page size selector
-- `supabase/config.toml` -- Register new edge function
+- `src/pages/ContentEditor.tsx` -- Update Preview tab to render page layouts
+- `src/components/content/EbookPageDesigner.tsx` -- Add inline editing, image management, content change handling
+- `src/components/content/EbookPage.tsx` -- Pass editable/onContentChange props through
+- `src/components/content/ebookLayouts.tsx` -- Make `renderPageLayout` support editable mode with contentEditable elements and image overlays
 
-### Database
-- Add `page_layouts` JSONB column to `expanded_content` table
+### No New Files Needed
+All changes extend existing components.
+
+### No Database Changes Needed
+The `page_layouts` JSONB column already stores all the content per page, so inline edits just update the same structure.
 
