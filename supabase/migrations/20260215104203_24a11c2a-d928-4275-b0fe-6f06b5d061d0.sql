@@ -1,0 +1,1 @@
+ALTER TABLE public.expanded_content ADD COLUMN page_layouts JSONB DEFAULT NULL;

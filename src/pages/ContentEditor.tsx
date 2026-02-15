@@ -12,6 +12,8 @@ import { GenerateSectionImageDialog } from "@/components/content/GenerateSection
 import { RichContentRenderer } from "@/components/content/RichContentRenderer";
 import { PDFStyleSettings, DEFAULT_PDF_STYLE_CONFIG, PDFStyleConfig } from "@/components/content/PDFStyleSettings";
 import { ContentToolbar } from "@/components/content/ContentToolbar";
+import { EbookPageDesigner } from "@/components/content/EbookPageDesigner";
+import { PageSizeKey } from "@/components/content/ebookLayouts";
 import { AIEditToolbar } from "@/components/content/AIEditToolbar";
 import {
   LayoutDashboard, Settings, Plus, LogOut, ChevronDown, Shield, Loader2,
@@ -484,6 +486,7 @@ const ContentEditorPage = () => {
                   <Tabs value={editorTab} onValueChange={setEditorTab}>
                     <TabsList>
                       <TabsTrigger value="edit">Edit</TabsTrigger>
+                      <TabsTrigger value="page-design">Page Design</TabsTrigger>
                       <TabsTrigger value="preview">Preview</TabsTrigger>
                     </TabsList>
 
@@ -604,6 +607,28 @@ const ContentEditorPage = () => {
                           </Card>
                         ))}
                       </div>
+                    </TabsContent>
+
+                    <TabsContent value="page-design">
+                      {currentModeContents[0] ? (
+                        <EbookPageDesigner
+                          content={currentModeContents[0].content}
+                          sectionTitle={section?.title || ""}
+                          brandContext={currentBrand ? {
+                            name: currentBrand.name,
+                            tone: currentBrand.tone || undefined,
+                            about: currentBrand.about || undefined,
+                            target_audience: currentBrand.target_audience || undefined,
+                          } : undefined}
+                          pageSize={(pdfStyleConfig.pageSize || "6x9") as PageSizeKey}
+                          pdfStyle={pdfStyleConfig}
+                          contentId={currentModeContents[0].id}
+                        />
+                      ) : (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <p>Generate content first before designing pages.</p>
+                        </div>
+                      )}
                     </TabsContent>
 
                     <TabsContent value="preview">

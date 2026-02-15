@@ -442,6 +442,7 @@ export type Database = {
           id: string
           mode: string
           outline_section_id: string
+          page_layouts: Json | null
           style: string | null
           tone: string | null
           updated_at: string
@@ -456,6 +457,7 @@ export type Database = {
           id?: string
           mode: string
           outline_section_id: string
+          page_layouts?: Json | null
           style?: string | null
           tone?: string | null
           updated_at?: string
@@ -470,6 +472,7 @@ export type Database = {
           id?: string
           mode?: string
           outline_section_id?: string
+          page_layouts?: Json | null
           style?: string | null
           tone?: string | null
           updated_at?: string
