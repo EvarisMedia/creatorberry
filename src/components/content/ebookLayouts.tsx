@@ -499,6 +499,11 @@ export const PAGE_SIZES = {
   "5.5x8.5": { width: 396, height: 612, label: '5.5×8.5" (Digest)' },
   "8.5x11": { width: 612, height: 792, label: '8.5×11" (Letter/Workbook)' },
   "8x8": { width: 576, height: 576, label: '8×8" (Square)' },
+  "a4": { width: 595, height: 842, label: 'A4 Portrait' },
+  "a4-landscape": { width: 842, height: 595, label: 'A4 Landscape' },
+  "a5": { width: 420, height: 595, label: 'A5 Portrait' },
+  "letter-landscape": { width: 792, height: 612, label: 'Letter Landscape' },
+  "16x9": { width: 960, height: 540, label: '16:9 Landscape (Slides)' },
 } as const;
 
 export type PageSizeKey = keyof typeof PAGE_SIZES;
