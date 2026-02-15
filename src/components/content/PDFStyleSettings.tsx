@@ -17,6 +17,7 @@ export interface PDFStyleConfig {
   includeToc: boolean;
   headerText: string;
   footerText: string;
+  pageSize: "6x9" | "5.5x8.5" | "8.5x11" | "8x8";
 }
 
 const DEFAULT_CONFIG: PDFStyleConfig = {
@@ -28,6 +29,7 @@ const DEFAULT_CONFIG: PDFStyleConfig = {
   includeToc: true,
   headerText: "",
   footerText: "",
+  pageSize: "6x9",
 };
 
 interface Props {
@@ -118,6 +120,22 @@ export function PDFStyleSettings({ config, onChange }: Props) {
                   <SelectContent>
                     <SelectItem value="single">Single Column</SelectItem>
                     <SelectItem value="two-column">Two Column</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Page Size */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Page Size</Label>
+                <Select value={config.pageSize} onValueChange={(v) => update({ pageSize: v as PDFStyleConfig["pageSize"] })}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="6x9">6×9" (Standard Ebook)</SelectItem>
+                    <SelectItem value="5.5x8.5">5.5×8.5" (Digest)</SelectItem>
+                    <SelectItem value="8.5x11">8.5×11" (Workbook)</SelectItem>
+                    <SelectItem value="8x8">8×8" (Square)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
