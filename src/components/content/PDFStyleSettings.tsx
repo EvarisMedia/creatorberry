@@ -17,7 +17,7 @@ export interface PDFStyleConfig {
   includeToc: boolean;
   headerText: string;
   footerText: string;
-  pageSize: "6x9" | "5.5x8.5" | "8.5x11" | "8x8";
+  pageSize: "6x9" | "5.5x8.5" | "8.5x11" | "8x8" | "a4" | "a4-landscape" | "a5" | "letter-landscape" | "16x9";
 }
 
 const DEFAULT_CONFIG: PDFStyleConfig = {
@@ -136,6 +136,11 @@ export function PDFStyleSettings({ config, onChange }: Props) {
                     <SelectItem value="5.5x8.5">5.5×8.5" (Digest)</SelectItem>
                     <SelectItem value="8.5x11">8.5×11" (Workbook)</SelectItem>
                     <SelectItem value="8x8">8×8" (Square)</SelectItem>
+                    <SelectItem value="a4">A4 Portrait</SelectItem>
+                    <SelectItem value="a4-landscape">A4 Landscape</SelectItem>
+                    <SelectItem value="a5">A5 Portrait</SelectItem>
+                    <SelectItem value="letter-landscape">Letter Landscape</SelectItem>
+                    <SelectItem value="16x9">16:9 Landscape (Slides)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

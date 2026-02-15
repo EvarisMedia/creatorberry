@@ -20,7 +20,7 @@ import {
   LayoutDashboard, Settings, Plus, LogOut, ChevronDown, Shield, Loader2,
   Lightbulb, FileText, BookOpen, ArrowLeft, Sparkles, PenTool, Check, Trash2, RefreshCw,
   Palette, Download, ShoppingCart, Rocket, Library, HelpCircle, ImageIcon, ImagePlus,
-  CheckCircle2, Circle, Upload,
+  CheckCircle2, Circle, Upload, Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { downloadImageBlob } from "@/lib/downloadImage";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
@@ -71,6 +71,8 @@ const ContentEditorPage = () => {
   const [pdfStyleConfig, setPdfStyleConfig] = useState<PDFStyleConfig>(DEFAULT_PDF_STYLE_CONFIG);
   const [editorTab, setEditorTab] = useState("edit");
   const [designedPages, setDesignedPages] = useState<EbookPageData[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [sectionSidebarCollapsed, setSectionSidebarCollapsed] = useState(false);
 
   // AI Edit state
   const [selectedText, setSelectedText] = useState("");
@@ -281,13 +283,30 @@ const ContentEditorPage = () => {
     loadPageLayouts();
   }, [currentModeContents[0]?.id]);
 
+  // Escape key exits fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) setIsFullscreen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
+
+  // Auto-collapse section sidebar in visual/preview tabs
+  useEffect(() => {
+    if (editorTab === "page-design" || editorTab === "preview") {
+      setSectionSidebarCollapsed(true);
+    }
+  }, [editorTab]);
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
-      {/* Sidebar */}
+      {/* Sidebar - hidden in fullscreen */}
+      {!isFullscreen && (
       <aside className="w-64 bg-card border-r border-border flex flex-col shadow-sm">
         <div className="p-3 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
@@ -349,11 +368,12 @@ const ContentEditorPage = () => {
           </div>
         </div>
       </aside>
+      )}
 
       {/* Main content area with section sidebar */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Section Navigation Sidebar */}
-        {allSections.length > 0 && (
+      <div className={`flex-1 flex overflow-hidden ${isFullscreen ? "fixed inset-0 z-50 bg-background" : ""}`}>
+        {/* Section Navigation Sidebar - collapsible */}
+        {!isFullscreen && allSections.length > 0 && !sectionSidebarCollapsed && (
           <aside className="w-60 bg-card border-r border-border flex flex-col">
             <div className="p-3 border-b border-border">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sections</h3>
@@ -412,12 +432,20 @@ const ContentEditorPage = () => {
 
         {/* Editor area */}
         <main className="flex-1 overflow-auto">
-          <header className="p-6 bg-card border-b border-border">
+          <header className={`p-6 bg-card border-b border-border ${isFullscreen ? "p-4" : ""}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
+                {/* Section sidebar toggle */}
+                {!isFullscreen && allSections.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setSectionSidebarCollapsed(!sectionSidebarCollapsed)} title={sectionSidebarCollapsed ? "Show sections" : "Hide sections"}>
+                    {sectionSidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+                  </Button>
+                )}
+                {!isFullscreen && (
+                  <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+                    <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                )}
                 <div>
                   <h1 className="text-2xl font-semibold">{section?.title || "Content Editor"}</h1>
                   <p className="text-muted-foreground text-sm">
@@ -426,6 +454,13 @@ const ContentEditorPage = () => {
                   </p>
                 </div>
               </div>
+              {/* Fullscreen toggle */}
+              {(editorTab === "page-design" || editorTab === "preview") && (
+                <Button variant="outline" size="sm" onClick={() => setIsFullscreen(!isFullscreen)}>
+                  {isFullscreen ? <Minimize2 className="w-4 h-4 mr-1" /> : <Maximize2 className="w-4 h-4 mr-1" />}
+                  {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                </Button>
+              )}
             </div>
           </header>
 
@@ -504,10 +539,21 @@ const ContentEditorPage = () => {
                 ) : (
                   <Tabs value={editorTab} onValueChange={setEditorTab}>
                     <TabsList>
-                      <TabsTrigger value="edit">Edit</TabsTrigger>
-                      <TabsTrigger value="page-design">Page Design</TabsTrigger>
-                      <TabsTrigger value="preview">Preview</TabsTrigger>
+                      <TabsTrigger value="edit">
+                        <PenTool className="w-3 h-3 mr-1" /> Edit Content
+                      </TabsTrigger>
+                      <TabsTrigger value="page-design">
+                        <Palette className="w-3 h-3 mr-1" /> Visual Designer
+                      </TabsTrigger>
+                      <TabsTrigger value="preview">
+                        <BookOpen className="w-3 h-3 mr-1" /> Preview
+                      </TabsTrigger>
                     </TabsList>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {editorTab === "edit" && "Write and edit your raw content"}
+                      {editorTab === "page-design" && "Design your pages visually — click text to edit inline"}
+                      {editorTab === "preview" && "See how your export will look"}
+                    </p>
 
                     <TabsContent value="edit">
                       <div className="space-y-4">
