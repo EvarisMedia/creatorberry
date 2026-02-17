@@ -1,107 +1,112 @@
 
 
-# Fix: Image Dialog Scrollability, Aspect Ratio, Custom Prompts, and PDF Export
+# Fix: Download Button in Export History Re-generates Instead of Downloading
 
-## Issues Identified
+## Problem
+The "Download" button in Export History (line 407 of `ExportCenter.tsx`) calls `exportProduct.mutate(...)`, which triggers a full re-generation of the export via the edge function. This is slow, wasteful, and confusing -- the user expects an instant download of the already-generated file.
 
-### 1. Image Generation Dialog Not Scrollable
-The `GenerateSectionImageDialog` uses `DialogContent` with `max-w-lg` but no scroll container. When the generated image preview appears at the bottom, the dialog overflows the viewport and users cannot scroll to see the generate button or the image.
+Additionally, since `exportProduct.isPending` is a single boolean shared across all rows, clicking download on one row makes ALL download buttons show the spinning loader.
 
-### 2. Aspect Ratio Not Applied
-The `aspect_ratio` value is sent to the edge function and included in the prompt text, but image generation models (Gemini) do not reliably follow aspect ratio instructions from prompt text alone. The aspect ratio is only a suggestion in the prompt, not enforced via API parameters.
+## Root Cause
+Exports are generated on-the-fly and streamed back as content in the response. The `file_url` column in `product_exports` is always `null` -- no file is actually stored for later retrieval.
 
-### 3. No Custom Prompt Option
-Users can only generate images based on predefined types (infographic, illustration, diagram, etc.). There is no way to enter a completely custom concept or idea for the image.
+## Solution
 
-### 4. PDF Export Fails with "Failed to generate HTML"
-The PDF export path (lines 328-368 in `export-product/index.ts`) sends the full markdown (which includes massive base64 image data URLs) to the AI model to convert to HTML. The base64 images in the content make the payload enormous, causing the AI API call to fail. The error message "Failed to generate HTML" is thrown at line 360.
+### Approach: Store export content in file storage on first generation, download from storage on subsequent clicks
 
-### 5. Page Design in Exports
-Currently, the export function generates content from raw markdown stored in `expanded_content`. It does not use the page layouts from the Designer tab. The page layouts (stored as `page_layouts` JSONB) are a separate visual representation. The current export will reflect the written content but NOT the visual page designs.
+1. **Edge function change** (`supabase/functions/export-product/index.ts`):
+   - After generating the export content, upload the file to a `product-exports` storage bucket
+   - Update the `product_exports` row with the storage path in `file_url` and actual `file_size`
+   - Continue returning content in the response for the initial download (no behavior change for first export)
 
----
+2. **Add a `downloadExport` mutation** (`src/hooks/useProductExports.tsx`):
+   - New mutation that checks if the export has a `file_url`
+   - If yes: generate a signed URL from storage and trigger download directly (instant)
+   - If no (legacy exports): fall back to calling `exportProduct.mutate()` to re-generate
 
-## Fixes
+3. **Update Export History UI** (`src/pages/ExportCenter.tsx`):
+   - Replace the download button's `onClick` to call `downloadExport` instead of `exportProduct`
+   - Track per-row loading state (e.g., `downloadingId`) so only the clicked row shows a spinner
 
-### Fix 1: Make Dialog Scrollable
-**File: `src/components/content/GenerateSectionImageDialog.tsx`**
-- Wrap the dialog body content in a `ScrollArea` component with `max-h-[70vh]` so the content scrolls when the dialog is too tall (especially after an image is generated).
+### Files to Modify
 
-### Fix 2: Custom Prompt Image Type
-**File: `src/components/content/GenerateSectionImageDialog.tsx`**
-- Add a new image type `custom_concept` with label "Custom Concept" and description "Generate from your own idea or prompt"
-- When this type is selected, show a `Textarea` field for the user to enter their custom prompt/concept
-- Pass the custom prompt to the edge function
+1. **`supabase/functions/export-product/index.ts`**
+   - Create `product-exports` bucket if not exists (or use migration)
+   - After generating content, upload blob to storage at path `{user_id}/{export_id}.{extension}`
+   - Update the DB row with `file_url` and `file_size`
 
-**File: `supabase/functions/generate-image/index.ts`**
-- Add a `custom_concept` handler that builds a prompt combining the user's custom prompt with brand colors and style settings
+2. **`src/hooks/useProductExports.tsx`**
+   - Add `downloadExport` mutation that:
+     - Takes an export record
+     - If `file_url` exists: call `supabase.storage.from('product-exports').createSignedUrl(file_url, 3600)` and trigger download
+     - If not: fall back to `exportProduct.mutate()`
 
-### Fix 3: Fix PDF Export
-**File: `supabase/functions/export-product/index.ts`**
-- Before sending markdown to the AI for HTML conversion, strip out base64 image data URLs and replace them with placeholder references
-- After getting the HTML back, restore the image references
-- This prevents the massive payload from breaking the AI API call
-- Add better error handling with response content-type checking
+3. **`src/pages/ExportCenter.tsx`**
+   - Wire the download button to call `downloadExport.mutate(exp)` instead of `exportProduct.mutate(...)`
+   - Track `downloadingId` state so only the active row shows the spinner
 
-### Fix 4: Aspect Ratio Note
-The aspect ratio limitation is inherent to how AI image generation works -- text prompts cannot enforce exact pixel ratios. The current implementation already includes the ratio in the prompt, which is the best approach available. No code change needed, but we should note this is a best-effort setting in the UI.
-
----
+### Database Migration
+- Create a storage bucket `product-exports` (private) with appropriate RLS policies so users can only access their own exports
 
 ## Technical Details
 
-### Scrollable Dialog
-```tsx
-<DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+### Storage bucket setup (migration):
+```sql
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('product-exports', 'product-exports', false)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Users can read own exports"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'product-exports' AND (storage.foldername(name))[1] = auth.uid()::text);
 ```
 
-### Custom Concept Image Type
-Add to `IMAGE_TYPES` array:
+### Download mutation (useProductExports.tsx):
 ```typescript
-{ value: "custom_concept", label: "Custom Concept", description: "Generate from your own idea or prompt" }
+const downloadExport = useMutation({
+  mutationFn: async (exp: ProductExport) => {
+    if (!exp.file_url) {
+      // Legacy: re-generate
+      throw new Error("NO_FILE");
+    }
+    const { data, error } = await supabase.storage
+      .from("product-exports")
+      .createSignedUrl(exp.file_url, 3600);
+    if (error) throw error;
+    return { url: data.signedUrl, title: exp.title, format: exp.format };
+  },
+  onSuccess: (data) => {
+    const a = document.createElement("a");
+    a.href = data.url;
+    a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.${data.format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success("Download started!");
+  },
+  onError: (error, exp) => {
+    if (error.message === "NO_FILE") {
+      // Fallback: re-export
+      exportProduct.mutate({ outlineId: exp.product_outline_id, format: exp.format, settings: exp.export_settings || {} });
+    } else {
+      toast.error("Download failed: " + error.message);
+    }
+  },
+});
 ```
 
-Add a `Textarea` that appears when `imageType === "custom_concept"`, and send its value as `custom_prompt` to the edge function.
-
-In the edge function, add before the existing `custom_prompt` fallback:
+### Edge function upload snippet:
 ```typescript
-else if (image_type === "custom_concept") {
-  prompt = `Create a professional image based on the following concept:
-  "${custom_context || custom_prompt}"
-  Brand colors: ${brand.primary_color}, ${brand.secondary_color}
-  Style: ${style}
-  ${aspect_ratio ? `Aspect ratio: ${aspect_ratio}` : ''}`;
+// After generating content, upload to storage
+const filePath = `${userId}/${exportId}.${extension}`;
+const { error: uploadError } = await supabaseAdmin.storage
+  .from("product-exports")
+  .upload(filePath, contentBlob, { contentType: mimeType, upsert: true });
+
+if (!uploadError) {
+  await supabaseAdmin.from("product_exports")
+    .update({ file_url: filePath, file_size: contentBlob.size })
+    .eq("id", exportId);
 }
 ```
-
-### PDF Export Fix
-Strip base64 images before AI conversion:
-```typescript
-// Before sending to AI
-const imageRefs: Record<string, string> = {};
-let cleanMarkdown = markdown.replace(
-  /!\[([^\]]*)\]\(data:image\/[^)]+\)/g,
-  (match, alt, offset) => {
-    const key = `__IMG_${Object.keys(imageRefs).length}__`;
-    imageRefs[key] = match;
-    return `![${alt}](${key})`;
-  }
-);
-
-// Send cleanMarkdown to AI...
-// After getting HTML back, restore images
-let html = data.choices?.[0]?.message?.content || "";
-for (const [key, original] of Object.entries(imageRefs)) {
-  const srcMatch = original.match(/\(([^)]+)\)/);
-  if (srcMatch) html = html.replaceAll(key, srcMatch[1]);
-}
-```
-
-### Files to Modify
-1. `src/components/content/GenerateSectionImageDialog.tsx` -- scrollable dialog, custom concept type
-2. `supabase/functions/generate-image/index.ts` -- custom_concept handler
-3. `supabase/functions/export-product/index.ts` -- strip base64 before AI call, restore after
-
-### Regarding Page Design in Exports
-The page layouts from the Designer tab are stored separately as JSONB and are not currently used in exports. Integrating them would be a larger feature (rendering each designed page to HTML/PDF). This can be addressed as a follow-up task.
 
