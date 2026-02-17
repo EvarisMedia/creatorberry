@@ -80,8 +80,10 @@ const ContentEditorPage = () => {
 
   // Cursor position for image insertion
   const [cursorPosition, setCursorPosition] = useState<number | null>(null);
+  const cursorPosRef = useRef<number | null>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const designerInsertImageRef = useRef<((url: string) => void) | null>(null);
 
   // Gallery popover
   const [showGallery, setShowGallery] = useState(false);
@@ -157,9 +159,9 @@ const ContentEditorPage = () => {
   const handleInsertImage = async (imageUrl: string, altText?: string) => {
     const imageMarkdown = `\n\n![${altText || "Section Image"}](${imageUrl})\n`;
 
-    // If editing, insert at cursor position
+    // If editing, insert at cursor position (use ref which survives dialog focus steal)
     if (editingId && editTextareaRef.current) {
-      const pos = cursorPosition ?? editContent.length;
+      const pos = cursorPosRef.current ?? editContent.length;
       const before = editContent.slice(0, pos);
       const after = editContent.slice(pos);
       const newContent = before + imageMarkdown + after;
@@ -221,10 +223,12 @@ const ContentEditorPage = () => {
     }, 0);
   };
 
-  // Track cursor position
+  // Track cursor position - save in both state and ref so it survives dialog focus steal
   const handleTextareaSelect = () => {
     if (editTextareaRef.current) {
-      setCursorPosition(editTextareaRef.current.selectionStart);
+      const pos = editTextareaRef.current.selectionStart;
+      setCursorPosition(pos);
+      cursorPosRef.current = pos;
       const ta = editTextareaRef.current;
       const sel = editContent.slice(ta.selectionStart, ta.selectionEnd);
       setSelectedText(sel);
@@ -301,11 +305,9 @@ const ContentEditorPage = () => {
 
   // Handle image insertion routing based on active tab
   const handleImageInsertRouted = (imageUrl: string, altText?: string) => {
-    if (editorTab === "design" && designedPages.length > 0) {
+    if (editorTab === "design" && designerInsertImageRef.current) {
       // Insert into the designer's selected page image slot
-      // This is handled by the EbookPageDesigner internally
-      // We trigger it via the component's own image handling
-      handleInsertImage(imageUrl, altText);
+      designerInsertImageRef.current(imageUrl);
     } else {
       handleInsertImage(imageUrl, altText);
     }
@@ -593,10 +595,14 @@ const ContentEditorPage = () => {
                                   {/* Formatting Toolbar */}
                                   <ContentToolbar
                                     onFormat={handleFormat}
-                                    onInsertImage={() => {
-                                      const trigger = document.getElementById("generate-image-trigger");
-                                      trigger?.click();
-                                    }}
+                    onInsertImage={() => {
+                      // Save cursor position before dialog steals focus
+                      if (editTextareaRef.current) {
+                        cursorPosRef.current = editTextareaRef.current.selectionStart;
+                      }
+                      const trigger = document.getElementById("generate-image-trigger");
+                      trigger?.click();
+                    }}
                                     onUploadImage={() => fileInputRef.current?.click()}
                                     onGalleryImage={() => setShowGallery(true)}
                                     onAIEdit={() => {
@@ -646,10 +652,10 @@ const ContentEditorPage = () => {
                                           {sectionImages.map((img) => (
                                             <button
                                               key={img.id}
-                                              onClick={() => {
-                                                handleInsertImage(img.image_url, img.quote_text || section?.title);
-                                                setShowGallery(false);
-                                              }}
+                              onClick={() => {
+                                handleImageInsertRouted(img.image_url, img.quote_text || section?.title);
+                                setShowGallery(false);
+                              }}
                                               className="relative aspect-video rounded border border-border overflow-hidden hover:ring-2 hover:ring-primary transition-all"
                                             >
                                               <img src={img.image_url} alt="" className="w-full h-full object-cover" />
@@ -694,6 +700,7 @@ const ContentEditorPage = () => {
                           isFullscreen={isDesignerFullscreen}
                           onToggleFullscreen={() => setIsDesignerFullscreen(!isDesignerFullscreen)}
                           onPagesChange={(p) => setDesignedPages(p)}
+                          onRegisterInsertImage={(fn) => { designerInsertImageRef.current = fn; }}
                         />
                       ) : (
                         <div className="text-center py-12 text-muted-foreground">
@@ -711,7 +718,7 @@ const ContentEditorPage = () => {
                       section={section}
                       brand={currentBrand}
                       onImageGenerated={loadSectionImages}
-                      onInsertImage={handleInsertImage}
+                      onInsertImage={handleImageInsertRouted}
                     />
                   </div>
                 )}
@@ -722,7 +729,7 @@ const ContentEditorPage = () => {
                     section={section}
                     brand={currentBrand}
                     onImageGenerated={loadSectionImages}
-                    onInsertImage={handleInsertImage}
+                    onInsertImage={handleImageInsertRouted}
                   />
                 )}
 
@@ -755,7 +762,7 @@ const ContentEditorPage = () => {
                             <div className="flex items-center justify-between">
                               <Badge variant="outline" className="text-xs">{img.image_type}</Badge>
                               <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" title="Insert into content" onClick={() => handleInsertImage(img.image_url, img.quote_text || section?.title)}>
+                                <Button size="sm" variant="ghost" title="Insert into content" onClick={() => handleImageInsertRouted(img.image_url, img.quote_text || section?.title)}>
                                   <ImagePlus className="w-3 h-3" />
                                 </Button>
                                 <Button size="sm" variant="ghost" title="Download" onClick={() => downloadImageBlob(img.image_url, `${(img.quote_text || "image").replace(/\s+/g, "-")}.png`)}>
