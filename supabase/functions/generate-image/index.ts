@@ -185,6 +185,56 @@ Design requirements:
 - Suitable as an in-content illustration for an ebook or course
 ${aspect_ratio ? `- Use ${aspect_ratio} aspect ratio` : ''}
 - Ultra high resolution`;
+    } else if (image_type === "diagram") {
+      const subsectionsList = section_context?.subsections?.length
+        ? `\nSteps/elements to include:\n${section_context.subsections.map((s: string) => `- ${s}`).join("\n")}`
+        : "";
+      prompt = `Create a clean, professional process or concept diagram with the following specifications:
+- Brand: ${brand.name}
+- Primary color: ${brand.primary_color || "#000000"}
+- Secondary color: ${brand.secondary_color || "#ffffff"}
+- Tone: ${brand.tone || "professional"}
+- Style: ${style}
+- Topic: "${section_context?.title || quote_text}"
+${section_context?.description ? `- Description: "${section_context.description}"` : ""}
+${subsectionsList}
+${custom_context ? `- Additional context: ${custom_context}` : ""}
+
+Design requirements:
+- Clean flowchart or process diagram layout
+- Labeled steps, nodes, and directional arrows
+- ${style} design aesthetic
+- Brand colors as dominant palette
+- Easy to read and follow
+- No lengthy paragraphs — focus on labels and connections
+- Suitable as an in-content diagram for an ebook or course
+${aspect_ratio ? `- Use ${aspect_ratio} aspect ratio` : '- Horizontal format (16:9 aspect ratio)'}
+- Ultra high resolution`;
+    } else if (image_type === "concept_map") {
+      const concepts = section_context?.subsections?.length
+        ? section_context.subsections.join('", "')
+        : "";
+      prompt = `Create a visual concept map showing connections between ideas with the following specifications:
+- Brand: ${brand.name}
+- Primary color: ${brand.primary_color || "#000000"}
+- Secondary color: ${brand.secondary_color || "#ffffff"}
+- Tone: ${brand.tone || "professional"}
+- Style: ${style}
+- Central concept: "${section_context?.title || quote_text}"
+${section_context?.description ? `- Description: "${section_context.description}"` : ""}
+${concepts ? `- Key concepts to connect: "${concepts}"` : ""}
+${custom_context ? `- Additional context: ${custom_context}` : ""}
+
+Design requirements:
+- Central node with the main concept, branching out to related ideas
+- Clear visual connections and relationship lines between nodes
+- ${style} design aesthetic
+- Brand colors as dominant palette
+- Hierarchical or radial layout for clarity
+- No lengthy text — focus on concept labels and connections
+- Suitable as an in-content illustration for an ebook or course
+${aspect_ratio ? `- Use ${aspect_ratio} aspect ratio` : '- Horizontal format (16:9 aspect ratio)'}
+- Ultra high resolution`;
     } else if (custom_prompt) {
       prompt = custom_prompt;
     }
