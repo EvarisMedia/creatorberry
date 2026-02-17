@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, ImagePlus, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +21,7 @@ const IMAGE_TYPES = [
   { value: "diagram", label: "Diagram / Flowchart", description: "Process or concept diagram" },
   { value: "concept_map", label: "Concept Map", description: "Visual connections between ideas" },
   { value: "quote_card", label: "Quote Card", description: "Stylized quote or key takeaway card" },
+  { value: "custom_concept", label: "Custom Concept", description: "Generate from your own idea or prompt" },
 ];
 
 const STYLES = ["Modern", "Minimal", "Bold", "Elegant", "Tech", "Creative", "Watercolor", "3D Render", "Flat Design", "Vintage"];
@@ -59,11 +62,16 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
   const [style, setStyle] = useState("Modern");
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [extraContext, setExtraContext] = useState("");
+  const [customPrompt, setCustomPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!user) return;
+    if (imageType === "custom_concept" && !customPrompt.trim()) {
+      toast({ title: "Missing prompt", description: "Please enter your custom concept or idea.", variant: "destructive" });
+      return;
+    }
     setIsGenerating(true);
     setGeneratedImageUrl(null);
 
@@ -88,6 +96,7 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
           aspect_ratio: aspectRatio,
           section_context: sectionContext,
           ...(extraContext ? { custom_context: extraContext } : {}),
+          ...(imageType === "custom_concept" ? { custom_prompt: customPrompt } : {}),
         },
       });
 
@@ -95,7 +104,6 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
 
       const { image_url, prompt } = response.data;
 
-      // Save to database with section_id
       const { error: saveError } = await supabase
         .from("generated_images")
         .insert({
@@ -118,7 +126,6 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
       toast({ title: "Success", description: "Section image generated!" });
       onImageGenerated();
 
-      // Auto-insert into content
       if (onInsertImage) {
         onInsertImage(image_url, section.title);
       }
@@ -141,7 +148,7 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setGeneratedImageUrl(null); }}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setGeneratedImageUrl(null); setCustomPrompt(""); } }}>
       {!isControlled && (
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" id={triggerId}>
@@ -149,98 +156,113 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Generate Section Image</DialogTitle>
           <DialogDescription>Create an AI-generated image based on this section's content.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Section context preview */}
-          <div className="p-3 rounded-lg bg-muted/50 border border-border">
-            <p className="text-sm font-medium">{section.title}</p>
-            {section.description && <p className="text-xs text-muted-foreground mt-1">{section.description}</p>}
-            {section.subsections?.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {section.subsections.map((s, i) => <Badge key={i} variant="outline" className="text-xs">{s}</Badge>)}
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="space-y-4 pb-4">
+            {/* Section context preview */}
+            <div className="p-3 rounded-lg bg-muted/50 border border-border">
+              <p className="text-sm font-medium">{section.title}</p>
+              {section.description && <p className="text-xs text-muted-foreground mt-1">{section.description}</p>}
+              {section.subsections?.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {section.subsections.map((s, i) => <Badge key={i} variant="outline" className="text-xs">{s}</Badge>)}
+                </div>
+              )}
+            </div>
+
+            {/* Image Type */}
+            <div className="space-y-2">
+              <Label>Image Type</Label>
+              <Select value={imageType} onValueChange={setImageType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {IMAGE_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      <div>
+                        <div className="font-medium">{t.label}</div>
+                        <div className="text-xs text-muted-foreground">{t.description}</div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Custom Concept Prompt */}
+            {imageType === "custom_concept" && (
+              <div className="space-y-2">
+                <Label>Your Concept / Idea</Label>
+                <Textarea
+                  placeholder="Describe the image you want to create, e.g. 'A person climbing a mountain with a glowing light at the top representing achievement...'"
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  rows={3}
+                />
               </div>
             )}
-          </div>
 
-          {/* Image Type */}
-          <div className="space-y-2">
-            <Label>Image Type</Label>
-            <Select value={imageType} onValueChange={setImageType}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {IMAGE_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    <div>
-                      <div className="font-medium">{t.label}</div>
-                      <div className="text-xs text-muted-foreground">{t.description}</div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Style */}
-          <div className="space-y-2">
-            <Label>Style</Label>
-            <div className="flex flex-wrap gap-2">
-              {STYLES.map((s) => (
-                <Badge
-                  key={s}
-                  variant={style === s ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => setStyle(s)}
-                >
-                  {s}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Aspect Ratio */}
-          <div className="space-y-2">
-            <Label>Aspect Ratio</Label>
-            <Select value={aspectRatio} onValueChange={setAspectRatio}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {ASPECT_RATIOS.map((ar) => (
-                  <SelectItem key={ar.value} value={ar.value}>{ar.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Extra context */}
-          <div className="space-y-2">
-            <Label>Additional Context (optional)</Label>
-            <Input
-              placeholder="e.g. focus on mindset, include data visualization..."
-              value={extraContext}
-              onChange={(e) => setExtraContext(e.target.value)}
-            />
-          </div>
-
-          {/* Generated image preview */}
-          {generatedImageUrl && (
+            {/* Style */}
             <div className="space-y-2">
-              <img src={generatedImageUrl} alt="Generated section image" className="w-full rounded-lg border border-border" />
-              <Button variant="outline" size="sm" onClick={handleDownload} className="w-full">
-                <Download className="w-4 h-4 mr-2" /> Download Image
-              </Button>
+              <Label>Style</Label>
+              <div className="flex flex-wrap gap-2">
+                {STYLES.map((s) => (
+                  <Badge
+                    key={s}
+                    variant={style === s ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setStyle(s)}
+                  >
+                    {s}
+                  </Badge>
+                ))}
+              </div>
             </div>
-          )}
 
-          {/* Generate button */}
-          <Button onClick={handleGenerate} disabled={isGenerating} className="w-full">
-            {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ImagePlus className="w-4 h-4 mr-2" />}
-            {isGenerating ? "Generating..." : "Generate Image"}
-          </Button>
-        </div>
+            {/* Aspect Ratio */}
+            <div className="space-y-2">
+              <Label>Aspect Ratio <span className="text-xs text-muted-foreground">(best-effort)</span></Label>
+              <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ASPECT_RATIOS.map((ar) => (
+                    <SelectItem key={ar.value} value={ar.value}>{ar.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Extra context */}
+            <div className="space-y-2">
+              <Label>Additional Context (optional)</Label>
+              <Input
+                placeholder="e.g. focus on mindset, include data visualization..."
+                value={extraContext}
+                onChange={(e) => setExtraContext(e.target.value)}
+              />
+            </div>
+
+            {/* Generated image preview */}
+            {generatedImageUrl && (
+              <div className="space-y-2">
+                <img src={generatedImageUrl} alt="Generated section image" className="w-full rounded-lg border border-border" />
+                <Button variant="outline" size="sm" onClick={handleDownload} className="w-full">
+                  <Download className="w-4 h-4 mr-2" /> Download Image
+                </Button>
+              </div>
+            )}
+
+            {/* Generate button */}
+            <Button onClick={handleGenerate} disabled={isGenerating} className="w-full">
+              {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ImagePlus className="w-4 h-4 mr-2" />}
+              {isGenerating ? "Generating..." : "Generate Image"}
+            </Button>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
