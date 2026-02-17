@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
+import { generatePDFFromPages, generatePDFFromMarkdown } from "@/lib/generatePDF";
+import { EbookPageData } from "@/components/content/ebookLayouts";
+import { PDFStyleConfig, DEFAULT_PDF_STYLE_CONFIG } from "@/components/content/PDFStyleSettings";
 
 export interface ProductExport {
   id: string;
@@ -50,6 +53,11 @@ export function useProductExports(brandId: string | undefined) {
       format: string;
       settings?: Record<string, unknown>;
     }) => {
+      // For PDF, try client-side generation first
+      if (format === "pdf") {
+        return await generatePDFClientSide(outlineId, settings);
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
@@ -75,7 +83,20 @@ export function useProductExports(brandId: string | undefined) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["product-exports", brandId] });
       
-      // Trigger download
+      if (data._pdfBlob) {
+        // Direct PDF blob download
+        const url = URL.createObjectURL(data._pdfBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("PDF downloaded successfully!");
+        return;
+      }
+
       let blob: Blob;
       if (data.encoding === "base64") {
         const binaryString = atob(data.content);
@@ -84,17 +105,6 @@ export function useProductExports(brandId: string | undefined) {
           bytes[i] = binaryString.charCodeAt(i);
         }
         blob = new Blob([bytes], { type: data.mimeType });
-      } else if (data.extension === "pdf") {
-        // PDF via print-styled HTML: open in new window for print-to-PDF
-        const printWindow = window.open("", "_blank");
-        if (printWindow) {
-          printWindow.document.write(data.content);
-          printWindow.document.close();
-          printWindow.focus();
-          printWindow.print();
-        }
-        toast.success("PDF print dialog opened!");
-        return;
       } else {
         blob = new Blob([data.content], { type: data.mimeType });
       }
@@ -145,17 +155,44 @@ export function useProductExports(brandId: string | undefined) {
     },
     onSuccess: async (data) => {
       if (data.format === "pdf") {
-        // PDF is stored as HTML - fetch and open print dialog
-        const response = await fetch(data.url);
-        const html = await response.text();
-        const printWindow = window.open("", "_blank");
-        if (printWindow) {
-          printWindow.document.write(html);
-          printWindow.document.close();
-          printWindow.focus();
-          printWindow.print();
+        // For PDF, fetch the HTML and re-generate as real PDF client-side
+        try {
+          const response = await fetch(data.url);
+          const html = await response.text();
+          
+          // Try to extract page data from the HTML to rebuild, 
+          // but for simplicity just download the HTML as-is with a .pdf-like approach
+          // Actually, generate a simple PDF from the text content
+          const tempDiv = document.createElement("div");
+          tempDiv.innerHTML = html;
+          const textContent = tempDiv.textContent || tempDiv.innerText || "";
+          
+          const pdfBlob = await generatePDFFromMarkdown(
+            textContent,
+            DEFAULT_PDF_STYLE_CONFIG,
+            data.title
+          );
+          
+          const url = URL.createObjectURL(pdfBlob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success("PDF downloaded!");
+        } catch (err) {
+          console.error("PDF re-generation failed, falling back:", err);
+          // Fallback: download the HTML file
+          const a = document.createElement("a");
+          a.href = data.url;
+          a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.html`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          toast.success("Downloaded as HTML (PDF generation failed)");
         }
-        toast.success("PDF print dialog opened!");
       } else {
         const a = document.createElement("a");
         a.href = data.url;
@@ -168,7 +205,6 @@ export function useProductExports(brandId: string | undefined) {
     },
     onError: (error: Error, exp: ProductExport) => {
       if (error.message === "NO_FILE") {
-        // Fallback: re-export for legacy records without stored file
         exportProduct.mutate({
           outlineId: exp.product_outline_id,
           format: exp.format,
@@ -181,4 +217,84 @@ export function useProductExports(brandId: string | undefined) {
   });
 
   return { exports, isLoading, exportProduct, deleteExport, downloadExport };
+}
+
+/**
+ * Client-side PDF generation: fetches page layouts from DB and uses jsPDF.
+ */
+async function generatePDFClientSide(
+  outlineId: string,
+  settings?: Record<string, unknown>
+): Promise<any> {
+  // Fetch outline with pdf_style_config
+  const { data: outline, error: outlineErr } = await supabase
+    .from("product_outlines")
+    .select("*, outline_sections(*)")
+    .eq("id", outlineId)
+    .single();
+
+  if (outlineErr || !outline) throw new Error("Outline not found");
+
+  const pdfStyle: PDFStyleConfig = {
+    ...DEFAULT_PDF_STYLE_CONFIG,
+    ...(outline.pdf_style_config as Partial<PDFStyleConfig> || {}),
+  };
+
+  const sections = (outline as any).outline_sections || [];
+  const sectionIds = sections.map((s: any) => s.id);
+
+  // Fetch expanded content with page_layouts
+  let allPages: EbookPageData[] = [];
+  if (sectionIds.length > 0) {
+    const { data: expandedContent } = await supabase
+      .from("expanded_content")
+      .select("*")
+      .in("outline_section_id", sectionIds)
+      .order("version", { ascending: false });
+
+    const contentMap: Record<string, any> = {};
+    for (const ec of (expandedContent || [])) {
+      if (!contentMap[ec.outline_section_id]) {
+        contentMap[ec.outline_section_id] = ec;
+      }
+    }
+
+    // Collect page layouts from all sections
+    for (const section of sections.sort((a: any, b: any) => a.sort_order - b.sort_order)) {
+      const ec = contentMap[section.id];
+      if (ec?.page_layouts && Array.isArray(ec.page_layouts) && ec.page_layouts.length > 0) {
+        allPages.push(...(ec.page_layouts as EbookPageData[]));
+      }
+    }
+  }
+
+  let pdfBlob: Blob;
+  if (allPages.length > 0) {
+    pdfBlob = await generatePDFFromPages(allPages, pdfStyle, outline.title);
+  } else {
+    // Fallback: also call edge function for markdown then convert
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-product`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ outlineId, format: "markdown", settings }),
+      }
+    );
+    if (!response.ok) throw new Error("Export failed");
+    const data = await response.json();
+    pdfBlob = await generatePDFFromMarkdown(data.content, pdfStyle, outline.title);
+  }
+
+  return {
+    _pdfBlob: pdfBlob,
+    title: outline.title,
+    extension: "pdf",
+  };
 }
