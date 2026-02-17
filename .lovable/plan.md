@@ -1,144 +1,166 @@
 
 
-# App Workflow Analysis and UX Improvements
+# Fix Build Errors + Visual Editor Improvements Inspired by Designrr
 
-## Current Workflow Assessment
+## Part 1: Fix All Build Errors (Critical)
 
-The app follows a solid 4-step linear workflow:
+The ContentEditor.tsx has 9 type errors from the recent AppLayout refactor where prop interfaces changed but the usage wasn't updated.
 
-```text
-Brand Setup --> Product Ideas --> Outlines --> Content Editor --> Export
-```
+### Error-by-Error Fixes
 
-This is logical and works. However, there are several structural and UX issues that make the app harder to use than it needs to be.
+**1. `GenerateSectionImageDialog` -- `onGenerated` prop doesn't exist (line 345)**
+The component's interface has `onImageGenerated` (no-arg callback) and `onInsertImage` (url callback). Fix: replace `onGenerated` with the correct props.
 
----
+**2. `EXPANSION_MODES` uses `.value` but the type has `.mode` (lines 472-490)**
+`EXPANSION_MODES` is defined as `{ mode, label, description, icon }` but ContentEditor references `.value`. Fix: change all `.value` references to `.mode`.
 
-## Issues Found (Ranked by Impact)
+**3. `ContentToolbar` missing required props (line 537)**
+ContentToolbar requires `onInsertImage, onUploadImage, onGalleryImage, onAIEdit, hasSelection`. Fix: pass all required props using existing handlers.
 
-### 1. No Shared Layout -- Sidebar Duplicated 12+ Times (HIGH)
-Every page (Dashboard, Product Ideas, Outlines, Export Center, Image Studio, Help, Settings, etc.) independently renders:
-- The full sidebar with navigation items
-- Brand selector dropdown
-- User profile section with sign-out
-- Auth guard logic (`useEffect` checking user/profile)
+**4. `AIEditToolbar` wrong props (line 541)**
+AIEditToolbar expects `{ selectedText, fullContent, brandContext, onApplyEdit, onClose }` but receives `{ selectedText, brandId, sectionId, onApply }`. Fix: pass the correct prop names and values.
 
-This means ~150 lines of identical boilerplate per page. If you add a nav item, you must update 12+ files.
-
-**Fix:** Create a single `AppLayout` component that wraps all authenticated pages. Each page only provides its content.
-
-### 2. Content Editor is Hidden from Navigation (MEDIUM)
-The Content Editor (the most complex and important page for actually writing content) has no sidebar link. Users can only reach it by:
-1. Going to Outlines
-2. Clicking into a specific outline
-3. Clicking the "Write Content" icon on a section card
-
-New users may not discover this path.
-
-**Fix:** Either add a "Content" entry to the sidebar, or show a more prominent "Continue Writing" card on the Dashboard linking to the last-edited section.
-
-### 3. No Progress Tracking Across Workflow (MEDIUM)
-The Dashboard shows raw counts (e.g., "5 Product Ideas", "3 Outlines") but no completion status. Users can't tell:
-- How many outline sections have content written
-- Which sections still need work
-- Overall product completion percentage
-
-**Fix:** Add a progress bar or completion indicator per outline on the Dashboard (e.g., "5 of 8 sections written").
-
-### 4. Inconsistent Empty/Error States (LOW)
-- Dashboard shows a styled CTA card when no brands exist
-- Product Ideas shows a different card style
-- Some pages just disable buttons silently with no guidance
-
-**Fix:** Standardize empty states to always show: icon, title, description, and a clear action button.
-
-### 5. No Mobile Responsiveness (LOW)
-The 264px fixed sidebar doesn't collapse on smaller screens. There's no hamburger menu or mobile navigation.
-
-**Fix:** Add a collapsible sidebar with a hamburger toggle for screens under 768px.
+**5. `EbookPageDesigner` wrong props (line 573)**
+The component doesn't accept `sectionImages`, `savedPages`, or `onInsertImageRef`. Its actual interface has `pageSize`, `brandContext`, `brand`, `section`, `onPagesChange`, `onRegisterInsertImage`. Fix: align props to the actual interface.
 
 ---
 
-## Recommended Implementation Plan
+## Part 2: Designrr-Inspired Visual Editor Improvements
 
-### Phase 1: Shared Layout Component (Biggest Impact)
+After analyzing Designrr's workflow, here are the key UX patterns worth adopting:
 
-Create `src/components/layout/AppLayout.tsx`:
-- Accepts `title`, `subtitle`, `headerActions` as props
-- Renders sidebar, brand selector, user profile, auth guards
-- Each page becomes ~50-80% smaller
+### What Designrr Does Well
+1. **Template-First Approach**: Users pick a full-page template BEFORE content is placed, giving immediate visual satisfaction
+2. **One-Click Content Flow**: Content auto-fills into chosen templates -- no manual copy-paste
+3. **Drag-and-Drop Element Editing**: Individual elements (text blocks, images) can be moved/resized on-page
+4. **Live Preview While Editing**: Changes appear in real-time on the actual page, not in a separate textarea
+5. **100+ Professional Templates**: Rich template library with categories (Minimal, Bold, Elegant, etc.)
 
-Refactor pages one at a time to use `AppLayout`, starting with simpler ones (Help, Settings, Export Center) then working up to complex ones (ContentEditor, ProductIdeas).
+### Improvements We Can Apply
 
-### Phase 2: Workflow Continuity
+**A. Template Gallery for New Pages (instead of blank "full-text" default)**
+When users click "Add Page", show the PageLayoutPicker dialog instead of silently adding a blank page. This mirrors Designrr's template-first UX.
 
-- Add a "Continue Working" section to the Dashboard that shows the most recent outline with section-level progress
-- Add breadcrumbs in Content Editor: `Outlines > [Outline Title] > [Section Title]`
-- Show per-outline completion percentage on the Outlines list page
+**B. Inline WYSIWYG Editing on the Page (instead of contentEditable plain text)**
+Currently, clicking text on a page makes it editable via `contentEditable` divs. Enhance this with:
+- Visual formatting toolbar that appears above the selected text block
+- Clear visual borders around the active text block
+- Better placeholder text for empty fields
 
-### Phase 3: Empty State Standardization
+**C. Image Slot Improvements**
+When an image slot is empty, show a prominent placeholder with clear action buttons (Generate / Upload / Browse Gallery) -- similar to Designrr's image placeholder cards.
 
-- Create a reusable `EmptyState` component with icon, title, description, and action props
-- Replace all ad-hoc empty states across pages
-
-### Phase 4: Mobile Navigation
-
-- Make sidebar collapsible with state stored in localStorage
-- Add hamburger menu trigger for mobile viewports
-- Use the existing `use-mobile.tsx` hook
+**D. Template Style Themes**
+Add a "Theme" selector that applies coordinated color schemes, fonts, and background styles across all pages at once -- similar to Designrr's template categories.
 
 ---
 
 ## Technical Details
 
-### AppLayout Component Structure
-```text
-AppLayout
-  +-- Sidebar (shared)
-  |     +-- Logo
-  |     +-- Brand Selector
-  |     +-- Navigation Items (from shared constant)
-  |     +-- Admin Link (conditional)
-  |     +-- User Profile + Sign Out
-  +-- Main Content Area
-        +-- Header (title, subtitle, actions)
-        +-- children (page-specific content)
-```
+### ContentEditor.tsx Fixes
 
-### Files to Create
-- `src/components/layout/AppLayout.tsx` -- Main layout wrapper
-- `src/components/layout/EmptyState.tsx` -- Reusable empty state component
-- `src/components/layout/sidebarItems.ts` -- Single source of truth for nav items
-
-### Files to Modify (Phase 1 -- one at a time)
-- `src/pages/Dashboard.tsx`
-- `src/pages/ProductIdeas.tsx`
-- `src/pages/ProductOutline.tsx`
-- `src/pages/ContentEditor.tsx`
-- `src/pages/ExportCenter.tsx`
-- `src/pages/ImageStudio.tsx`
-- `src/pages/Help.tsx`
-- `src/pages/Settings.tsx`
-- `src/pages/KDPPublisher.tsx`
-- `src/pages/SalesPageBuilder.tsx`
-- `src/pages/LaunchToolkit.tsx`
-- `src/pages/TemplateLibrary.tsx`
-
-### Auth Guard Centralization
-Move the repeated auth check pattern into `AppLayout`:
 ```typescript
-useEffect(() => {
-  if (!isLoading && !user) navigate("/auth");
-  if (!isLoading && user && !profile?.is_approved) navigate("/pending-approval");
-}, [user, profile, isLoading, navigate]);
+// Fix 1: GenerateSectionImageDialog props
+<GenerateSectionImageDialog
+  section={section}
+  brand={currentBrand}
+  onImageGenerated={() => loadSectionImages()}
+  onInsertImage={(url) => handleImageInsertRouted(url)}
+/>
+
+// Fix 2: EXPANSION_MODES -- change .value to .mode
+{EXPANSION_MODES.map((m) => (
+  <Button key={m.mode} variant={activeMode === m.mode ? "default" : "outline"} ...>
+    {m.label}
+    {getContentByMode(m.mode).length > 0 && ...}
+  </Button>
+))}
+
+// Fix 3: ContentToolbar -- pass all required props
+<ContentToolbar
+  onFormat={handleFormat}
+  onInsertImage={() => { /* trigger generate dialog */ }}
+  onUploadImage={() => fileInputRef.current?.click()}
+  onGalleryImage={() => setShowGallery(true)}
+  onAIEdit={() => setShowAIEdit(true)}
+  hasSelection={selectedText.length > 0}
+/>
+
+// Fix 4: AIEditToolbar -- use correct prop names
+<AIEditToolbar
+  selectedText={selectedText}
+  fullContent={editContent}
+  brandContext={{
+    name: currentBrand?.name,
+    tone: currentBrand?.tone,
+    writing_style: currentBrand?.writing_style,
+    about: currentBrand?.about,
+    target_audience: currentBrand?.target_audience,
+  }}
+  onApplyEdit={handleApplyAIEdit}
+  onClose={() => setShowAIEdit(false)}
+/>
+
+// Fix 5: EbookPageDesigner -- use actual interface props
+<EbookPageDesigner
+  content={currentModeContents[0].content}
+  contentId={currentModeContents[0].id}
+  sectionTitle={section.title}
+  pageSize={pdfStyleConfig.pageSize as PageSizeKey}
+  pdfStyle={pdfStyleConfig}
+  brand={currentBrand}
+  section={section}
+  isFullscreen={isDesignerFullscreen}
+  onToggleFullscreen={() => setIsDesignerFullscreen(!isDesignerFullscreen)}
+  onPagesChange={setDesignedPages}
+  onRegisterInsertImage={(fn) => { designerInsertImageRef.current = fn; }}
+/>
 ```
 
-This eliminates the need for every page to include this code.
+### EbookPageDesigner.tsx -- Template-First Add Page
 
-### Dashboard Progress Enhancement
-Query section content status to show:
-```text
-[Outline Title]
-[=======>        ] 5/8 sections  |  Continue Writing -->
+Change `addPage()` to open the layout picker instead of silently adding a blank page:
+
+```typescript
+const addPage = (layout: LayoutType = "full-text") => {
+  const newPage: EbookPageData = {
+    id: crypto.randomUUID(),
+    layout,
+    content: { heading: "New Page", body: "" },
+    order: pages.length,
+  };
+  // ... insert after selected page
+};
 ```
+
+Show the layout picker when "Add Page" is clicked, then call `addPage(selectedLayout)`.
+
+### EbookPageDesigner.tsx -- Better Image Placeholders
+
+In ebookLayouts.tsx, update image slot rendering to show a styled placeholder card with action buttons when no image URL is set:
+
+```tsx
+{content.image ? (
+  <img src={content.image} ... />
+) : (
+  <div className="flex flex-col items-center justify-center h-full bg-muted/30 border-2 border-dashed border-border rounded-lg gap-2 p-4">
+    <ImagePlus className="w-8 h-8 text-muted-foreground/40" />
+    <span className="text-xs text-muted-foreground">Click to add image</span>
+    {editable && onImageAction && (
+      <div className="flex gap-2">
+        <button onClick={() => onImageAction("generate")}>Generate</button>
+        <button onClick={() => onImageAction("upload")}>Upload</button>
+      </div>
+    )}
+  </div>
+)}
+```
+
+---
+
+## Files to Modify
+
+1. **`src/pages/ContentEditor.tsx`** -- Fix all 9 build errors (prop mismatches)
+2. **`src/components/content/EbookPageDesigner.tsx`** -- Template-first add page, better image placeholders
+3. **`src/components/content/ebookLayouts.tsx`** -- Enhanced image placeholder rendering with action buttons
 
