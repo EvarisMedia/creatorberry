@@ -40,6 +40,7 @@ export function EbookPageDesigner({
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedPageIndex, setSelectedPageIndex] = useState(0);
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
+  const [showAddPagePicker, setShowAddPagePicker] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -176,10 +177,10 @@ export function EbookPageDesigner({
   };
 
   // Page management
-  const addPage = () => {
+  const addPage = (layout: LayoutType = "full-text") => {
     const newPage: EbookPageData = {
       id: crypto.randomUUID(),
-      layout: "full-text",
+      layout,
       content: { heading: "New Page", body: "" },
       order: pages.length,
     };
@@ -340,7 +341,7 @@ export function EbookPageDesigner({
             </Button>
           )}
           <div className="w-px h-4 bg-border mx-1" />
-          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={addPage} title="Add page after current">
+          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => setShowAddPagePicker(true)} title="Add page after current">
             <Plus className="w-3 h-3" />
           </Button>
           <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={duplicatePage} title="Duplicate current page">
@@ -432,6 +433,14 @@ export function EbookPageDesigner({
           onSelect={handleLayoutChange}
         />
       )}
+
+      {/* Add Page layout picker */}
+      <PageLayoutPicker
+        open={showAddPagePicker}
+        onClose={() => setShowAddPagePicker(false)}
+        currentLayout="full-text"
+        onSelect={(layout) => addPage(layout)}
+      />
 
       {/* Image generate dialog */}
       {section && brand && (
