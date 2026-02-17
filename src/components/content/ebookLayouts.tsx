@@ -1,5 +1,5 @@
 import React from "react";
-
+import { ImagePlus } from "lucide-react";
 export interface PageContent {
   heading?: string;
   subheading?: string;
@@ -264,8 +264,25 @@ function ImageSlot({
       {src ? (
         <img src={src} alt="" className="w-full h-full object-cover rounded" />
       ) : (
-        <div className={`w-full h-full ${editable ? "border-2 border-dashed border-primary/30" : "bg-muted"} rounded flex items-center justify-center text-muted-foreground text-xs`}>
-          {editable ? "Click to add image" : "Image"}
+        <div className={`w-full h-full ${editable ? "border-2 border-dashed border-primary/30 bg-muted/30" : "bg-muted"} rounded flex flex-col items-center justify-center gap-2 p-4`}>
+          <ImagePlus className="w-8 h-8 text-muted-foreground/40" />
+          <span className="text-xs text-muted-foreground">{editable ? "Click to add image" : "Image"}</span>
+          {editable && onImageAction && (
+            <div className="flex gap-1.5 mt-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onImageAction("generate"); }}
+                className="px-2.5 py-1 text-[10px] font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+              >
+                Generate
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onImageAction("upload"); }}
+                className="px-2.5 py-1 text-[10px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors"
+              >
+                Upload
+              </button>
+            </div>
+          )}
         </div>
       )}
       {editable && hovered && (

@@ -342,10 +342,8 @@ const ContentEditorPage = () => {
               <GenerateSectionImageDialog
                 section={section}
                 brand={currentBrand}
-                onGenerated={(url) => {
-                  handleImageInsertRouted(url);
-                  loadSectionImages();
-                }}
+                onImageGenerated={() => loadSectionImages()}
+                onInsertImage={(url) => handleImageInsertRouted(url)}
               />
               <input
                 ref={fileInputRef}
@@ -467,16 +465,16 @@ const ContentEditorPage = () => {
                 <TabsContent value="edit" className="space-y-4 mt-4">
                   {/* Expansion mode buttons */}
                   <div className="flex flex-wrap gap-2">
-                    {EXPANSION_MODES.map((mode) => (
+                  {EXPANSION_MODES.map((m) => (
                       <Button
-                        key={mode.value}
-                        variant={activeMode === mode.value ? "default" : "outline"}
+                        key={m.mode}
+                        variant={activeMode === m.mode ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setActiveMode(mode.value)}
+                        onClick={() => setActiveMode(m.mode)}
                       >
-                        {mode.label}
-                        {getContentByMode(mode.value).length > 0 && (
-                          <Badge variant="secondary" className="ml-1.5 text-xs">{getContentByMode(mode.value).length}</Badge>
+                        {m.label}
+                        {getContentByMode(m.mode).length > 0 && (
+                          <Badge variant="secondary" className="ml-1.5 text-xs">{getContentByMode(m.mode).length}</Badge>
                         )}
                       </Button>
                     ))}
@@ -487,7 +485,7 @@ const ContentEditorPage = () => {
                     <Card>
                       <CardContent className="p-8 text-center">
                         <Sparkles className="w-12 h-12 mx-auto mb-4 text-muted-foreground/40" />
-                        <h3 className="text-lg font-semibold mb-2">Generate {EXPANSION_MODES.find(m => m.value === activeMode)?.label} Content</h3>
+                        <h3 className="text-lg font-semibold mb-2">Generate {EXPANSION_MODES.find(m => m.mode === activeMode)?.label} Content</h3>
                         <p className="text-muted-foreground mb-4 text-sm">
                           AI will write content for this section using your brand voice.
                         </p>
@@ -534,13 +532,27 @@ const ContentEditorPage = () => {
                       <CardContent className="px-4 pb-4">
                         {editingId === content.id ? (
                           <div className="space-y-2">
-                            <ContentToolbar onFormat={handleFormat} />
-                            {selectedText && (
+                            <ContentToolbar
+                              onFormat={handleFormat}
+                              onInsertImage={() => document.getElementById("generate-section-image-trigger")?.click()}
+                              onUploadImage={() => fileInputRef.current?.click()}
+                              onGalleryImage={() => setShowGallery(true)}
+                              onAIEdit={() => setShowAIEdit(!showAIEdit)}
+                              hasSelection={selectedText.length > 0}
+                            />
+                            {showAIEdit && selectedText && (
                               <AIEditToolbar
                                 selectedText={selectedText}
-                                brandId={currentBrand?.id || ""}
-                                sectionId={sectionId || ""}
-                                onApply={handleApplyAIEdit}
+                                fullContent={editContent}
+                                brandContext={{
+                                  name: currentBrand?.name,
+                                  tone: currentBrand?.tone,
+                                  writing_style: currentBrand?.writing_style,
+                                  about: currentBrand?.about,
+                                  target_audience: currentBrand?.target_audience,
+                                }}
+                                onApplyEdit={handleApplyAIEdit}
+                                onClose={() => setShowAIEdit(false)}
                               />
                             )}
                             <textarea
@@ -570,11 +582,13 @@ const ContentEditorPage = () => {
                       contentId={currentModeContents[0].id}
                       pdfStyle={pdfStyleConfig}
                       sectionTitle={section.title}
-                      sectionImages={sectionImages}
-                      savedPages={designedPages}
+                      pageSize={pdfStyleConfig.pageSize as PageSizeKey}
+                      brand={currentBrand}
+                      section={section}
                       isFullscreen={isDesignerFullscreen}
                       onToggleFullscreen={() => setIsDesignerFullscreen(!isDesignerFullscreen)}
-                      onInsertImageRef={designerInsertImageRef}
+                      onPagesChange={setDesignedPages}
+                      onRegisterInsertImage={(fn) => { designerInsertImageRef.current = fn; }}
                     />
                   ) : (
                     <Card>
