@@ -143,14 +143,28 @@ export function useProductExports(brandId: string | undefined) {
       if (error) throw error;
       return { url: data.signedUrl, title: exp.title, format: exp.format };
     },
-    onSuccess: (data) => {
-      const a = document.createElement("a");
-      a.href = data.url;
-      a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.${data.format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      toast.success("Download started!");
+    onSuccess: async (data) => {
+      if (data.format === "pdf") {
+        // PDF is stored as HTML - fetch and open print dialog
+        const response = await fetch(data.url);
+        const html = await response.text();
+        const printWindow = window.open("", "_blank");
+        if (printWindow) {
+          printWindow.document.write(html);
+          printWindow.document.close();
+          printWindow.focus();
+          printWindow.print();
+        }
+        toast.success("PDF print dialog opened!");
+      } else {
+        const a = document.createElement("a");
+        a.href = data.url;
+        a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.${data.format}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success("Download started!");
+      }
     },
     onError: (error: Error, exp: ProductExport) => {
       if (error.message === "NO_FILE") {
