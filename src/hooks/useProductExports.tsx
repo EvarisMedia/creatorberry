@@ -132,5 +132,39 @@ export function useProductExports(brandId: string | undefined) {
     },
   });
 
-  return { exports, isLoading, exportProduct, deleteExport };
+  const downloadExport = useMutation({
+    mutationFn: async (exp: ProductExport) => {
+      if (!exp.file_url) {
+        throw new Error("NO_FILE");
+      }
+      const { data, error } = await supabase.storage
+        .from("product-exports")
+        .createSignedUrl(exp.file_url, 3600);
+      if (error) throw error;
+      return { url: data.signedUrl, title: exp.title, format: exp.format };
+    },
+    onSuccess: (data) => {
+      const a = document.createElement("a");
+      a.href = data.url;
+      a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.${data.format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("Download started!");
+    },
+    onError: (error: Error, exp: ProductExport) => {
+      if (error.message === "NO_FILE") {
+        // Fallback: re-export for legacy records without stored file
+        exportProduct.mutate({
+          outlineId: exp.product_outline_id,
+          format: exp.format,
+          settings: (exp.export_settings as Record<string, unknown>) || {},
+        });
+      } else {
+        toast.error("Download failed: " + error.message);
+      }
+    },
+  });
+
+  return { exports, isLoading, exportProduct, deleteExport, downloadExport };
 }

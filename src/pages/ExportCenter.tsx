@@ -130,7 +130,8 @@ export default function ExportCenter() {
   const { user, profile, isAdmin, isLoading, signOut } = useAuth();
   const { brands, currentBrand, isLoading: brandsLoading, selectBrand } = useBrands();
   const { outlines } = useProductOutlines(currentBrand?.id || null);
-  const { exports, isLoading: exportsLoading, exportProduct, deleteExport } = useProductExports(currentBrand?.id);
+  const { exports, isLoading: exportsLoading, exportProduct, deleteExport, downloadExport } = useProductExports(currentBrand?.id);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const [selectedOutline, setSelectedOutline] = useState<string>("");
   const [selectedFormat, setSelectedFormat] = useState<string>("markdown");
@@ -404,12 +405,17 @@ export default function ExportCenter() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => exportProduct.mutate({ outlineId: exp.product_outline_id, format: exp.format, settings: exp.export_settings || {} })}
-                          disabled={exportProduct.isPending}
+                          onClick={() => {
+                            setDownloadingId(exp.id);
+                            downloadExport.mutate(exp, {
+                              onSettled: () => setDownloadingId(null),
+                            });
+                          }}
+                          disabled={downloadingId === exp.id}
                           className="text-muted-foreground hover:text-primary"
-                          title="Re-download"
+                          title="Download"
                         >
-                          {exportProduct.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                          {downloadingId === exp.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                         </Button>
                         <Button
                           variant="ghost"
