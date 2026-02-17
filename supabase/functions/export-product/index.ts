@@ -330,6 +330,18 @@ async function generateFormattedExport(
       @media print { h2 { page-break-before: always; } }
       @page { margin: 2cm; }` : '';
     
+    // Strip base64 image data URLs to avoid massive payloads to the AI
+    const imageRefs: Record<string, string> = {};
+    let imgCounter = 0;
+    const cleanMarkdown = markdown.replace(
+      /!\[([^\]]*)\]\((data:image\/[^)]+)\)/g,
+      (_match: string, alt: string, dataUrl: string) => {
+        const key = `__IMG_${imgCounter++}__`;
+        imageRefs[key] = dataUrl;
+        return `![${alt}](${key})`;
+      }
+    );
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -349,17 +361,26 @@ async function generateFormattedExport(
 - Professional color scheme
 - Print-friendly styles
 ${printCss ? '- Extra print CSS: ' + printCss : ''}
-- Keep all image tags with their original URLs
+- Keep all image tags with their original src attributes exactly as-is (they may be placeholders like __IMG_0__)
 Return ONLY the HTML, no explanation.`
           },
-          { role: "user", content: markdown }
+          { role: "user", content: cleanMarkdown }
         ],
       }),
     });
 
-    if (!response.ok) throw new Error("Failed to generate HTML");
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`HTML generation failed (${response.status}):`, errText);
+      throw new Error(`Failed to generate ${format.toUpperCase()}: AI returned ${response.status}`);
+    }
     const data = await response.json();
-    const html = data.choices?.[0]?.message?.content || "";
+    let html = data.choices?.[0]?.message?.content || "";
+    
+    // Restore base64 image references
+    for (const [key, dataUrl] of Object.entries(imageRefs)) {
+      html = html.replaceAll(key, dataUrl);
+    }
     
     if (format === "pdf") {
       return { content: html, mimeType: "text/html", extension: "pdf" };

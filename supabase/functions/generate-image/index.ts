@@ -235,6 +235,23 @@ Design requirements:
 - Suitable as an in-content illustration for an ebook or course
 ${aspect_ratio ? `- Use ${aspect_ratio} aspect ratio` : '- Horizontal format (16:9 aspect ratio)'}
 - Ultra high resolution`;
+    } else if (image_type === "custom_concept") {
+      prompt = `Create a professional image based on the following concept:
+"${custom_context || custom_prompt || quote_text}"
+
+- Brand: ${brand.name}
+- Primary color: ${brand.primary_color || "#000000"}
+- Secondary color: ${brand.secondary_color || "#ffffff"}
+- Tone: ${brand.tone || "professional"}
+- Style: ${style}
+${aspect_ratio ? `- Aspect ratio: ${aspect_ratio}` : ''}
+${section_context?.title ? `- Related section: "${section_context.title}"` : ''}
+
+Design requirements:
+- ${style} design aesthetic
+- Brand colors as dominant palette
+- Professional quality, suitable for digital products
+- Ultra high resolution`;
     } else if (custom_prompt) {
       prompt = custom_prompt;
     }
