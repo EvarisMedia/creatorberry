@@ -36,12 +36,25 @@ interface Props {
   brand: Brand;
   onImageGenerated: () => void;
   onInsertImage?: (imageUrl: string, altText?: string) => void;
+  triggerId?: string;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
 }
 
-export function GenerateSectionImageDialog({ section, brand, onImageGenerated, onInsertImage }: Props) {
+export function GenerateSectionImageDialog({ section, brand, onImageGenerated, onInsertImage, triggerId, externalOpen, onExternalOpenChange }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  const isControlled = externalOpen !== undefined;
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) {
+      onExternalOpenChange?.(v);
+    } else {
+      setInternalOpen(v);
+    }
+  };
   const [imageType, setImageType] = useState("section_infographic");
   const [style, setStyle] = useState("Modern");
   const [aspectRatio, setAspectRatio] = useState("16:9");
@@ -129,11 +142,13 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setGeneratedImageUrl(null); }}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <ImagePlus className="w-4 h-4 mr-2" /> Generate Section Image
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" id={triggerId}>
+            <ImagePlus className="w-4 h-4 mr-2" /> Generate Section Image
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Generate Section Image</DialogTitle>

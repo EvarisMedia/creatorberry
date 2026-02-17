@@ -714,12 +714,13 @@ const ContentEditorPage = () => {
                 {/* Hidden Generate Image Dialog trigger */}
                 {section && currentBrand && (
                   <div className="hidden">
-                    <GenerateSectionImageDialog
-                      section={section}
-                      brand={currentBrand}
-                      onImageGenerated={loadSectionImages}
-                      onInsertImage={handleImageInsertRouted}
-                    />
+                     <GenerateSectionImageDialog
+                       section={section}
+                       brand={currentBrand}
+                       onImageGenerated={loadSectionImages}
+                       onInsertImage={handleImageInsertRouted}
+                       triggerId="generate-image-trigger"
+                     />
                   </div>
                 )}
 

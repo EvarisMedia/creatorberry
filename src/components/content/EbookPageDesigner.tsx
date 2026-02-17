@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EbookPage } from "./EbookPage";
@@ -258,14 +258,20 @@ export function EbookPageDesigner({
           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={generateLayouts} title="Regenerate all layouts">
             <RefreshCw className="w-3 h-3" />
           </Button>
-          {selectedPage && (
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLayoutPicker(true)}>
-              <LayoutGrid className="w-3 h-3 mr-1" /> Change Layout
-            </Button>
-          )}
-          <span className="text-xs text-muted-foreground">
-            Page {selectedPageIndex + 1} of {pages.length} — Click text to edit
-          </span>
+           {selectedPage && (
+             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLayoutPicker(true)}>
+               <LayoutGrid className="w-3 h-3 mr-1" /> Change Layout
+             </Button>
+           )}
+           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
+             await saveLayouts(pages);
+             toast({ title: "Saved", description: "Page layouts saved successfully." });
+           }}>
+             <Save className="w-3 h-3 mr-1" /> Save
+           </Button>
+           <span className="text-xs text-muted-foreground">
+             Page {selectedPageIndex + 1} of {pages.length} — Click text to edit
+           </span>
         </div>
         {onToggleFullscreen && (
           <Button size="sm" variant="ghost" className="h-7" onClick={onToggleFullscreen}>
@@ -329,13 +335,15 @@ export function EbookPageDesigner({
         />
       )}
 
-      {/* Image generate dialog */}
-      {showImageDialog && section && brand && (
+      {/* Image generate dialog - controlled externally */}
+      {section && brand && (
         <GenerateSectionImageDialog
           section={section}
           brand={brand}
           onImageGenerated={async () => {}}
           onInsertImage={(url) => handleImageGenerated(url)}
+          externalOpen={showImageDialog}
+          onExternalOpenChange={setShowImageDialog}
         />
       )}
 
