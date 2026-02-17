@@ -1,64 +1,23 @@
 
 
-# Fix: Save Button in Design Tab + Fix Image Generation Dialog
+# Fix: Image Generation Edge Function - Missing Image Type Handlers
 
-## Issue 1: No Save Button in Design & Preview Tab
+## Problem
+The `GenerateSectionImageDialog` component offers 5 image types: `section_infographic`, `chapter_illustration`, `diagram`, `concept_map`, and `quote_card`. However, the `generate-image` edge function only has prompt templates for some of these. Specifically, `diagram` and `concept_map` have no matching case, so the prompt stays empty (`""`), causing the AI API to reject the request with "Input must have at least 1 token."
 
-The Design tab auto-saves via a debounced function (500ms delay after edits), but there is no visible save button or feedback. The user has no way to know their changes are saved.
+## Fix
+Add prompt templates for `diagram` and `concept_map` image types in `supabase/functions/generate-image/index.ts`.
 
-### Fix
-Add a "Save" button to the `EbookPageDesigner` toolbar (line 255-276) that explicitly calls `saveLayouts(pages)` and shows a toast confirmation. Also add a small "Auto-saved" indicator so users know edits are persisted automatically.
+### File: `supabase/functions/generate-image/index.ts`
 
-**File: `src/components/content/EbookPageDesigner.tsx`**
-- Add a `Save` button next to the existing toolbar buttons (near the "Change Layout" and "Fullscreen" buttons)
-- The button calls `saveLayouts(pages)` and shows a toast
+Add two new `else if` branches before the final `else if (custom_prompt)` fallback:
 
----
+**`diagram` type**: Generate a clean process/concept diagram with labeled steps, flowchart elements, and brand colors. Uses section context (title, description, subsections) to inform the diagram structure.
 
-## Issue 2: Generate Image Dialog Never Opens
+**`concept_map` type**: Generate a visual concept map showing connections between ideas. Uses subsections as the key concepts to connect, with the section title as the central node.
 
-Two separate breakages:
+Both templates will include the existing pattern of brand colors, style, aspect ratio, and section context.
 
-### Problem A: Hidden dialog trigger ID is missing
-In `ContentEditor.tsx` line 603, the toolbar's "Insert Image" button tries to programmatically click an element with `id="generate-image-trigger"`:
-```js
-const trigger = document.getElementById("generate-image-trigger");
-trigger?.click();
-```
-But the `GenerateSectionImageDialog` component (lines 714-723) renders a `DialogTrigger` button with NO `id` attribute. So `getElementById` returns `null` and nothing happens.
-
-### Problem B: Designer's image dialog renders but never opens
-In `EbookPageDesigner.tsx` line 176-184, clicking "generate" on a page's image action sets `showImageDialog = true`. This conditionally renders `GenerateSectionImageDialog` (line 333), but that component has its own internal `open` state starting at `false`. The component renders a button (DialogTrigger) the user would have to click again -- but it's not even visible in the layout. So the dialog never opens.
-
-### Fix A: Add the missing ID to the hidden trigger
-In `GenerateSectionImageDialog.tsx`, add an optional `triggerId` prop. When provided, set `id={triggerId}` on the `DialogTrigger` button.
-
-In `ContentEditor.tsx` line 717-722 (hidden dialog), pass `triggerId="generate-image-trigger"`.
-
-### Fix B: Auto-open dialog in designer
-Change `GenerateSectionImageDialog` to accept an optional `defaultOpen` prop. When the designer sets `showImageDialog = true`, pass `defaultOpen={true}` so the dialog opens immediately without requiring a second click.
-
-Alternatively (simpler approach): In `EbookPageDesigner.tsx`, instead of rendering `GenerateSectionImageDialog` conditionally, always render it and control its open state externally. Pass `open={showImageDialog}` and `onOpenChange={setShowImageDialog}` as props.
-
-The cleaner fix: Add `externalOpen` and `onExternalOpenChange` props to `GenerateSectionImageDialog` so the parent can control whether the dialog is open.
-
----
-
-## Files to Modify
-
-1. **`src/components/content/GenerateSectionImageDialog.tsx`**
-   - Add `triggerId?: string` prop, apply to `DialogTrigger`
-   - Add `externalOpen?: boolean` and `onExternalOpenChange?: (open: boolean) => void` props
-   - When `externalOpen` is provided, use it instead of internal `open` state
-
-2. **`src/components/content/EbookPageDesigner.tsx`**
-   - Pass `externalOpen={showImageDialog}` and `onExternalOpenChange={setShowImageDialog}` to `GenerateSectionImageDialog`
-   - Always render the dialog (remove the `showImageDialog &&` condition), let open/close be controlled by props
-   - Add a "Save" button to the toolbar that calls `saveLayouts(pages)` with toast feedback
-
-3. **`src/pages/ContentEditor.tsx`**
-   - Pass `triggerId="generate-image-trigger"` to the hidden `GenerateSectionImageDialog` (line 717)
-
-## No new files needed
+## No other files need changes
 ## No database changes needed
 
