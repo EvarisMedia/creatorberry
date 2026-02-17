@@ -13,14 +13,14 @@ import { RichContentRenderer } from "@/components/content/RichContentRenderer";
 import { PDFStyleSettings, DEFAULT_PDF_STYLE_CONFIG, PDFStyleConfig } from "@/components/content/PDFStyleSettings";
 import { ContentToolbar } from "@/components/content/ContentToolbar";
 import { EbookPageDesigner } from "@/components/content/EbookPageDesigner";
-import { EbookPage } from "@/components/content/EbookPage";
+// EbookPage import removed - now only used inside EbookPageDesigner
 import { PageSizeKey, EbookPageData } from "@/components/content/ebookLayouts";
 import { AIEditToolbar } from "@/components/content/AIEditToolbar";
 import {
   LayoutDashboard, Settings, Plus, LogOut, ChevronDown, Shield, Loader2,
   Lightbulb, FileText, BookOpen, ArrowLeft, Sparkles, PenTool, Check, Trash2, RefreshCw,
   Palette, Download, ShoppingCart, Rocket, Library, HelpCircle, ImageIcon, ImagePlus,
-  CheckCircle2, Circle, Upload, Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen,
+  CheckCircle2, Circle, Upload, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { downloadImageBlob } from "@/lib/downloadImage";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
@@ -71,7 +71,7 @@ const ContentEditorPage = () => {
   const [pdfStyleConfig, setPdfStyleConfig] = useState<PDFStyleConfig>(DEFAULT_PDF_STYLE_CONFIG);
   const [editorTab, setEditorTab] = useState("edit");
   const [designedPages, setDesignedPages] = useState<EbookPageData[]>([]);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDesignerFullscreen, setIsDesignerFullscreen] = useState(false);
   const [sectionSidebarCollapsed, setSectionSidebarCollapsed] = useState(false);
 
   // AI Edit state
@@ -286,18 +286,30 @@ const ContentEditorPage = () => {
   // Escape key exits fullscreen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isFullscreen) setIsFullscreen(false);
+      if (e.key === "Escape" && isDesignerFullscreen) setIsDesignerFullscreen(false);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFullscreen]);
+  }, [isDesignerFullscreen]);
 
-  // Auto-collapse section sidebar in visual/preview tabs
+  // Auto-collapse section sidebar in design tab
   useEffect(() => {
-    if (editorTab === "page-design" || editorTab === "preview") {
+    if (editorTab === "design") {
       setSectionSidebarCollapsed(true);
     }
   }, [editorTab]);
+
+  // Handle image insertion routing based on active tab
+  const handleImageInsertRouted = (imageUrl: string, altText?: string) => {
+    if (editorTab === "design" && designedPages.length > 0) {
+      // Insert into the designer's selected page image slot
+      // This is handled by the EbookPageDesigner internally
+      // We trigger it via the component's own image handling
+      handleInsertImage(imageUrl, altText);
+    } else {
+      handleInsertImage(imageUrl, altText);
+    }
+  };
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -305,8 +317,7 @@ const ContentEditorPage = () => {
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
-      {/* Sidebar - hidden in fullscreen */}
-      {!isFullscreen && (
+      {/* Sidebar */}
       <aside className="w-64 bg-card border-r border-border flex flex-col shadow-sm">
         <div className="p-3 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
@@ -368,12 +379,11 @@ const ContentEditorPage = () => {
           </div>
         </div>
       </aside>
-      )}
 
       {/* Main content area with section sidebar */}
-      <div className={`flex-1 flex overflow-hidden ${isFullscreen ? "fixed inset-0 z-50 bg-background" : ""}`}>
+      <div className="flex-1 flex overflow-hidden">
         {/* Section Navigation Sidebar - collapsible */}
-        {!isFullscreen && allSections.length > 0 && !sectionSidebarCollapsed && (
+        {allSections.length > 0 && !sectionSidebarCollapsed && (
           <aside className="w-60 bg-card border-r border-border flex flex-col">
             <div className="p-3 border-b border-border">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sections</h3>
@@ -431,21 +441,19 @@ const ContentEditorPage = () => {
         )}
 
         {/* Editor area */}
-        <main className="flex-1 overflow-auto">
-          <header className={`p-6 bg-card border-b border-border ${isFullscreen ? "p-4" : ""}`}>
+        <main className="flex-1 overflow-auto relative">
+          <header className="p-6 bg-card border-b border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Section sidebar toggle */}
-                {!isFullscreen && allSections.length > 0 && (
+                {allSections.length > 0 && (
                   <Button variant="ghost" size="sm" onClick={() => setSectionSidebarCollapsed(!sectionSidebarCollapsed)} title={sectionSidebarCollapsed ? "Show sections" : "Hide sections"}>
                     {sectionSidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
                   </Button>
                 )}
-                {!isFullscreen && (
-                  <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-                    <ArrowLeft className="w-4 h-4" />
-                  </Button>
-                )}
+                <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
                 <div>
                   <h1 className="text-2xl font-semibold">{section?.title || "Content Editor"}</h1>
                   <p className="text-muted-foreground text-sm">
@@ -454,13 +462,6 @@ const ContentEditorPage = () => {
                   </p>
                 </div>
               </div>
-              {/* Fullscreen toggle */}
-              {(editorTab === "page-design" || editorTab === "preview") && (
-                <Button variant="outline" size="sm" onClick={() => setIsFullscreen(!isFullscreen)}>
-                  {isFullscreen ? <Minimize2 className="w-4 h-4 mr-1" /> : <Maximize2 className="w-4 h-4 mr-1" />}
-                  {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                </Button>
-              )}
             </div>
           </header>
 
@@ -538,21 +539,22 @@ const ContentEditorPage = () => {
                   </Card>
                 ) : (
                   <Tabs value={editorTab} onValueChange={setEditorTab}>
+                    {/* Compact style toolbar above tabs */}
+                    <div className="border border-border rounded-lg mb-3 bg-card">
+                      <PDFStyleSettings config={pdfStyleConfig} onChange={setPdfStyleConfig} variant="compact" />
+                    </div>
+
                     <TabsList>
                       <TabsTrigger value="edit">
-                        <PenTool className="w-3 h-3 mr-1" /> Edit Content
+                        <PenTool className="w-3 h-3 mr-1" /> Write
                       </TabsTrigger>
-                      <TabsTrigger value="page-design">
-                        <Palette className="w-3 h-3 mr-1" /> Visual Designer
-                      </TabsTrigger>
-                      <TabsTrigger value="preview">
-                        <BookOpen className="w-3 h-3 mr-1" /> Preview
+                      <TabsTrigger value="design">
+                        <Palette className="w-3 h-3 mr-1" /> Design & Preview
                       </TabsTrigger>
                     </TabsList>
                     <p className="text-xs text-muted-foreground mt-1">
                       {editorTab === "edit" && "Write and edit your raw content"}
-                      {editorTab === "page-design" && "Design your pages visually — click text to edit inline"}
-                      {editorTab === "preview" && "See how your export will look"}
+                      {editorTab === "design" && "Design your pages visually — this is your final preview"}
                     </p>
 
                     <TabsContent value="edit">
@@ -592,7 +594,6 @@ const ContentEditorPage = () => {
                                   <ContentToolbar
                                     onFormat={handleFormat}
                                     onInsertImage={() => {
-                                      // Open generate image dialog - trigger the hidden dialog button
                                       const trigger = document.getElementById("generate-image-trigger");
                                       trigger?.click();
                                     }}
@@ -622,7 +623,7 @@ const ContentEditorPage = () => {
                                     />
                                   )}
 
-                                  {/* Editor textarea with visual rendering below */}
+                                  {/* Editor textarea */}
                                   <textarea
                                     ref={editTextareaRef}
                                     value={editContent}
@@ -659,7 +660,7 @@ const ContentEditorPage = () => {
                                     </Card>
                                   )}
 
-                                  {/* Live preview of editing */}
+                                  {/* Live preview */}
                                   <div className="border border-border rounded-lg p-4 bg-background">
                                     <p className="text-xs text-muted-foreground mb-2 font-medium">Live Preview</p>
                                     <RichContentRenderer content={editContent} />
@@ -674,7 +675,7 @@ const ContentEditorPage = () => {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="page-design">
+                    <TabsContent value="design">
                       {currentModeContents[0] ? (
                         <EbookPageDesigner
                           content={currentModeContents[0].content}
@@ -690,6 +691,8 @@ const ContentEditorPage = () => {
                           contentId={currentModeContents[0].id}
                           brand={currentBrand}
                           section={section}
+                          isFullscreen={isDesignerFullscreen}
+                          onToggleFullscreen={() => setIsDesignerFullscreen(!isDesignerFullscreen)}
                           onPagesChange={(p) => setDesignedPages(p)}
                         />
                       ) : (
@@ -697,58 +700,6 @@ const ContentEditorPage = () => {
                           <p>Generate content first before designing pages.</p>
                         </div>
                       )}
-                    </TabsContent>
-
-                    <TabsContent value="preview">
-                      <Card>
-                        <CardContent className="p-0">
-                          <PDFStyleSettings config={pdfStyleConfig} onChange={setPdfStyleConfig} />
-                          <div className="p-6 border-t border-border">
-                            {designedPages.length > 0 ? (
-                              <div className="flex flex-col items-center gap-6">
-                                {designedPages.map((page, i) => (
-                                  <div key={page.id} className="relative">
-                                    <EbookPage
-                                      page={page}
-                                      pageSize={(pdfStyleConfig.pageSize || "6x9") as PageSizeKey}
-                                      pdfStyle={pdfStyleConfig}
-                                      scale={0.85}
-                                    />
-                                    <div className="text-center text-xs text-muted-foreground mt-1">Page {i + 1}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div
-                                style={{
-                                  fontFamily: pdfStyleConfig.fontFamily === "serif" ? "Georgia, serif" : pdfStyleConfig.fontFamily === "mono" ? "'Courier New', monospace" : "system-ui, sans-serif",
-                                  fontSize: pdfStyleConfig.fontSize === "small" ? "14px" : pdfStyleConfig.fontSize === "large" ? "18px" : "16px",
-                                }}
-                              >
-                                {pdfStyleConfig.headerText && (
-                                  <div className="text-xs text-muted-foreground border-b border-border pb-2 mb-6">{pdfStyleConfig.headerText}</div>
-                                )}
-                                {pdfStyleConfig.includeCoverPage && section && (
-                                  <div className="text-center mb-8 pb-8 border-b border-border">
-                                    <h1 className="text-3xl font-bold mb-2" style={{ color: pdfStyleConfig.headingColor }}>{section.title}</h1>
-                                    <p className="text-muted-foreground">{outlineTitle}</p>
-                                  </div>
-                                )}
-                                <div className={pdfStyleConfig.layout === "two-column" ? "columns-2 gap-8" : ""}>
-                                  {currentModeContents[0] && (
-                                    <div style={{ color: "inherit" }}>
-                                      <RichContentRenderer content={currentModeContents[0].content} />
-                                    </div>
-                                  )}
-                                </div>
-                                {pdfStyleConfig.footerText && (
-                                  <div className="text-xs text-muted-foreground border-t border-border pt-2 mt-6">{pdfStyleConfig.footerText}</div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
                     </TabsContent>
                   </Tabs>
                 )}
@@ -765,8 +716,8 @@ const ContentEditorPage = () => {
                   </div>
                 )}
 
-                {/* Visible generate image button for non-editing state */}
-                {section && currentBrand && !editingId && (
+                {/* Visible generate image button - only on Write tab */}
+                {section && currentBrand && !editingId && editorTab === "edit" && (
                   <GenerateSectionImageDialog
                     section={section}
                     brand={currentBrand}
