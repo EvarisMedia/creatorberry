@@ -28,11 +28,13 @@ interface Props {
   onToggleFullscreen?: () => void;
   onPagesChange?: (pages: EbookPageData[]) => void;
   onInsertImageToPage?: (imageUrl: string) => void;
+  onRegisterInsertImage?: (fn: (url: string) => void) => void;
 }
 
 export function EbookPageDesigner({
   content, sectionTitle, brandContext, pageSize, pdfStyle, contentId,
   brand, section, isFullscreen, onToggleFullscreen, onPagesChange, onInsertImageToPage,
+  onRegisterInsertImage,
 }: Props) {
   const [pages, setPages] = useState<EbookPageData[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -193,12 +195,12 @@ export function EbookPageDesigner({
     }
   }, [pages, selectedPageIndex]);
 
-  // Wire up onInsertImageToPage callback
+  // Register the insert image callback so parent can trigger image insertion into current page
   useEffect(() => {
-    if (onInsertImageToPage) {
-      // This is handled via the parent passing the callback
+    if (onRegisterInsertImage) {
+      onRegisterInsertImage(insertImageToCurrentPage);
     }
-  }, [onInsertImageToPage]);
+  }, [onRegisterInsertImage, insertImageToCurrentPage]);
 
   const handleFileUpload = async (file: File) => {
     const user = (await supabase.auth.getUser()).data.user;
