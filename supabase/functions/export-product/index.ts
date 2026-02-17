@@ -389,12 +389,12 @@ async function generateFormattedExport(
                     ${c.heading ? `<h2 style="font-size:18px;font-weight:bold;color:${headingColor};margin-bottom:12px;">${escapeXml(c.heading)}</h2>` : ""}
                     ${c.body ? `<p style="font-size:${fontSize};line-height:1.6;white-space:pre-wrap;">${escapeXml(c.body)}</p>` : ""}
                   </div>
-                  ${c.image ? `<div style="width:40%;flex-shrink:0;"><img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" /></div>` : ""}
+                  ${c.image ? `<div style="width:40%;flex-shrink:0;"><img src="${c.image.replace(/"/g, '&quot;')}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" /></div>` : ""}
                 </div>`;
                 break;
               case "image-text":
                 pageContent = `<div style="display:flex;height:100%;gap:16px;padding:24px;">
-                  ${c.image ? `<div style="width:40%;flex-shrink:0;"><img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" /></div>` : ""}
+                  ${c.image ? `<div style="width:40%;flex-shrink:0;"><img src="${c.image.replace(/"/g, '&quot;')}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" /></div>` : ""}
                   <div style="flex:1;display:flex;flex-direction:column;">
                     ${c.heading ? `<h2 style="font-size:18px;font-weight:bold;color:${headingColor};margin-bottom:12px;">${escapeXml(c.heading)}</h2>` : ""}
                     ${c.body ? `<p style="font-size:${fontSize};line-height:1.6;white-space:pre-wrap;">${escapeXml(c.body)}</p>` : ""}
@@ -403,7 +403,7 @@ async function generateFormattedExport(
                 break;
               case "full-image":
                 pageContent = `<div style="display:flex;flex-direction:column;height:100%;">
-                  ${c.image ? `<div style="flex:1;"><img src="${c.image}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ""}
+                  ${c.image ? `<div style="flex:1;"><img src="${c.image.replace(/"/g, '&quot;')}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ""}
                   ${c.heading ? `<p style="text-align:center;font-size:12px;color:#999;font-style:italic;padding:12px;">${escapeXml(c.heading)}</p>` : ""}
                 </div>`;
                 break;

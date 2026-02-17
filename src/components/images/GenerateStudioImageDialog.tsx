@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Sparkles, Palette } from "lucide-react";
 import { Brand } from "@/hooks/useBrands";
 import { useGeneratedImages } from "@/hooks/useGeneratedImages";
@@ -35,6 +38,7 @@ const IMAGE_TYPES = [
   { value: "quote_card", label: "Quote Card", description: "Text-focused image with your quote", hasText: true, textLabel: "Quote Text", textPlaceholder: "Enter the quote to display..." },
   { value: "visual", label: "Visual", description: "Abstract branded visual", hasText: false, textLabel: "", textPlaceholder: "" },
   { value: "banner", label: "Banner", description: "Story/cover format", hasText: false, textLabel: "", textPlaceholder: "" },
+  { value: "custom_concept", label: "Custom Concept", description: "Generate from your own idea or prompt", hasText: false, textLabel: "", textPlaceholder: "" },
 ];
 
 const STYLES = [
@@ -50,11 +54,22 @@ const STYLES = [
   { value: "vintage", label: "Vintage" },
 ];
 
+const ASPECT_RATIOS = [
+  { value: "1:1", label: "Square (1:1)" },
+  { value: "16:9", label: "Landscape (16:9)" },
+  { value: "9:16", label: "Portrait (9:16)" },
+  { value: "4:3", label: "Wide (4:3)" },
+  { value: "2:3", label: "Book Cover (2:3)" },
+];
+
 export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: GenerateStudioImageDialogProps) {
   const [open, setOpen] = useState(false);
   const [imageType, setImageType] = useState(defaultType || "book_cover");
   const [style, setStyle] = useState("modern");
+  const [aspectRatio, setAspectRatio] = useState("1:1");
   const [textInput, setTextInput] = useState("");
+  const [customPrompt, setCustomPrompt] = useState("");
+  const [extraContext, setExtraContext] = useState("");
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
   const { generateImage, isGenerating } = useGeneratedImages(brand.id);
@@ -62,11 +77,16 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
   const selectedType = IMAGE_TYPES.find((t) => t.value === imageType);
 
   const handleGenerate = async () => {
+    if (imageType === "custom_concept" && !customPrompt.trim()) return;
+
     const result = await generateImage({
       brand,
       quote_text: selectedType?.hasText ? textInput : undefined,
       style,
       image_type: imageType,
+      aspect_ratio: aspectRatio,
+      custom_prompt: imageType === "custom_concept" ? customPrompt : undefined,
+      custom_context: extraContext || undefined,
     });
 
     if (result) {
@@ -79,6 +99,8 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
     setOpen(false);
     setGeneratedImageUrl(null);
     setTextInput("");
+    setCustomPrompt("");
+    setExtraContext("");
   };
 
   return (
@@ -89,7 +111,7 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
           Generate Image
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
@@ -100,115 +122,155 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Brand Preview */}
-          <div className="flex items-center gap-4 p-4 border rounded-xl bg-muted/50">
-            <div className="flex gap-2">
-              <div className="w-8 h-8 rounded-lg border" style={{ backgroundColor: brand.primary_color || "#000000" }} title="Primary" />
-              <div className="w-8 h-8 rounded-lg border" style={{ backgroundColor: brand.secondary_color || "#ffffff" }} title="Secondary" />
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="space-y-5 py-4">
+            {/* Brand Preview */}
+            <div className="flex items-center gap-4 p-3 border rounded-xl bg-muted/50">
+              <div className="flex gap-2">
+                <div className="w-7 h-7 rounded-lg border" style={{ backgroundColor: brand.primary_color || "#000000" }} title="Primary" />
+                <div className="w-7 h-7 rounded-lg border" style={{ backgroundColor: brand.secondary_color || "#ffffff" }} title="Secondary" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">{brand.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{brand.tone} tone</p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium">{brand.name}</p>
-              <p className="text-sm text-muted-foreground capitalize">{brand.tone} tone</p>
-            </div>
-          </div>
 
-          {/* Image Type */}
-          <div className="space-y-2">
-            <Label>Image Type</Label>
-            <Select value={imageType} onValueChange={setImageType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {IMAGE_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    <div>
-                      <span className="font-medium">{type.label}</span>
-                      <span className="text-muted-foreground ml-2">— {type.description}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Text Input (conditional) */}
-          {selectedType?.hasText && (
+            {/* Image Type */}
             <div className="space-y-2">
-              <Label>{selectedType.textLabel}</Label>
-              <Textarea
-                placeholder={selectedType.textPlaceholder}
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                rows={3}
+              <Label>Image Type</Label>
+              <Select value={imageType} onValueChange={setImageType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {IMAGE_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      <div>
+                        <span className="font-medium">{type.label}</span>
+                        <span className="text-muted-foreground ml-2">— {type.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Text Input (conditional) */}
+            {selectedType?.hasText && (
+              <div className="space-y-2">
+                <Label>{selectedType.textLabel}</Label>
+                <Textarea
+                  placeholder={selectedType.textPlaceholder}
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            )}
+
+            {/* Custom Concept Prompt */}
+            {imageType === "custom_concept" && (
+              <div className="space-y-2">
+                <Label>Your Concept / Idea *</Label>
+                <Textarea
+                  placeholder="Describe the image you want to create, e.g. 'A person climbing a mountain with a glowing light at the top representing achievement...'"
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            )}
+
+            {/* Style as Badges */}
+            <div className="space-y-2">
+              <Label>Visual Style</Label>
+              <div className="flex flex-wrap gap-2">
+                {STYLES.map((s) => (
+                  <Badge
+                    key={s.value}
+                    variant={style === s.value ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setStyle(s.value)}
+                  >
+                    {s.label}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Aspect Ratio */}
+            <div className="space-y-2">
+              <Label>Aspect Ratio <span className="text-xs text-muted-foreground">(best-effort)</span></Label>
+              <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ASPECT_RATIOS.map((ar) => (
+                    <SelectItem key={ar.value} value={ar.value}>{ar.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Additional Context */}
+            <div className="space-y-2">
+              <Label>Additional Context <span className="text-xs text-muted-foreground">(optional)</span></Label>
+              <Input
+                placeholder="e.g. focus on minimalism, include nature elements, warm tones..."
+                value={extraContext}
+                onChange={(e) => setExtraContext(e.target.value)}
               />
             </div>
-          )}
 
-          {/* Style */}
-          <div className="space-y-2">
-            <Label>Visual Style</Label>
-            <Select value={style} onValueChange={setStyle}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STYLES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Preview */}
-          {generatedImageUrl && (
-            <div className="space-y-2">
-              <Label>Generated Image</Label>
-              <div className="border rounded-xl p-2 bg-muted/30">
-                <img src={generatedImageUrl} alt="Generated" className="w-full h-auto max-h-80 object-contain rounded-lg" />
+            {/* Preview */}
+            {generatedImageUrl && (
+              <div className="space-y-2">
+                <Label>Generated Image</Label>
+                <div className="border rounded-xl p-2 bg-muted/30">
+                  <img src={generatedImageUrl} alt="Generated" className="w-full h-auto max-h-80 object-contain rounded-lg" />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => window.open(generatedImageUrl, "_blank")}>
+                    Open Full Size
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = generatedImageUrl;
+                      link.download = `${brand.name.toLowerCase().replace(/\s+/g, "-")}-${imageType}.png`;
+                      link.click();
+                    }}
+                  >
+                    Download
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => window.open(generatedImageUrl, "_blank")}>
-                  Open Full Size
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const link = document.createElement("a");
-                    link.href = generatedImageUrl;
-                    link.download = `${brand.name.toLowerCase().replace(/\s+/g, "-")}-${imageType}.png`;
-                    link.click();
-                  }}
-                >
-                  Download
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Generate Button */}
-          <Button
-            onClick={handleGenerate}
-            disabled={isGenerating || (selectedType?.hasText && !textInput.trim())}
-            className="w-full"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                {generatedImageUrl ? "Regenerate" : "Generate Image"}
-              </>
             )}
-          </Button>
-        </div>
+
+            {/* Generate Button */}
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating || (selectedType?.hasText && !textInput.trim()) || (imageType === "custom_concept" && !customPrompt.trim())}
+              className="w-full"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {generatedImageUrl ? "Regenerate" : "Generate Image"}
+                </>
+              )}
+            </Button>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

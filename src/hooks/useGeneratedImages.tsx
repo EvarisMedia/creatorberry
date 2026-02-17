@@ -25,6 +25,9 @@ interface GenerateImageParams {
   image_type: string;
   post_id?: string;
   section_id?: string;
+  aspect_ratio?: string;
+  custom_prompt?: string;
+  custom_context?: string;
 }
 
 export function useGeneratedImages(brandId?: string) {
@@ -76,6 +79,9 @@ export function useGeneratedImages(brandId?: string) {
           quote_text: params.quote_text,
           style: params.style,
           image_type: params.image_type,
+          ...(params.aspect_ratio ? { aspect_ratio: params.aspect_ratio } : {}),
+          ...(params.custom_prompt ? { custom_prompt: params.custom_prompt } : {}),
+          ...(params.custom_context ? { custom_context: params.custom_context } : {}),
         },
       });
 

@@ -96,7 +96,7 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
           aspect_ratio: aspectRatio,
           section_context: sectionContext,
           ...(extraContext ? { custom_context: extraContext } : {}),
-          ...(imageType === "custom_concept" ? { custom_prompt: customPrompt } : {}),
+          ...(customPrompt.trim() ? (imageType === "custom_concept" ? { custom_prompt: customPrompt } : { custom_context: `${extraContext ? extraContext + '. ' : ''}Instructions: ${customPrompt}` }) : {}),
         },
       });
 
@@ -193,15 +193,28 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
               </Select>
             </div>
 
-            {/* Custom Concept Prompt */}
+            {/* Custom Concept Prompt - always visible when custom_concept selected */}
             {imageType === "custom_concept" && (
               <div className="space-y-2">
-                <Label>Your Concept / Idea</Label>
+                <Label>Your Concept / Idea *</Label>
                 <Textarea
                   placeholder="Describe the image you want to create, e.g. 'A person climbing a mountain with a glowing light at the top representing achievement...'"
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
                   rows={3}
+                />
+              </div>
+            )}
+
+            {/* Custom Instructions - always visible for any type */}
+            {imageType !== "custom_concept" && (
+              <div className="space-y-2">
+                <Label>Custom Instructions <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                <Textarea
+                  placeholder="Add any specific instructions for the image generation, e.g. 'Include a data visualization', 'Use warm tones', 'Show hands typing on a keyboard'..."
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  rows={2}
                 />
               </div>
             )}
