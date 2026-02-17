@@ -1,99 +1,101 @@
 
 
-# Streamline Content Editor: Fullscreen Mode, Unified Editing, and More Page Sizes
+# Redesign Content Editor Workflow
 
-## Problems Identified
+## Problems Found
 
-1. **Page Designer is cramped**: The main sidebar (264px) + section sidebar (240px) = 504px eaten before the editor even starts. The page design area is too small for visual editing.
-2. **Preview has no fullscreen**: Users can't see a clean, distraction-free print preview.
-3. **Two editing modes cause confusion**: The "Edit" tab has a markdown textarea with AI tools, while "Page Design" has inline contentEditable editing. Users don't know which edits "stick" or which is the source of truth.
-4. **Missing page sizes**: Only 4 sizes available (6x9, 5.5x8.5, 8.5x11, 8x8). No landscape, A4, or other common formats.
+1. **Fullscreen hides entire page**: The current fullscreen toggle (`isFullscreen`) hides the main sidebar and section sidebar, making the entire page fullscreen. The user wants fullscreen only within the editor area (the Visual Designer content area expands to fill the available space, not the browser viewport).
 
-## Solution
+2. **PDF Style settings disconnected**: Page size and styling controls only appear in the Preview tab. The Visual Designer uses the same `pdfStyle` and `pageSize` but the user has no way to change them without switching tabs. This creates a confusing back-and-forth.
 
-### 1. Fullscreen Toggle for Page Design and Preview
+3. **Generate Section Image is broken**: The button at the bottom (line 769-776) renders a `GenerateSectionImageDialog` that calls `handleInsertImage` -- which inserts markdown into the raw text content (`editContent`). When the user is on the Visual Designer tab, this does nothing visible because Visual Designer uses `page_layouts`, not raw markdown. The image never appears in the page layout.
 
-Add a fullscreen button that hides both sidebars and the header, giving the editor the entire viewport. Works for both "Page Design" and "Preview" tabs.
+4. **Three tabs cause confusion**: "Edit Content" is raw markdown, "Visual Designer" is layout-based inline editing, "Preview" is read-only. Users don't understand which is the "source of truth." Edits in one don't reflect in the other (markdown edits don't update page layouts and vice versa).
 
-- A "Fullscreen" button (Maximize icon) in the toolbar area of Page Design and Preview
-- When active: both sidebars and the page header are hidden via CSS (`hidden` class), the editor area takes `100vw` and `100vh`
-- An "Exit Fullscreen" button (X or Minimize icon) floats in the top-right corner
-- Pressing Escape also exits fullscreen
+## Solution: Unified Two-Tab Workflow
 
-### 2. Merge Edit and Page Design into a Single Workflow
+Reduce to **two tabs** with clear purposes and move shared controls to a persistent toolbar.
 
-Remove the confusion by making the tabs: **"Edit Content"** (markdown/raw) and **"Visual Designer"** (page layouts with inline editing + AI). Rename clearly:
+### Tab 1: "Write" (was "Edit Content")
+- Raw markdown editor with AI tools, formatting toolbar
+- For writing and generating content
+- "Generate Section Image" button inserts into markdown here
 
-- **"Edit Content"** -- The markdown textarea for raw text editing with AI toolbar. This is for writing and generating content.
-- **"Visual Designer"** -- The page layout editor where users see the final design and can edit text/images inline. This is for designing the output.
-- **"Preview"** -- Read-only print preview of the designed pages.
+### Tab 2: "Design & Preview" (merges Visual Designer + Preview)
+- Top toolbar bar with: Page Size selector, Font/Style settings (inline, not collapsible), Fullscreen button
+- Below toolbar: the page designer with thumbnails on the left, main editable page on the right
+- The fullscreen button here only expands this tab's content area to fill the `<main>` element (using absolute positioning within the main area), NOT the entire browser viewport
+- "Generate Section Image" in this tab inserts the image into the currently selected page's image slot
+- When no pages exist yet, shows a "Generate Page Layouts" button
+- This IS the preview -- pages are rendered at actual scale with real styling applied
 
-Add a clear label/description under each tab so users understand the purpose:
-- Edit Content: "Write and edit your raw content"
-- Visual Designer: "Design your pages visually"  
-- Preview: "See how your export will look"
+This eliminates the Preview tab entirely because the Visual Designer already shows exactly what the export will look like.
 
-### 3. More Page Sizes
+### Shared Toolbar (above tabs)
+Move the PDF Style settings (page size, font, colors) into a compact horizontal bar above the tabs so both Write and Design tabs benefit from the same settings. This replaces the collapsible `PDFStyleSettings` card that was buried inside Preview.
 
-Add these sizes to the `PAGE_SIZES` constant and the PDF Settings dropdown:
+## Detailed Changes
 
-| Size | Dimensions (px at 72dpi) | Use Case |
-|------|--------------------------|----------|
-| A4 Portrait | 595 x 842 | International standard |
-| A4 Landscape | 842 x 595 | Presentations, workbooks |
-| A5 Portrait | 420 x 595 | Small books |
-| US Letter Landscape | 792 x 612 | Landscape workbooks |
-| 16:9 Landscape | 960 x 540 | Slide-style ebooks |
-| 6x9 | 432 x 648 | (existing) |
-| 5.5x8.5 | 396 x 612 | (existing) |
-| 8.5x11 | 612 x 792 | (existing) |
-| 8x8 | 576 x 576 | (existing) |
+### 1. ContentEditor.tsx -- Major restructure
 
-### 4. Better Layout for Page Designer
+**Remove**: The `isFullscreen` state that hides sidebars. Replace with `isDesignerFullscreen` that only affects the Design tab content area using `absolute inset-0 z-40` within `<main>`.
 
-When in Page Design or Preview, automatically collapse/hide the section sidebar and use a more compact layout:
-- Thumbnail strip stays on the left (narrower, 100px)
-- Main page view takes remaining space
-- The section nav can be accessed via a small toggle button
+**Remove**: The "Preview" tab entirely. Merge its functionality into "Design & Preview."
 
-## Technical Details
+**Move**: PDF style controls from inside Preview tab to a compact inline toolbar above the tabs. Show page size as a small dropdown, font as a dropdown, heading color as a small color picker -- all in a single horizontal row.
 
-### Fullscreen State
-Add a `isFullscreen` state to `ContentEditor.tsx`. When true:
-- The outer `div.min-h-screen.flex` gets a conditional class that hides both `<aside>` elements
-- The `<main>` area becomes `fixed inset-0 z-50 bg-background`
-- A floating "Exit" button appears in the top-right
+**Fix**: The "Generate Section Image" button at the bottom. When on the "Design & Preview" tab, its `onInsertImage` callback should update the selected page's image field in `designedPages` instead of inserting markdown. Add a new callback prop or detect the active tab.
 
-### Tab Renaming
-In `ContentEditor.tsx` lines 505-510, update:
+**Rename tabs**:
+- "edit" with label "Write" 
+- "design" with label "Design & Preview"
+
+### 2. EbookPageDesigner.tsx -- Add fullscreen support
+
+Add an `isFullscreen` prop and `onToggleFullscreen` callback. When fullscreen:
+- The component renders with `absolute inset-0 z-40 bg-background` within its parent
+- An "Exit" button floats in the top-right
+- Thumbnails get slightly more space (w-36)
+- The main page view fills the remaining space
+
+Add page size and style controls in the designer's own toolbar (compact inline row showing current page size, font, heading color).
+
+### 3. Fix Generate Section Image for Design tab
+
+Currently, `handleInsertImage` only modifies raw markdown content. When `editorTab === "design"`:
+- The image should be inserted into the currently selected page's `content.image` field
+- This requires the `EbookPageDesigner` to expose the selected page index and an `onInsertImageToPage` callback
+- Or: move the Generate Section Image button inside the `EbookPageDesigner` component itself (it already has `handleImageAction` for this, but the dialog rendering is broken because `section` and `brand` props may be undefined)
+
+The fix: Ensure `brand` and `section` are always passed correctly. The `showImageDialog` state in `EbookPageDesigner` already handles this, but the dialog only renders when `section && brand` are truthy (line 297). The props are being passed from ContentEditor (lines 691-692), so the issue is that the bottom button's `onInsertImage` goes to the wrong place. Remove the bottom `GenerateSectionImageDialog` when on the design tab, and rely on the one inside `EbookPageDesigner`.
+
+### 4. Compact Style Toolbar
+
+Replace the collapsible `PDFStyleSettings` card with a compact horizontal bar:
+
 ```
-TabsTrigger value="edit" -> "Edit Content"
-TabsTrigger value="page-design" -> "Visual Designer"  
-TabsTrigger value="preview" -> "Preview"
-```
-
-### PAGE_SIZES Update
-In `src/components/content/ebookLayouts.tsx` line 497-502, add new entries:
-```
-"a4": { width: 595, height: 842, label: 'A4 Portrait' },
-"a4-landscape": { width: 842, height: 595, label: 'A4 Landscape' },
-"a5": { width: 420, height: 595, label: 'A5 Portrait' },
-"letter-landscape": { width: 792, height: 612, label: 'Letter Landscape' },
-"16x9": { width: 960, height: 540, label: '16:9 Landscape (Slides)' },
+[Page Size: 6x9 v] [Font: Serif v] [Color: #1a1a2e] [Cover: on] [ToC: on]
 ```
 
-### PDFStyleSettings Update
-In `src/components/content/PDFStyleSettings.tsx`, update the `pageSize` type and add new `SelectItem` entries for each new size.
+This bar sits above the tab content, always visible, so changes apply to both writing preview and page design instantly.
 
-### Auto-hide Section Sidebar
-When `editorTab` is `"page-design"` or `"preview"`, hide the section sidebar (the `w-60` aside) or collapse it to a small toggle. This gives ~240px more width to the designer.
+## Files to Modify
 
-### Files to Modify
-- `src/pages/ContentEditor.tsx` -- Fullscreen toggle, tab renaming, auto-hide section sidebar
-- `src/components/content/ebookLayouts.tsx` -- Add new page sizes
-- `src/components/content/PDFStyleSettings.tsx` -- Add new page size options to dropdown and type
-- `src/components/content/EbookPageDesigner.tsx` -- Add fullscreen button, adjust thumbnail width
+- **src/pages/ContentEditor.tsx** -- Remove Preview tab, rename tabs, move style controls up, fix fullscreen to be design-area-only, fix image insertion routing
+- **src/components/content/EbookPageDesigner.tsx** -- Accept fullscreen prop, add fullscreen button in its own toolbar, ensure image dialog works
+- **src/components/content/PDFStyleSettings.tsx** -- Add a new compact/inline variant for the toolbar (keep the existing card variant as fallback)
 
-### No New Files Needed
-### No Database Changes Needed
+## No new files needed
+## No database changes needed
+
+## Technical Notes
+
+### Fullscreen within main area only
+Instead of `fixed inset-0 z-50` on the entire page, use `absolute inset-0 z-40 bg-background` within the `<main>` element (which needs `position: relative`). This keeps the main sidebar visible but gives the designer the full main content area.
+
+### Image insertion routing
+Add a ref or callback from `EbookPageDesigner` so the parent can trigger image insertion into the selected page. Alternatively, conditionally render the bottom `GenerateSectionImageDialog` only on the "Write" tab, and let the designer's built-in image controls handle it on the "Design" tab.
+
+### Style toolbar layout
+The compact toolbar will use a flex row with small Select dropdowns (h-8) and a color input. It replaces the large collapsible card, saving vertical space and making settings always accessible.
 
