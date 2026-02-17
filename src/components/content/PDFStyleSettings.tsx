@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Paintbrush } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 export interface PDFStyleConfig {
@@ -35,14 +34,86 @@ const DEFAULT_CONFIG: PDFStyleConfig = {
 interface Props {
   config: PDFStyleConfig;
   onChange: (config: PDFStyleConfig) => void;
+  variant?: "card" | "compact";
 }
 
-export function PDFStyleSettings({ config, onChange }: Props) {
+const PAGE_SIZE_OPTIONS = [
+  { value: "6x9", label: '6×9" (Standard Ebook)' },
+  { value: "5.5x8.5", label: '5.5×8.5" (Digest)' },
+  { value: "8.5x11", label: '8.5×11" (Workbook)' },
+  { value: "8x8", label: '8×8" (Square)' },
+  { value: "a4", label: "A4 Portrait" },
+  { value: "a4-landscape", label: "A4 Landscape" },
+  { value: "a5", label: "A5 Portrait" },
+  { value: "letter-landscape", label: "Letter Landscape" },
+  { value: "16x9", label: "16:9 Landscape (Slides)" },
+];
+
+export function PDFStyleSettings({ config, onChange, variant = "card" }: Props) {
   const [open, setOpen] = useState(false);
 
   const update = (partial: Partial<PDFStyleConfig>) => {
     onChange({ ...config, ...partial });
   };
+
+  if (variant === "compact") {
+    return (
+      <div className="flex flex-wrap items-center gap-3 px-1 py-2">
+        {/* Page Size */}
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs text-muted-foreground whitespace-nowrap">Size</Label>
+          <Select value={config.pageSize} onValueChange={(v) => update({ pageSize: v as PDFStyleConfig["pageSize"] })}>
+            <SelectTrigger className="h-7 text-xs w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Font */}
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs text-muted-foreground">Font</Label>
+          <Select value={config.fontFamily} onValueChange={(v) => update({ fontFamily: v as PDFStyleConfig["fontFamily"] })}>
+            <SelectTrigger className="h-7 text-xs w-[110px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="serif">Serif</SelectItem>
+              <SelectItem value="sans-serif">Sans-serif</SelectItem>
+              <SelectItem value="mono">Monospace</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Color */}
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs text-muted-foreground">Color</Label>
+          <Input
+            type="color"
+            value={config.headingColor}
+            onChange={(e) => update({ headingColor: e.target.value })}
+            className="w-7 h-7 p-0.5 cursor-pointer rounded"
+          />
+        </div>
+
+        {/* Cover toggle */}
+        <div className="flex items-center gap-1.5">
+          <Switch id="cover-compact" checked={config.includeCoverPage} onCheckedChange={(v) => update({ includeCoverPage: v })} className="scale-75" />
+          <Label htmlFor="cover-compact" className="text-xs text-muted-foreground cursor-pointer">Cover</Label>
+        </div>
+
+        {/* ToC toggle */}
+        <div className="flex items-center gap-1.5">
+          <Switch id="toc-compact" checked={config.includeToc} onCheckedChange={(v) => update({ includeToc: v })} className="scale-75" />
+          <Label htmlFor="toc-compact" className="text-xs text-muted-foreground cursor-pointer">ToC</Label>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -132,15 +203,9 @@ export function PDFStyleSettings({ config, onChange }: Props) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="6x9">6×9" (Standard Ebook)</SelectItem>
-                    <SelectItem value="5.5x8.5">5.5×8.5" (Digest)</SelectItem>
-                    <SelectItem value="8.5x11">8.5×11" (Workbook)</SelectItem>
-                    <SelectItem value="8x8">8×8" (Square)</SelectItem>
-                    <SelectItem value="a4">A4 Portrait</SelectItem>
-                    <SelectItem value="a4-landscape">A4 Landscape</SelectItem>
-                    <SelectItem value="a5">A5 Portrait</SelectItem>
-                    <SelectItem value="letter-landscape">Letter Landscape</SelectItem>
-                    <SelectItem value="16x9">16:9 Landscape (Slides)</SelectItem>
+                    {PAGE_SIZE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

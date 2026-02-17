@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, RefreshCw, LayoutGrid } from "lucide-react";
+import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EbookPage } from "./EbookPage";
@@ -24,10 +24,16 @@ interface Props {
   contentId: string;
   brand?: any;
   section?: any;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
   onPagesChange?: (pages: EbookPageData[]) => void;
+  onInsertImageToPage?: (imageUrl: string) => void;
 }
 
-export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSize, pdfStyle, contentId, brand, section, onPagesChange }: Props) {
+export function EbookPageDesigner({
+  content, sectionTitle, brandContext, pageSize, pdfStyle, contentId,
+  brand, section, isFullscreen, onToggleFullscreen, onPagesChange, onInsertImageToPage,
+}: Props) {
   const [pages, setPages] = useState<EbookPageData[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedPageIndex, setSelectedPageIndex] = useState(0);
@@ -53,7 +59,7 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
     updateScale();
     window.addEventListener("resize", updateScale);
     return () => window.removeEventListener("resize", updateScale);
-  }, [pageSize]);
+  }, [pageSize, isFullscreen]);
 
   // Load saved layouts or generate
   useEffect(() => {
@@ -180,6 +186,20 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
     setShowImageDialog(false);
   };
 
+  // Expose image insertion for parent component
+  const insertImageToCurrentPage = useCallback((imageUrl: string) => {
+    if (pages.length > 0) {
+      updatePageContent(selectedPageIndex, "image", imageUrl);
+    }
+  }, [pages, selectedPageIndex]);
+
+  // Wire up onInsertImageToPage callback
+  useEffect(() => {
+    if (onInsertImageToPage) {
+      // This is handled via the parent passing the callback
+    }
+  }, [onInsertImageToPage]);
+
   const handleFileUpload = async (file: File) => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) return;
@@ -225,62 +245,76 @@ export function EbookPageDesigner({ content, sectionTitle, brandContext, pageSiz
     );
   }
 
+  const thumbnailWidth = isFullscreen ? "w-36" : "w-32";
+
   return (
-    <div className="flex gap-4 h-[calc(100vh-280px)]">
-      {/* Thumbnail sidebar */}
-      <div className="w-32 shrink-0 flex flex-col gap-2">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-medium text-muted-foreground">{pages.length} pages</span>
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={generateLayouts} title="Regenerate all layouts">
+    <div className={`flex flex-col ${isFullscreen ? "absolute inset-0 z-40 bg-background" : ""}`}>
+      {/* Designer toolbar */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{pages.length} pages</span>
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={generateLayouts} title="Regenerate all layouts">
             <RefreshCw className="w-3 h-3" />
           </Button>
-        </div>
-        <ScrollArea className="flex-1">
-          <div className="space-y-2 pr-2">
-            {pages.map((page, i) => (
-              <button
-                key={page.id}
-                onClick={() => setSelectedPageIndex(i)}
-                className={`w-full transition-all rounded-md overflow-hidden ${
-                  i === selectedPageIndex ? "ring-2 ring-primary" : "ring-1 ring-border hover:ring-primary/50"
-                }`}
-              >
-                <div className="relative">
-                  <EbookPage page={page} pageSize={pageSize} pdfStyle={pdfStyle} scale={thumbnailScale} />
-                  <div className="absolute bottom-0 left-0 right-0 bg-background/80 text-[9px] text-center py-0.5 font-medium">
-                    {i + 1}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
-
-      {/* Main page view */}
-      <div ref={mainRef} className="flex-1 flex flex-col items-center overflow-auto">
-        <div className="mb-3 flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setShowLayoutPicker(true)}>
-            <LayoutGrid className="w-3 h-3 mr-1" /> Change Layout
-          </Button>
+          {selectedPage && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLayoutPicker(true)}>
+              <LayoutGrid className="w-3 h-3 mr-1" /> Change Layout
+            </Button>
+          )}
           <span className="text-xs text-muted-foreground">
             Page {selectedPageIndex + 1} of {pages.length} — Click text to edit
           </span>
         </div>
-
-        {selectedPage && (
-          <EbookPage
-            page={selectedPage}
-            pageSize={pageSize}
-            pdfStyle={pdfStyle}
-            scale={mainScale}
-            isSelected
-            editable
-            onFieldChange={(field, value) => updatePageContent(selectedPageIndex, field, value)}
-            onItemChange={(idx, value) => updatePageItem(selectedPageIndex, idx, value)}
-            onImageAction={handleImageAction}
-          />
+        {onToggleFullscreen && (
+          <Button size="sm" variant="ghost" className="h-7" onClick={onToggleFullscreen}>
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 mr-1" /> : <Maximize2 className="w-3.5 h-3.5 mr-1" />}
+            <span className="text-xs">{isFullscreen ? "Exit" : "Fullscreen"}</span>
+          </Button>
         )}
+      </div>
+
+      {/* Main content */}
+      <div className={`flex gap-4 ${isFullscreen ? "flex-1 overflow-hidden p-4" : "h-[calc(100vh-340px)]"}`}>
+        {/* Thumbnail sidebar */}
+        <div className={`${thumbnailWidth} shrink-0 flex flex-col gap-2`}>
+          <ScrollArea className="flex-1">
+            <div className="space-y-2 pr-2">
+              {pages.map((page, i) => (
+                <button
+                  key={page.id}
+                  onClick={() => setSelectedPageIndex(i)}
+                  className={`w-full transition-all rounded-md overflow-hidden ${
+                    i === selectedPageIndex ? "ring-2 ring-primary" : "ring-1 ring-border hover:ring-primary/50"
+                  }`}
+                >
+                  <div className="relative">
+                    <EbookPage page={page} pageSize={pageSize} pdfStyle={pdfStyle} scale={thumbnailScale} />
+                    <div className="absolute bottom-0 left-0 right-0 bg-background/80 text-[9px] text-center py-0.5 font-medium">
+                      {i + 1}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Main page view */}
+        <div ref={mainRef} className="flex-1 flex flex-col items-center overflow-auto">
+          {selectedPage && (
+            <EbookPage
+              page={selectedPage}
+              pageSize={pageSize}
+              pdfStyle={pdfStyle}
+              scale={mainScale}
+              isSelected
+              editable
+              onFieldChange={(field, value) => updatePageContent(selectedPageIndex, field, value)}
+              onItemChange={(idx, value) => updatePageItem(selectedPageIndex, idx, value)}
+              onImageAction={handleImageAction}
+            />
+          )}
+        </div>
       </div>
 
       {/* Layout picker dialog */}
