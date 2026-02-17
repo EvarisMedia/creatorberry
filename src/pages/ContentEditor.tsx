@@ -73,6 +73,8 @@ const ContentEditorPage = () => {
   const [designedPages, setDesignedPages] = useState<EbookPageData[]>([]);
   const [isDesignerFullscreen, setIsDesignerFullscreen] = useState(false);
   const [sectionSidebarCollapsed, setSectionSidebarCollapsed] = useState(false);
+  const [pdfStyleConfigLoaded, setPdfStyleConfigLoaded] = useState(false);
+  const pdfStyleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // AI Edit state
   const [selectedText, setSelectedText] = useState("");
@@ -302,6 +304,38 @@ const ContentEditorPage = () => {
       setSectionSidebarCollapsed(true);
     }
   }, [editorTab]);
+
+  // Load PDF style config from database
+  useEffect(() => {
+    if (!outlineId) return;
+    supabase
+      .from("product_outlines")
+      .select("pdf_style_config")
+      .eq("id", outlineId)
+      .single()
+      .then(({ data }) => {
+        if (data?.pdf_style_config && typeof data.pdf_style_config === "object" && Object.keys(data.pdf_style_config as object).length > 0) {
+          setPdfStyleConfig({ ...DEFAULT_PDF_STYLE_CONFIG, ...(data.pdf_style_config as Partial<PDFStyleConfig>) });
+        }
+        setPdfStyleConfigLoaded(true);
+      });
+  }, [outlineId]);
+
+  // Debounced save PDF style config to database
+  useEffect(() => {
+    if (!outlineId || !pdfStyleConfigLoaded) return;
+    if (pdfStyleSaveTimeoutRef.current) clearTimeout(pdfStyleSaveTimeoutRef.current);
+    pdfStyleSaveTimeoutRef.current = setTimeout(() => {
+      supabase
+        .from("product_outlines")
+        .update({ pdf_style_config: pdfStyleConfig as any })
+        .eq("id", outlineId)
+        .then(() => {});
+    }, 500);
+    return () => {
+      if (pdfStyleSaveTimeoutRef.current) clearTimeout(pdfStyleSaveTimeoutRef.current);
+    };
+  }, [pdfStyleConfig, outlineId, pdfStyleConfigLoaded]);
 
   // Handle image insertion routing based on active tab
   const handleImageInsertRouted = (imageUrl: string, altText?: string) => {
