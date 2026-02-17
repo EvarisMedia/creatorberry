@@ -532,6 +532,42 @@ serve(async (req) => {
       console.error("Failed to save export record:", insertError);
     }
 
+    // Upload generated file to storage for future downloads
+    if (exportRecord?.id) {
+      try {
+        const filePath = `${user.id}/${exportRecord.id}.${result.extension}`;
+        let uploadBlob: Uint8Array | string;
+        let contentType = result.mimeType;
+        
+        if (result.encoding === "base64") {
+          // Decode base64 to binary for storage
+          const binaryString = atob(result.content);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          uploadBlob = bytes;
+        } else {
+          uploadBlob = new TextEncoder().encode(result.content);
+        }
+
+        const { error: uploadError } = await supabase.storage
+          .from("product-exports")
+          .upload(filePath, uploadBlob, { contentType, upsert: true });
+
+        if (!uploadError) {
+          await supabase.from("product_exports")
+            .update({ file_url: filePath, file_size: uploadBlob.length })
+            .eq("id", exportRecord.id);
+          console.log(`Uploaded export to storage: ${filePath}`);
+        } else {
+          console.error("Failed to upload export to storage:", uploadError);
+        }
+      } catch (storageErr) {
+        console.error("Storage upload error:", storageErr);
+      }
+    }
+
     const responseBody: any = {
       content: result.content,
       mimeType: result.mimeType,
