@@ -1,0 +1,1 @@
+ALTER TABLE product_outlines ADD COLUMN pdf_style_config jsonb DEFAULT '{}';

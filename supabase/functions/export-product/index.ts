@@ -9,6 +9,18 @@ const corsHeaders = {
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
+const PAGE_SIZES: Record<string, { width: number; height: number }> = {
+  "6x9": { width: 432, height: 648 },
+  "5.5x8.5": { width: 396, height: 612 },
+  "8.5x11": { width: 612, height: 792 },
+  "8x8": { width: 576, height: 576 },
+  "a4": { width: 595, height: 842 },
+  "a4-landscape": { width: 842, height: 595 },
+  "a5": { width: 420, height: 595 },
+  "letter-landscape": { width: 792, height: 612 },
+  "16x9": { width: 960, height: 540 },
+};
+
 async function fetchOutlineWithContent(supabase: any, outlineId: string, userId: string) {
   const { data: outline, error: outlineError } = await supabase
     .from("product_outlines")
@@ -319,13 +331,144 @@ async function generateFormattedExport(
   model: string,
   sections?: any[],
   contentMap?: Record<string, any>,
-  imagesMap?: Record<string, any[]>
+  imagesMap?: Record<string, any[]>,
+  pdfStyleConfig?: any
 ) {
   if (format === "markdown") {
     return { content: markdown, mimeType: "text/markdown", extension: "md" };
   }
 
   if (format === "html" || format === "pdf") {
+    // Check if page_layouts exist for PDF - use designed layouts instead of AI conversion
+    if (format === "pdf" && sections && contentMap) {
+      const hasPageLayouts = sections.some((s: any) => {
+        const ec = contentMap[s.id];
+        return ec?.page_layouts && Array.isArray(ec.page_layouts) && ec.page_layouts.length > 0;
+      });
+
+      if (hasPageLayouts) {
+        // Read pdf_style_config from outline if available
+        const pdfStyle = pdfStyleConfig || {};
+        const pageSizeKey = pdfStyle.pageSize || "6x9";
+        const dims = PAGE_SIZES[pageSizeKey] || PAGE_SIZES["6x9"];
+        const fontFamily = pdfStyle.fontFamily === "serif" ? "Georgia, serif" : pdfStyle.fontFamily === "mono" ? "'Courier New', monospace" : "system-ui, -apple-system, sans-serif";
+        const fontSize = pdfStyle.fontSize === "small" ? "14px" : pdfStyle.fontSize === "large" ? "18px" : "16px";
+        const headingColor = pdfStyle.headingColor || "#1a1a2e";
+
+        let pagesHtml = "";
+        let pageNum = 0;
+
+        for (const section of sections) {
+          const ec = contentMap[section.id];
+          if (!ec?.page_layouts || !Array.isArray(ec.page_layouts)) continue;
+
+          for (const page of ec.page_layouts) {
+            pageNum++;
+            const c = page.content || {};
+            let pageContent = "";
+
+            switch (page.layout) {
+              case "title":
+                pageContent = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:0 48px;">
+                  ${c.heading ? `<h1 style="font-size:28px;font-weight:bold;color:${headingColor};margin-bottom:16px;">${escapeXml(c.heading)}</h1>` : ""}
+                  ${c.subheading ? `<p style="font-size:18px;color:#666;">${escapeXml(c.subheading)}</p>` : ""}
+                  ${c.attribution ? `<p style="font-size:14px;color:#999;margin-top:32px;">${escapeXml(c.attribution)}</p>` : ""}
+                </div>`;
+                break;
+              case "chapter-opener":
+                pageContent = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:0 40px;">
+                  ${c.subheading ? `<p style="font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#999;margin-bottom:8px;">${escapeXml(c.subheading)}</p>` : ""}
+                  ${c.heading ? `<h1 style="font-size:24px;font-weight:bold;color:${headingColor};margin-bottom:16px;">${escapeXml(c.heading)}</h1>` : ""}
+                  <div style="width:64px;height:1px;background:#ddd;margin-bottom:16px;"></div>
+                  ${c.body ? `<p style="font-size:14px;line-height:1.6;color:#666;max-width:80%;">${escapeXml(c.body)}</p>` : ""}
+                </div>`;
+                break;
+              case "text-image":
+                pageContent = `<div style="display:flex;height:100%;gap:16px;padding:24px;">
+                  <div style="flex:1;display:flex;flex-direction:column;">
+                    ${c.heading ? `<h2 style="font-size:18px;font-weight:bold;color:${headingColor};margin-bottom:12px;">${escapeXml(c.heading)}</h2>` : ""}
+                    ${c.body ? `<p style="font-size:${fontSize};line-height:1.6;white-space:pre-wrap;">${escapeXml(c.body)}</p>` : ""}
+                  </div>
+                  ${c.image ? `<div style="width:40%;flex-shrink:0;"><img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" /></div>` : ""}
+                </div>`;
+                break;
+              case "image-text":
+                pageContent = `<div style="display:flex;height:100%;gap:16px;padding:24px;">
+                  ${c.image ? `<div style="width:40%;flex-shrink:0;"><img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" /></div>` : ""}
+                  <div style="flex:1;display:flex;flex-direction:column;">
+                    ${c.heading ? `<h2 style="font-size:18px;font-weight:bold;color:${headingColor};margin-bottom:12px;">${escapeXml(c.heading)}</h2>` : ""}
+                    ${c.body ? `<p style="font-size:${fontSize};line-height:1.6;white-space:pre-wrap;">${escapeXml(c.body)}</p>` : ""}
+                  </div>
+                </div>`;
+                break;
+              case "full-image":
+                pageContent = `<div style="display:flex;flex-direction:column;height:100%;">
+                  ${c.image ? `<div style="flex:1;"><img src="${c.image}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ""}
+                  ${c.heading ? `<p style="text-align:center;font-size:12px;color:#999;font-style:italic;padding:12px;">${escapeXml(c.heading)}</p>` : ""}
+                </div>`;
+                break;
+              case "two-column":
+                pageContent = `<div style="display:flex;flex-direction:column;height:100%;padding:24px 32px;">
+                  ${c.heading ? `<h2 style="font-size:18px;font-weight:bold;color:${headingColor};margin-bottom:16px;">${escapeXml(c.heading)}</h2>` : ""}
+                  ${c.body ? `<div style="columns:2;column-gap:24px;font-size:${fontSize};line-height:1.6;flex:1;">${escapeXml(c.body)}</div>` : ""}
+                </div>`;
+                break;
+              case "quote":
+                pageContent = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:0 48px;">
+                  <div style="font-size:48px;color:#ddd;line-height:1;">"</div>
+                  <blockquote style="font-size:18px;font-style:italic;line-height:1.6;color:${headingColor};margin-bottom:16px;">${escapeXml(c.quote || c.body || "")}</blockquote>
+                  ${c.attribution ? `<p style="font-size:14px;color:#999;">— ${escapeXml(c.attribution)}</p>` : ""}
+                </div>`;
+                break;
+              case "checklist":
+                const checkItems = (c.items || []).map((item: string) => 
+                  `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;"><div style="width:16px;height:16px;border:2px solid #ccc;border-radius:3px;flex-shrink:0;margin-top:2px;"></div><span style="font-size:${fontSize};">${escapeXml(item)}</span></div>`
+                ).join("");
+                pageContent = `<div style="display:flex;flex-direction:column;height:100%;padding:32px 40px;">
+                  ${c.heading ? `<h2 style="font-size:18px;font-weight:bold;color:${headingColor};margin-bottom:16px;">${escapeXml(c.heading)}</h2>` : ""}
+                  ${checkItems}
+                </div>`;
+                break;
+              case "key-takeaways":
+                const takeawayItems = (c.items || []).map((item: string, idx: number) => 
+                  `<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;"><div style="width:24px;height:24px;border-radius:50%;background:${headingColor}15;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:${headingColor};flex-shrink:0;">${idx + 1}</div><span style="font-size:${fontSize};line-height:1.6;">${escapeXml(item)}</span></div>`
+                ).join("");
+                pageContent = `<div style="display:flex;flex-direction:column;height:100%;padding:32px 40px;">
+                  ${c.heading ? `<h2 style="font-size:18px;font-weight:bold;color:${headingColor};margin-bottom:16px;">${escapeXml(c.heading)}</h2>` : ""}
+                  ${takeawayItems}
+                </div>`;
+                break;
+              case "call-to-action":
+                pageContent = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:0 48px;">
+                  ${c.heading ? `<h2 style="font-size:24px;font-weight:bold;color:${headingColor};margin-bottom:12px;">${escapeXml(c.heading)}</h2>` : ""}
+                  ${c.body ? `<p style="font-size:${fontSize};color:#666;margin-bottom:24px;max-width:80%;">${escapeXml(c.body)}</p>` : ""}
+                  ${c.subheading ? `<div style="padding:10px 24px;background:${headingColor};color:white;border-radius:8px;font-size:14px;font-weight:500;">${escapeXml(c.subheading)}</div>` : ""}
+                </div>`;
+                break;
+              default: // full-text, blank
+                pageContent = `<div style="display:flex;flex-direction:column;height:100%;padding:32px 40px;">
+                  ${c.heading ? `<h2 style="font-size:20px;font-weight:bold;color:${headingColor};margin-bottom:16px;">${escapeXml(c.heading)}</h2>` : ""}
+                  ${c.body ? `<div style="font-size:${fontSize};line-height:1.6;white-space:pre-wrap;flex:1;">${escapeXml(c.body)}</div>` : ""}
+                </div>`;
+            }
+
+            pagesHtml += `<div style="width:${dims.width}px;height:${dims.height}px;background:white;font-family:${fontFamily};overflow:hidden;page-break-after:always;margin:0 auto;box-sizing:border-box;">${pageContent}</div>\n`;
+          }
+        }
+
+        const fullHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>${escapeXml(title)}</title>
+<style>
+  @media print { @page { size: ${dims.width}px ${dims.height}px; margin: 0; } body { margin: 0; } }
+  body { margin: 0; padding: 0; background: #f5f5f5; }
+  @media screen { body { padding: 20px; } div[style*="page-break-after"] { margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); } }
+</style>
+</head><body>${pagesHtml}</body></html>`;
+
+        return { content: fullHtml, mimeType: "text/html", extension: "pdf" };
+      }
+    }
+
     const printCss = format === "pdf" ? `
       @media print { h2 { page-break-before: always; } }
       @page { margin: 2cm; }` : '';
@@ -507,7 +650,7 @@ serve(async (req) => {
       if (modelSetting?.setting_value) model = modelSetting.setting_value;
     } catch { /* use default */ }
 
-    const result = await generateFormattedExport(markdown, format, outline.title, model, sections, contentMap, imagesMap);
+    const result = await generateFormattedExport(markdown, format, outline.title, model, sections, contentMap, imagesMap, outline.pdf_style_config);
 
     const fileSize = result.encoding === "base64" 
       ? Math.ceil(result.content.length * 0.75) 

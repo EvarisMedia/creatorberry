@@ -1254,6 +1254,7 @@ export type Database = {
           brand_id: string
           created_at: string
           id: string
+          pdf_style_config: Json | null
           product_idea_id: string
           status: string
           structure: Json
@@ -1266,6 +1267,7 @@ export type Database = {
           brand_id: string
           created_at?: string
           id?: string
+          pdf_style_config?: Json | null
           product_idea_id: string
           status?: string
           structure?: Json
@@ -1278,6 +1280,7 @@ export type Database = {
           brand_id?: string
           created_at?: string
           id?: string
+          pdf_style_config?: Json | null
           product_idea_id?: string
           status?: string
           structure?: Json

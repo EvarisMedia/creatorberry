@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2, Save } from "lucide-react";
+import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2, Save, Plus, Trash2, Copy, ChevronUp, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EbookPage } from "./EbookPage";
@@ -143,13 +143,17 @@ export function EbookPageDesigner({
     }, 500);
   }, [contentId]);
 
+  const updatePages = (updated: EbookPageData[]) => {
+    setPages(updated);
+    onPagesChange?.(updated);
+    debouncedSave(updated);
+  };
+
   const updatePageContent = (pageIndex: number, field: string, value: string) => {
     const updated = pages.map((p, i) =>
       i === pageIndex ? { ...p, content: { ...p.content, [field]: value } } : p
     );
-    setPages(updated);
-    onPagesChange?.(updated);
-    debouncedSave(updated);
+    updatePages(updated);
   };
 
   const updatePageItem = (pageIndex: number, itemIndex: number, value: string) => {
@@ -159,9 +163,7 @@ export function EbookPageDesigner({
       items[itemIndex] = value;
       return { ...p, content: { ...p.content, items } };
     });
-    setPages(updated);
-    onPagesChange?.(updated);
-    debouncedSave(updated);
+    updatePages(updated);
   };
 
   const handleLayoutChange = (layout: LayoutType) => {
@@ -172,6 +174,76 @@ export function EbookPageDesigner({
     onPagesChange?.(updated);
     saveLayouts(updated);
   };
+
+  // Page management
+  const addPage = () => {
+    const newPage: EbookPageData = {
+      id: crypto.randomUUID(),
+      layout: "full-text",
+      content: { heading: "New Page", body: "" },
+      order: pages.length,
+    };
+    const updated = [...pages];
+    updated.splice(selectedPageIndex + 1, 0, newPage);
+    const reordered = updated.map((p, i) => ({ ...p, order: i }));
+    setPages(reordered);
+    setSelectedPageIndex(selectedPageIndex + 1);
+    onPagesChange?.(reordered);
+    saveLayouts(reordered);
+  };
+
+  const duplicatePage = () => {
+    if (!pages[selectedPageIndex]) return;
+    const clone = { ...pages[selectedPageIndex], id: crypto.randomUUID(), content: { ...pages[selectedPageIndex].content } };
+    const updated = [...pages];
+    updated.splice(selectedPageIndex + 1, 0, clone);
+    const reordered = updated.map((p, i) => ({ ...p, order: i }));
+    setPages(reordered);
+    setSelectedPageIndex(selectedPageIndex + 1);
+    onPagesChange?.(reordered);
+    saveLayouts(reordered);
+  };
+
+  const deletePage = () => {
+    if (pages.length <= 1) {
+      toast({ title: "Cannot delete", description: "You need at least one page.", variant: "destructive" });
+      return;
+    }
+    const updated = pages.filter((_, i) => i !== selectedPageIndex).map((p, i) => ({ ...p, order: i }));
+    const newIndex = Math.min(selectedPageIndex, updated.length - 1);
+    setPages(updated);
+    setSelectedPageIndex(newIndex);
+    onPagesChange?.(updated);
+    saveLayouts(updated);
+  };
+
+  const movePage = (direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? selectedPageIndex - 1 : selectedPageIndex + 1;
+    if (targetIndex < 0 || targetIndex >= pages.length) return;
+    const updated = [...pages];
+    [updated[selectedPageIndex], updated[targetIndex]] = [updated[targetIndex], updated[selectedPageIndex]];
+    const reordered = updated.map((p, i) => ({ ...p, order: i }));
+    setPages(reordered);
+    setSelectedPageIndex(targetIndex);
+    onPagesChange?.(reordered);
+    saveLayouts(reordered);
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.isContentEditable || (e.target as HTMLElement)?.tagName === "INPUT" || (e.target as HTMLElement)?.tagName === "TEXTAREA") return;
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedPageIndex((prev) => Math.max(0, prev - 1));
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedPageIndex((prev) => Math.min(pages.length - 1, prev + 1));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [pages.length]);
 
   const handleImageAction = (action: "generate" | "upload" | "remove") => {
     if (action === "generate") {
@@ -195,7 +267,6 @@ export function EbookPageDesigner({
     }
   }, [pages, selectedPageIndex]);
 
-  // Register the insert image callback so parent can trigger image insertion into current page
   useEffect(() => {
     if (onRegisterInsertImage) {
       onRegisterInsertImage(insertImageToCurrentPage);
@@ -219,7 +290,9 @@ export function EbookPageDesigner({
     }
   };
 
-  const thumbnailScale = 0.15;
+  const dims = PAGE_SIZES[pageSize];
+  const isLandscape = dims.width > dims.height;
+  const thumbnailScale = isLandscape ? 0.12 : 0.15;
   const selectedPage = pages[selectedPageIndex] || null;
 
   if (isGenerating) {
@@ -247,31 +320,50 @@ export function EbookPageDesigner({
     );
   }
 
-  const thumbnailWidth = isFullscreen ? "w-36" : "w-32";
+  const thumbnailWidth = isFullscreen ? (isLandscape ? "w-40" : "w-36") : (isLandscape ? "w-36" : "w-32");
 
   return (
     <div className={`flex flex-col ${isFullscreen ? "absolute inset-0 z-40 bg-background" : ""}`}>
       {/* Designer toolbar */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{pages.length} pages</span>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30 flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-muted-foreground font-medium">
+            Page {selectedPageIndex + 1} of {pages.length}
+          </span>
+          <div className="w-px h-4 bg-border mx-1" />
           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={generateLayouts} title="Regenerate all layouts">
             <RefreshCw className="w-3 h-3" />
           </Button>
-           {selectedPage && (
-             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLayoutPicker(true)}>
-               <LayoutGrid className="w-3 h-3 mr-1" /> Change Layout
-             </Button>
-           )}
-           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
-             await saveLayouts(pages);
-             toast({ title: "Saved", description: "Page layouts saved successfully." });
-           }}>
-             <Save className="w-3 h-3 mr-1" /> Save
-           </Button>
-           <span className="text-xs text-muted-foreground">
-             Page {selectedPageIndex + 1} of {pages.length} — Click text to edit
-           </span>
+          {selectedPage && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLayoutPicker(true)}>
+              <LayoutGrid className="w-3 h-3 mr-1" /> Layout
+            </Button>
+          )}
+          <div className="w-px h-4 bg-border mx-1" />
+          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={addPage} title="Add page after current">
+            <Plus className="w-3 h-3" />
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={duplicatePage} title="Duplicate current page">
+            <Copy className="w-3 h-3" />
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={deletePage} title="Delete current page" disabled={pages.length <= 1}>
+            <Trash2 className="w-3 h-3" />
+          </Button>
+          <div className="w-px h-4 bg-border mx-1" />
+          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => movePage("up")} title="Move page up" disabled={selectedPageIndex === 0}>
+            <ChevronUp className="w-3 h-3" />
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => movePage("down")} title="Move page down" disabled={selectedPageIndex === pages.length - 1}>
+            <ChevronDown className="w-3 h-3" />
+          </Button>
+          <div className="w-px h-4 bg-border mx-1" />
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
+            await saveLayouts(pages);
+            toast({ title: "Saved", description: "Page layouts saved successfully." });
+          }}>
+            <Save className="w-3 h-3 mr-1" /> Save
+          </Button>
+          <span className="text-xs text-muted-foreground">Click text to edit</span>
         </div>
         {onToggleFullscreen && (
           <Button size="sm" variant="ghost" className="h-7" onClick={onToggleFullscreen}>
@@ -310,17 +402,23 @@ export function EbookPageDesigner({
         {/* Main page view */}
         <div ref={mainRef} className="flex-1 flex flex-col items-center overflow-auto">
           {selectedPage && (
-            <EbookPage
-              page={selectedPage}
-              pageSize={pageSize}
-              pdfStyle={pdfStyle}
-              scale={mainScale}
-              isSelected
-              editable
-              onFieldChange={(field, value) => updatePageContent(selectedPageIndex, field, value)}
-              onItemChange={(idx, value) => updatePageItem(selectedPageIndex, idx, value)}
-              onImageAction={handleImageAction}
-            />
+            <div className="relative">
+              <EbookPage
+                page={selectedPage}
+                pageSize={pageSize}
+                pdfStyle={pdfStyle}
+                scale={mainScale}
+                isSelected
+                editable
+                onFieldChange={(field, value) => updatePageContent(selectedPageIndex, field, value)}
+                onItemChange={(idx, value) => updatePageItem(selectedPageIndex, idx, value)}
+                onImageAction={handleImageAction}
+              />
+              {/* Page number overlay */}
+              <div className="absolute bottom-2 right-3 bg-muted/80 text-muted-foreground text-[10px] px-2 py-0.5 rounded font-medium">
+                {selectedPageIndex + 1} / {pages.length}
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -335,7 +433,7 @@ export function EbookPageDesigner({
         />
       )}
 
-      {/* Image generate dialog - controlled externally */}
+      {/* Image generate dialog */}
       {section && brand && (
         <GenerateSectionImageDialog
           section={section}
