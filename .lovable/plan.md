@@ -1,92 +1,64 @@
 
 
-# Fix Image Insertion: Cursor Position and Design Tab Routing
+# Fix: Save Button in Design Tab + Fix Image Generation Dialog
 
-## Problems
+## Issue 1: No Save Button in Design & Preview Tab
 
-1. **Image appends to bottom instead of cursor position**: The `handleInsertImage` function (line 157-191) checks `cursorPosition` but this value is only set when the user clicks/selects inside the textarea (via `handleTextareaSelect`). When the user clicks "Generate Section Image" (which opens a dialog), the textarea loses focus and `cursorPosition` becomes stale or null. The fallback (`cursorPosition ?? editContent.length`) then appends to the end. Additionally, if `editingId` is not set (user is not in edit mode), the image always appends to the latest content.
+The Design tab auto-saves via a debounced function (500ms delay after edits), but there is no visible save button or feedback. The user has no way to know their changes are saved.
 
-2. **Design tab image routing is broken**: The `handleImageInsertRouted` function (line 303-312) calls `handleInsertImage` in BOTH branches -- it never actually inserts into the page layout. The `EbookPageDesigner` has its own `onInsertImageToPage` prop but it's never wired up from `ContentEditor`.
-
-## Fixes
-
-### Fix 1: Preserve cursor position before dialog opens
-
-Save the cursor position immediately when the user clicks the "Generate Image" or "Insert Image" toolbar button, before the dialog steals focus.
-
-**File: `src/pages/ContentEditor.tsx`**
-
-- In the `ContentToolbar`'s `onInsertImage` callback (line 596-599), save `cursorPosition` from the textarea before triggering the dialog click
-- Change `handleTextareaSelect` to also save on every keystroke/change so the position is always current
-- Store the cursor position in a ref (not just state) so it survives re-renders during dialog interaction
-
-### Fix 2: Route images to page designer when on Design tab
-
-**File: `src/pages/ContentEditor.tsx`**
-
-- Add an `insertImageToPageRef` -- a ref holding a callback function that `EbookPageDesigner` populates
-- Pass `onInsertImageToPage` prop to `EbookPageDesigner` that sets this ref
-- In `handleImageInsertRouted`: when `editorTab === "design"`, call `insertImageToPageRef.current(imageUrl)` instead of `handleInsertImage`
+### Fix
+Add a "Save" button to the `EbookPageDesigner` toolbar (line 255-276) that explicitly calls `saveLayouts(pages)` and shows a toast confirmation. Also add a small "Auto-saved" indicator so users know edits are persisted automatically.
 
 **File: `src/components/content/EbookPageDesigner.tsx`**
+- Add a `Save` button next to the existing toolbar buttons (near the "Change Layout" and "Fullscreen" buttons)
+- The button calls `saveLayouts(pages)` and shows a toast
 
-- The component already has `insertImageToCurrentPage` (a useCallback). Wire the `onInsertImageToPage` prop so the parent can trigger it
-- Expose the callback via a prop: `onInsertImageToPage?: (fn: (url: string) => void) => void` -- called on mount to register the function
+---
 
-### Fix 3: Wire all image insertion points through the router
+## Issue 2: Generate Image Dialog Never Opens
 
-Update these callers to use `handleImageInsertRouted` instead of `handleInsertImage`:
-- Line 650: Gallery image click
-- Line 714: Hidden dialog's `onInsertImage`
-- Line 725: Visible dialog's `onInsertImage`
-- Line 758: Section images gallery "Insert" button
+Two separate breakages:
 
-This ensures every image insertion respects the active tab context.
-
-## Technical Details
-
-### Cursor Position via Ref
-
-```typescript
-const cursorPosRef = useRef<number | null>(null);
-
-const handleTextareaSelect = () => {
-  if (editTextareaRef.current) {
-    cursorPosRef.current = editTextareaRef.current.selectionStart;
-    setCursorPosition(editTextareaRef.current.selectionStart);
-    // ... existing selection logic
-  }
-};
+### Problem A: Hidden dialog trigger ID is missing
+In `ContentEditor.tsx` line 603, the toolbar's "Insert Image" button tries to programmatically click an element with `id="generate-image-trigger"`:
+```js
+const trigger = document.getElementById("generate-image-trigger");
+trigger?.click();
 ```
+But the `GenerateSectionImageDialog` component (lines 714-723) renders a `DialogTrigger` button with NO `id` attribute. So `getElementById` returns `null` and nothing happens.
 
-Then in `handleInsertImage`:
-```typescript
-const pos = cursorPosRef.current ?? editContent.length;
-```
+### Problem B: Designer's image dialog renders but never opens
+In `EbookPageDesigner.tsx` line 176-184, clicking "generate" on a page's image action sets `showImageDialog = true`. This conditionally renders `GenerateSectionImageDialog` (line 333), but that component has its own internal `open` state starting at `false`. The component renders a button (DialogTrigger) the user would have to click again -- but it's not even visible in the layout. So the dialog never opens.
 
-### Designer Image Callback Registration
+### Fix A: Add the missing ID to the hidden trigger
+In `GenerateSectionImageDialog.tsx`, add an optional `triggerId` prop. When provided, set `id={triggerId}` on the `DialogTrigger` button.
 
-```typescript
-// In ContentEditor
-const designerInsertImageRef = useRef<((url: string) => void) | null>(null);
+In `ContentEditor.tsx` line 717-722 (hidden dialog), pass `triggerId="generate-image-trigger"`.
 
-// Pass to EbookPageDesigner
-<EbookPageDesigner
-  ...
-  onRegisterInsertImage={(fn) => { designerInsertImageRef.current = fn; }}
-/>
+### Fix B: Auto-open dialog in designer
+Change `GenerateSectionImageDialog` to accept an optional `defaultOpen` prop. When the designer sets `showImageDialog = true`, pass `defaultOpen={true}` so the dialog opens immediately without requiring a second click.
 
-// In handleImageInsertRouted
-if (editorTab === "design" && designerInsertImageRef.current) {
-  designerInsertImageRef.current(imageUrl);
-} else {
-  handleInsertImage(imageUrl, altText);
-}
-```
+Alternatively (simpler approach): In `EbookPageDesigner.tsx`, instead of rendering `GenerateSectionImageDialog` conditionally, always render it and control its open state externally. Pass `open={showImageDialog}` and `onOpenChange={setShowImageDialog}` as props.
 
-### Files to Modify
-- `src/pages/ContentEditor.tsx` -- Fix cursor tracking, fix routing, wire all callers
-- `src/components/content/EbookPageDesigner.tsx` -- Expose insert image callback via `onRegisterInsertImage` prop
+The cleaner fix: Add `externalOpen` and `onExternalOpenChange` props to `GenerateSectionImageDialog` so the parent can control whether the dialog is open.
 
-### No new files needed
-### No database changes needed
+---
+
+## Files to Modify
+
+1. **`src/components/content/GenerateSectionImageDialog.tsx`**
+   - Add `triggerId?: string` prop, apply to `DialogTrigger`
+   - Add `externalOpen?: boolean` and `onExternalOpenChange?: (open: boolean) => void` props
+   - When `externalOpen` is provided, use it instead of internal `open` state
+
+2. **`src/components/content/EbookPageDesigner.tsx`**
+   - Pass `externalOpen={showImageDialog}` and `onExternalOpenChange={setShowImageDialog}` to `GenerateSectionImageDialog`
+   - Always render the dialog (remove the `showImageDialog &&` condition), let open/close be controlled by props
+   - Add a "Save" button to the toolbar that calls `saveLayouts(pages)` with toast feedback
+
+3. **`src/pages/ContentEditor.tsx`**
+   - Pass `triggerId="generate-image-trigger"` to the hidden `GenerateSectionImageDialog` (line 717)
+
+## No new files needed
+## No database changes needed
+
