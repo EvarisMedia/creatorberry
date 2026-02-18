@@ -59,6 +59,9 @@ interface PageRenderProps {
     fontFamily: string;
     headingColor: string;
     fontSize: string;
+    accentColor?: string;
+    backgroundColor?: string;
+    bodyColor?: string;
   };
   editable?: boolean;
   onFieldChange?: (field: string, value: string) => void;
@@ -357,7 +360,8 @@ function EditableItems({
 export function renderPageLayout(props: PageRenderProps, layout: LayoutType) {
   const { content, style, editable, onFieldChange, onItemChange, onImageAction } = props;
   const headingStyle = { color: style.headingColor, fontFamily: style.fontFamily };
-  const bodyStyle = { fontFamily: style.fontFamily, fontSize: style.fontSize };
+  const bodyStyle: React.CSSProperties = { fontFamily: style.fontFamily, fontSize: style.fontSize, color: style.bodyColor || undefined };
+  const accentColor = style.accentColor || style.headingColor;
 
   switch (layout) {
     case "title":
@@ -445,7 +449,7 @@ export function renderPageLayout(props: PageRenderProps, layout: LayoutType) {
               onItemChange={onItemChange}
               renderItem={(item, i, editEl) => (
                 <div className="flex items-start gap-2">
-                  <div className="w-4 h-4 border-2 border-muted-foreground/30 rounded mt-0.5 shrink-0" />
+                  <div className="w-4 h-4 border-2 rounded mt-0.5 shrink-0" style={{ borderColor: accentColor }} />
                   {editEl || <span className="text-sm">{item}</span>}
                 </div>
               )}
@@ -465,7 +469,7 @@ export function renderPageLayout(props: PageRenderProps, layout: LayoutType) {
               onItemChange={onItemChange}
               renderItem={(item, i, editEl) => (
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: accentColor + "1a", color: accentColor }}>
                     {i + 1}
                   </div>
                   {editEl || <span className="text-sm leading-relaxed">{item}</span>}
@@ -482,7 +486,7 @@ export function renderPageLayout(props: PageRenderProps, layout: LayoutType) {
           <EditableText value={content.heading} field="heading" editable={editable} onFieldChange={onFieldChange} className="text-2xl font-bold mb-3" style={headingStyle} as="h2" />
           <EditableText value={content.body} field="body" editable={editable} onFieldChange={onFieldChange} className="text-sm text-muted-foreground mb-6 max-w-[80%]" as="p" />
           {content.subheading && (
-            <div className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
+            <div className="px-6 py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: accentColor, color: "#ffffff" }}>
               {editable ? (
                 <span
                   contentEditable

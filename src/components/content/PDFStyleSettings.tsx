@@ -4,13 +4,19 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, Paintbrush } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, Paintbrush, Palette } from "lucide-react";
 import { useState } from "react";
+import { ThemeGallery, DesignTheme } from "./ThemeGallery";
 
 export interface PDFStyleConfig {
   fontFamily: "serif" | "sans-serif" | "mono";
   fontSize: "small" | "medium" | "large";
   headingColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  bodyColor: string;
+  themeName?: string;
   layout: "single" | "two-column";
   includeCoverPage: boolean;
   includeToc: boolean;
@@ -23,6 +29,9 @@ const DEFAULT_CONFIG: PDFStyleConfig = {
   fontFamily: "serif",
   fontSize: "medium",
   headingColor: "#1a1a2e",
+  accentColor: "#6366f1",
+  backgroundColor: "#ffffff",
+  bodyColor: "#334155",
   layout: "single",
   includeCoverPage: true,
   includeToc: true,
@@ -51,6 +60,20 @@ const PAGE_SIZE_OPTIONS = [
 
 export function PDFStyleSettings({ config, onChange, variant = "card" }: Props) {
   const [open, setOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+
+  const handleThemeSelect = (theme: DesignTheme) => {
+    onChange({
+      ...config,
+      fontFamily: theme.fontFamily,
+      fontSize: theme.fontSize,
+      headingColor: theme.headingColor,
+      accentColor: theme.accentColor,
+      backgroundColor: theme.backgroundColor,
+      bodyColor: theme.bodyColor,
+      themeName: theme.name,
+    });
+  };
 
   const update = (partial: Partial<PDFStyleConfig>) => {
     onChange({ ...config, ...partial });
@@ -58,60 +81,69 @@ export function PDFStyleSettings({ config, onChange, variant = "card" }: Props) 
 
   if (variant === "compact") {
     return (
-      <div className="flex flex-wrap items-center gap-3 px-1 py-2">
-        {/* Page Size */}
-        <div className="flex items-center gap-1.5">
-          <Label className="text-xs text-muted-foreground whitespace-nowrap">Size</Label>
-          <Select value={config.pageSize} onValueChange={(v) => update({ pageSize: v as PDFStyleConfig["pageSize"] })}>
-            <SelectTrigger className="h-7 text-xs w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <>
+        <div className="flex flex-wrap items-center gap-3 px-1 py-2">
+          {/* Theme button */}
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => setThemeOpen(true)}>
+            <Palette className="w-3 h-3" />
+            {config.themeName || "Theme"}
+          </Button>
 
-        {/* Font */}
-        <div className="flex items-center gap-1.5">
-          <Label className="text-xs text-muted-foreground">Font</Label>
-          <Select value={config.fontFamily} onValueChange={(v) => update({ fontFamily: v as PDFStyleConfig["fontFamily"] })}>
-            <SelectTrigger className="h-7 text-xs w-[110px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="serif">Serif</SelectItem>
-              <SelectItem value="sans-serif">Sans-serif</SelectItem>
-              <SelectItem value="mono">Monospace</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          {/* Page Size */}
+          <div className="flex items-center gap-1.5">
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">Size</Label>
+            <Select value={config.pageSize} onValueChange={(v) => update({ pageSize: v as PDFStyleConfig["pageSize"] })}>
+              <SelectTrigger className="h-7 text-xs w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Color */}
-        <div className="flex items-center gap-1.5">
-          <Label className="text-xs text-muted-foreground">Color</Label>
-          <Input
-            type="color"
-            value={config.headingColor}
-            onChange={(e) => update({ headingColor: e.target.value })}
-            className="w-7 h-7 p-0.5 cursor-pointer rounded"
-          />
-        </div>
+          {/* Font */}
+          <div className="flex items-center gap-1.5">
+            <Label className="text-xs text-muted-foreground">Font</Label>
+            <Select value={config.fontFamily} onValueChange={(v) => update({ fontFamily: v as PDFStyleConfig["fontFamily"], themeName: undefined })}>
+              <SelectTrigger className="h-7 text-xs w-[110px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="serif">Serif</SelectItem>
+                <SelectItem value="sans-serif">Sans-serif</SelectItem>
+                <SelectItem value="mono">Monospace</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Cover toggle */}
-        <div className="flex items-center gap-1.5">
-          <Switch id="cover-compact" checked={config.includeCoverPage} onCheckedChange={(v) => update({ includeCoverPage: v })} className="scale-75" />
-          <Label htmlFor="cover-compact" className="text-xs text-muted-foreground cursor-pointer">Cover</Label>
-        </div>
+          {/* Color */}
+          <div className="flex items-center gap-1.5">
+            <Label className="text-xs text-muted-foreground">Color</Label>
+            <Input
+              type="color"
+              value={config.headingColor}
+              onChange={(e) => update({ headingColor: e.target.value, themeName: undefined })}
+              className="w-7 h-7 p-0.5 cursor-pointer rounded"
+            />
+          </div>
 
-        {/* ToC toggle */}
-        <div className="flex items-center gap-1.5">
-          <Switch id="toc-compact" checked={config.includeToc} onCheckedChange={(v) => update({ includeToc: v })} className="scale-75" />
-          <Label htmlFor="toc-compact" className="text-xs text-muted-foreground cursor-pointer">ToC</Label>
+          {/* Cover toggle */}
+          <div className="flex items-center gap-1.5">
+            <Switch id="cover-compact" checked={config.includeCoverPage} onCheckedChange={(v) => update({ includeCoverPage: v })} className="scale-75" />
+            <Label htmlFor="cover-compact" className="text-xs text-muted-foreground cursor-pointer">Cover</Label>
+          </div>
+
+          {/* ToC toggle */}
+          <div className="flex items-center gap-1.5">
+            <Switch id="toc-compact" checked={config.includeToc} onCheckedChange={(v) => update({ includeToc: v })} className="scale-75" />
+            <Label htmlFor="toc-compact" className="text-xs text-muted-foreground cursor-pointer">ToC</Label>
+          </div>
         </div>
-      </div>
+        <ThemeGallery open={themeOpen} onOpenChange={setThemeOpen} onSelectTheme={handleThemeSelect} currentThemeName={config.themeName} />
+      </>
     );
   }
 
@@ -131,6 +163,12 @@ export function PDFStyleSettings({ config, onChange, variant = "card" }: Props) 
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4 pt-0">
+            {/* Theme Picker */}
+            <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setThemeOpen(true)}>
+              <Palette className="w-4 h-4" />
+              {config.themeName ? `Theme: ${config.themeName}` : "Choose a Theme"}
+            </Button>
+
             <div className="grid grid-cols-2 gap-4">
               {/* Font Family */}
               <div className="space-y-1.5">
@@ -247,6 +285,7 @@ export function PDFStyleSettings({ config, onChange, variant = "card" }: Props) 
           </CardContent>
         </CollapsibleContent>
       </Card>
+      <ThemeGallery open={themeOpen} onOpenChange={setThemeOpen} onSelectTheme={handleThemeSelect} currentThemeName={config.themeName} />
     </Collapsible>
   );
 }

@@ -29,18 +29,19 @@ export function EbookPage({ page, pageSize, pdfStyle, scale, isSelected, onClick
       onClick={onClick}
     >
       <div
-        className={`bg-background border shadow-md overflow-hidden ${editable ? "" : "cursor-pointer"} transition-all ${isSelected ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"}`}
+        className={`border shadow-md overflow-hidden ${editable ? "" : "cursor-pointer"} transition-all ${isSelected ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"}`}
         style={{
           width: dims.width,
           height: dims.height,
           transform: `scale(${scale})`,
           transformOrigin: "top left",
+          backgroundColor: pdfStyle.backgroundColor || undefined,
         }}
       >
         {renderPageLayout(
           {
             content: page.content,
-            style: { fontFamily, headingColor: pdfStyle.headingColor, fontSize },
+            style: { fontFamily, headingColor: pdfStyle.headingColor, fontSize, accentColor: pdfStyle.accentColor, backgroundColor: pdfStyle.backgroundColor, bodyColor: pdfStyle.bodyColor },
             editable,
             onFieldChange,
             onItemChange,
