@@ -9,6 +9,7 @@ import { useProductIdeas } from "@/hooks/useProductIdeas";
 import OutlineSectionCard from "@/components/outlines/OutlineSectionCard";
 import OutlineCard from "@/components/outlines/OutlineCard";
 import GenerateOutlineDialog from "@/components/outlines/GenerateOutlineDialog";
+import BuildAllSectionsDialog from "@/components/outlines/BuildAllSectionsDialog";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
   Loader2,
@@ -16,6 +17,7 @@ import {
   BookOpen,
   ArrowLeft,
   Sparkles,
+  Wand2,
 } from "lucide-react";
 
 const ProductOutlinePage = () => {
@@ -26,6 +28,7 @@ const ProductOutlinePage = () => {
   const navigate = useNavigate();
 
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [showBuildAll, setShowBuildAll] = useState(false);
   const [activeOutline, setActiveOutline] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
@@ -93,8 +96,13 @@ const ProductOutlinePage = () => {
                     <span className="text-sm text-muted-foreground">
                       {activeOutline.sections?.length || 0} sections · {activeOutline.total_word_count?.toLocaleString() || 0} words target
                     </span>
-                  </div>
-                  <Badge variant="secondary">{activeOutline.status}</Badge>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <Button variant="default" size="sm" onClick={() => setShowBuildAll(true)}>
+                       <Wand2 className="w-4 h-4 mr-2" /> Build All Sections
+                     </Button>
+                     <Badge variant="secondary">{activeOutline.status}</Badge>
+                   </div>
                 </CardContent>
               </Card>
 
@@ -159,6 +167,23 @@ const ProductOutlinePage = () => {
         onGenerate={generateOutline}
         isGenerating={isGenerating}
       />
+
+      {activeOutline?.sections && activeOutline.sections.length > 0 && currentBrand && (
+        <BuildAllSectionsDialog
+          open={showBuildAll}
+          onOpenChange={setShowBuildAll}
+          outlineId={activeOutline.id}
+          sections={activeOutline.sections}
+          brandId={currentBrand.id}
+          brandContext={{
+            name: currentBrand.name,
+            tone: currentBrand.tone,
+            about: currentBrand.about,
+            target_audience: currentBrand.target_audience,
+            writing_style: currentBrand.writing_style,
+          }}
+        />
+      )}
     </AppLayout>
   );
 };
