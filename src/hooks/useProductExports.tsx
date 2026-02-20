@@ -220,6 +220,44 @@ export function useProductExports(brandId: string | undefined) {
 }
 
 /**
+ * Generate fallback pages for sections that have expanded content but no page_layouts.
+ */
+function generateFallbackPages(sectionTitle: string, content: string, startOrder: number): EbookPageData[] {
+  const pages: EbookPageData[] = [];
+  
+  // Chapter opener page
+  pages.push({
+    id: crypto.randomUUID(),
+    layout: "chapter-opener",
+    content: {
+      heading: sectionTitle,
+      body: content.substring(0, 200).trim() + (content.length > 200 ? "..." : ""),
+    },
+    order: startOrder + pages.length,
+  });
+
+  // Split remaining content into ~200-word chunks for full-text pages
+  const words = content.split(/\s+/);
+  const WORDS_PER_PAGE = 200;
+  for (let i = 0; i < words.length; i += WORDS_PER_PAGE) {
+    const chunk = words.slice(i, i + WORDS_PER_PAGE).join(" ");
+    if (chunk.trim()) {
+      pages.push({
+        id: crypto.randomUUID(),
+        layout: "full-text",
+        content: {
+          heading: i === 0 ? sectionTitle : undefined,
+          body: chunk,
+        },
+        order: startOrder + pages.length,
+      });
+    }
+  }
+
+  return pages;
+}
+
+/**
  * Client-side PDF generation: fetches page layouts from DB and uses jsPDF.
  */
 async function generatePDFClientSide(
@@ -259,11 +297,15 @@ async function generatePDFClientSide(
       }
     }
 
-    // Collect page layouts from all sections
+    // Collect page layouts from all sections, with fallback for sections that have content but no layouts
     for (const section of sections.sort((a: any, b: any) => a.sort_order - b.sort_order)) {
       const ec = contentMap[section.id];
       if (ec?.page_layouts && Array.isArray(ec.page_layouts) && ec.page_layouts.length > 0) {
         allPages.push(...(ec.page_layouts as EbookPageData[]));
+      } else if (ec?.content) {
+        // Generate fallback pages for sections with expanded content but no page_layouts
+        const fallbackPages = generateFallbackPages(section.title, ec.content, allPages.length);
+        allPages.push(...fallbackPages);
       }
     }
   }

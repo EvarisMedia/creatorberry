@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import { EbookPageData, LayoutType, PageContent } from "@/components/content/ebookLayouts";
 import { PDFStyleConfig } from "@/components/content/PDFStyleSettings";
+import { THEME_BACKGROUNDS, ThemeBackgroundDesign, BackgroundElement } from "@/components/content/themeBackgrounds";
 
 const PAGE_SIZES: Record<string, { width: number; height: number }> = {
   "6x9": { width: 432, height: 648 },
@@ -40,6 +41,192 @@ function hexToRgb(hex: string): [number, number, number] {
     : [26, 26, 46];
 }
 
+function parseCssValue(val: string, totalMm: number): number {
+  if (val.endsWith("px")) return parseFloat(val) * PX_TO_MM;
+  if (val.endsWith("%")) return (parseFloat(val) / 100) * totalMm;
+  if (val.startsWith("calc(")) {
+    // Handle calc(100% - 80px) simply
+    const match = val.match(/calc\(\s*100%\s*-\s*(\d+)px\s*\)/);
+    if (match) return totalMm - parseFloat(match[1]) * PX_TO_MM;
+    return totalMm;
+  }
+  return parseFloat(val) * PX_TO_MM || 0;
+}
+
+/**
+ * Render theme background decorative elements onto the PDF page using jsPDF drawing commands.
+ */
+function renderPageBackground(
+  doc: jsPDF,
+  themeName: string | undefined,
+  wMm: number,
+  hMm: number,
+  bgColor?: string
+) {
+  // Fill background color
+  if (bgColor && bgColor !== "#ffffff") {
+    const [r, g, b] = hexToRgb(bgColor);
+    doc.setFillColor(r, g, b);
+    doc.rect(0, 0, wMm, hMm, "F");
+  }
+
+  if (!themeName) return;
+  const theme = THEME_BACKGROUNDS[themeName];
+  if (!theme) return;
+
+  for (const el of theme.elements) {
+    const [r, g, b] = hexToRgb(el.color);
+    const effectiveOpacity = Math.min(el.opacity, 1);
+
+    // Calculate position
+    const x = el.position.left ? parseCssValue(el.position.left, wMm) : 
+              el.position.right ? wMm - parseCssValue(el.position.right, wMm) - parseCssValue(el.size.width, wMm) : 0;
+    const y = el.position.top ? parseCssValue(el.position.top, hMm) :
+              el.position.bottom ? hMm - parseCssValue(el.position.bottom, hMm) - parseCssValue(el.size.height, hMm) : 0;
+    const w = parseCssValue(el.size.width, wMm);
+    const h = parseCssValue(el.size.height, hMm);
+
+    // jsPDF uses GState for opacity
+    const gState = new (doc as any).GState({ opacity: effectiveOpacity, "stroke-opacity": effectiveOpacity });
+
+    switch (el.type) {
+      case "circle": {
+        doc.saveGraphicsState();
+        doc.setGState(gState);
+        doc.setFillColor(r, g, b);
+        const radius = Math.min(w, h) / 2;
+        doc.circle(x + w / 2, y + h / 2, radius, "F");
+        doc.restoreGraphicsState();
+        break;
+      }
+
+      case "rect":
+      case "stripe": {
+        doc.saveGraphicsState();
+        doc.setGState(gState);
+        doc.setFillColor(r, g, b);
+        if (el.rotation) {
+          // For rotated rects, approximate with a diamond shape
+          const cx = x + w / 2;
+          const cy = y + h / 2;
+          const halfW = w / 2;
+          const halfH = h / 2;
+          const rad = (el.rotation * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+          const corners = [
+            [-halfW, -halfH], [halfW, -halfH], [halfW, halfH], [-halfW, halfH]
+          ].map(([px, py]) => [cx + px * cos - py * sin, cy + px * sin + py * cos]);
+          
+          doc.triangle(
+            corners[0][0], corners[0][1],
+            corners[1][0], corners[1][1],
+            corners[2][0], corners[2][1],
+            "F"
+          );
+          doc.triangle(
+            corners[0][0], corners[0][1],
+            corners[2][0], corners[2][1],
+            corners[3][0], corners[3][1],
+            "F"
+          );
+        } else {
+          doc.rect(x, y, w, h, "F");
+        }
+        doc.restoreGraphicsState();
+        break;
+      }
+
+      case "line": {
+        doc.saveGraphicsState();
+        doc.setGState(gState);
+        doc.setFillColor(r, g, b);
+        doc.rect(x, y, w, h, "F");
+        doc.restoreGraphicsState();
+        break;
+      }
+
+      case "gradient": {
+        // Simulate gradient with layered semi-transparent rectangles
+        doc.saveGraphicsState();
+        const steps = 10;
+        for (let i = 0; i < steps; i++) {
+          const stepOpacity = effectiveOpacity * (1 - i / steps) * 0.5;
+          const stepGState = new (doc as any).GState({ opacity: stepOpacity });
+          doc.setGState(stepGState);
+          doc.setFillColor(r, g, b);
+          const stepH = h / steps;
+          doc.rect(x, y + i * stepH, w, stepH, "F");
+        }
+        doc.restoreGraphicsState();
+        break;
+      }
+
+      case "dots": {
+        doc.saveGraphicsState();
+        const dotGState = new (doc as any).GState({ opacity: effectiveOpacity });
+        doc.setGState(dotGState);
+        doc.setFillColor(r, g, b);
+        const spacing = 12; // mm between dots
+        const dotRadius = 0.5;
+        for (let dx = spacing; dx < wMm - spacing; dx += spacing) {
+          for (let dy = spacing; dy < hMm - spacing; dy += spacing) {
+            doc.circle(dx, dy, dotRadius, "F");
+          }
+        }
+        doc.restoreGraphicsState();
+        break;
+      }
+
+      case "wave": {
+        // Draw simplified wave shape at the bottom
+        doc.saveGraphicsState();
+        doc.setGState(gState);
+        doc.setFillColor(r, g, b);
+        // Simple wave approximation with rectangles
+        const waveH = h;
+        const segments = 20;
+        const segW = wMm / segments;
+        for (let i = 0; i < segments; i++) {
+          const progress = i / segments;
+          const waveOffset = Math.sin(progress * Math.PI * 2) * (waveH * 0.4);
+          const segY = y + waveH * 0.5 - waveOffset;
+          const segHeight = hMm - segY;
+          if (segHeight > 0) {
+            doc.rect(i * segW, segY, segW + 0.5, segHeight, "F");
+          }
+        }
+        doc.restoreGraphicsState();
+        break;
+      }
+
+      case "blob": {
+        // Draw blob as a filled circle approximation
+        doc.saveGraphicsState();
+        doc.setGState(gState);
+        doc.setFillColor(r, g, b);
+        const blobR = Math.min(w, h) / 2;
+        doc.circle(x + w / 2, y + h / 2, blobR, "F");
+        doc.restoreGraphicsState();
+        break;
+      }
+    }
+  }
+}
+
+function getThemeContentPadding(themeName?: string): { top: number; right: number; bottom: number; left: number } {
+  if (!themeName) return { top: 0, right: 0, bottom: 0, left: 0 };
+  const theme = THEME_BACKGROUNDS[themeName];
+  if (!theme) return { top: 0, right: 0, bottom: 0, left: 0 };
+  // Convert px padding to mm
+  return {
+    top: theme.contentPadding.top * PX_TO_MM,
+    right: theme.contentPadding.right * PX_TO_MM,
+    bottom: theme.contentPadding.bottom * PX_TO_MM,
+    left: theme.contentPadding.left * PX_TO_MM,
+  };
+}
+
 async function loadImageAsBase64(url: string): Promise<string | null> {
   try {
     const response = await fetch(url);
@@ -70,8 +257,19 @@ async function renderPage(
   const font = getFontFamily(config);
   const baseFontSize = getFontSize(config);
   const headingColor = hexToRgb(config.headingColor || "#1a1a2e");
-  const margin = wMm * 0.08;
-  const contentW = wMm - margin * 2;
+  const bodyColor = hexToRgb(config.bodyColor || "#3c3c3c");
+  const accentColor = hexToRgb(config.accentColor || "#6366f1");
+  
+  // Apply theme content padding on top of base margin
+  const themePad = getThemeContentPadding(config.themeName);
+  const baseMargin = wMm * 0.08;
+  const margin = {
+    top: baseMargin + themePad.top,
+    right: baseMargin + themePad.right,
+    bottom: baseMargin + themePad.bottom,
+    left: baseMargin + themePad.left,
+  };
+  const contentW = wMm - margin.left - margin.right;
 
   doc.setFont(font);
 
@@ -87,7 +285,7 @@ async function renderPage(
   const drawBody = (text: string, x: number, y: number, maxW: number, maxH?: number): number => {
     doc.setFontSize(baseFontSize);
     doc.setFont(font, "normal");
-    doc.setTextColor(60, 60, 60);
+    doc.setTextColor(...bodyColor);
     const lines = wrapText(doc, text, maxW);
     const lineH = baseFontSize * 0.45;
     const maxLines = maxH ? Math.floor(maxH / lineH) : lines.length;
@@ -102,7 +300,6 @@ async function renderPage(
       try {
         doc.addImage(base64, "JPEG", x, y, w, h);
       } catch {
-        // If image fails, draw placeholder
         doc.setDrawColor(200, 200, 200);
         doc.rect(x, y, w, h);
         doc.setFontSize(8);
@@ -147,8 +344,7 @@ async function renderPage(
       }
       if (c.heading) {
         drawHeading(c.heading, wMm / 2, centerY + 10, 20, contentW * 0.8);
-        doc.text("", 0, 0); // reset
-        // divider
+        doc.text("", 0, 0);
         doc.setDrawColor(200, 200, 200);
         doc.line(wMm / 2 - 15, centerY + 22, wMm / 2 + 15, centerY + 22);
       }
@@ -158,28 +354,28 @@ async function renderPage(
       break;
     }
     case "full-text": {
-      let y = margin;
-      if (c.heading) y = drawHeading(c.heading, margin, y + 5, 16, contentW) + 4;
-      if (c.body) drawBody(c.body, margin, y, contentW, hMm - y - margin);
+      let y = margin.top;
+      if (c.heading) y = drawHeading(c.heading, margin.left, y + 5, 16, contentW) + 4;
+      if (c.body) drawBody(c.body, margin.left, y, contentW, hMm - y - margin.bottom);
       break;
     }
     case "text-image": {
       const textW = contentW * 0.55;
       const imgW = contentW * 0.4;
-      let y = margin;
-      if (c.heading) y = drawHeading(c.heading, margin, y + 5, 14, textW) + 4;
-      if (c.body) drawBody(c.body, margin, y, textW, hMm - y - margin);
-      if (c.image) await drawImage(c.image, margin + textW + contentW * 0.05, margin, imgW, hMm - margin * 2);
+      let y = margin.top;
+      if (c.heading) y = drawHeading(c.heading, margin.left, y + 5, 14, textW) + 4;
+      if (c.body) drawBody(c.body, margin.left, y, textW, hMm - y - margin.bottom);
+      if (c.image) await drawImage(c.image, margin.left + textW + contentW * 0.05, margin.top, imgW, hMm - margin.top - margin.bottom);
       break;
     }
     case "image-text": {
       const imgW = contentW * 0.4;
-      const textX = margin + imgW + contentW * 0.05;
+      const textX = margin.left + imgW + contentW * 0.05;
       const textW = contentW * 0.55;
-      let y = margin;
-      if (c.image) await drawImage(c.image, margin, margin, imgW, hMm - margin * 2);
+      let y = margin.top;
+      if (c.image) await drawImage(c.image, margin.left, margin.top, imgW, hMm - margin.top - margin.bottom);
       if (c.heading) y = drawHeading(c.heading, textX, y + 5, 14, textW) + 4;
-      if (c.body) drawBody(c.body, textX, y, textW, hMm - y - margin);
+      if (c.body) drawBody(c.body, textX, y, textW, hMm - y - margin.bottom);
       break;
     }
     case "full-image": {
@@ -193,19 +389,19 @@ async function renderPage(
       break;
     }
     case "two-column": {
-      let y = margin;
-      if (c.heading) y = drawHeading(c.heading, margin, y + 5, 14, contentW) + 6;
+      let y = margin.top;
+      if (c.heading) y = drawHeading(c.heading, margin.left, y + 5, 14, contentW) + 6;
       if (c.body) {
         const colW = (contentW - 8) / 2;
         const lines = wrapText(doc, c.body, colW);
         const lineH = baseFontSize * 0.45;
-        const maxLines = Math.floor((hMm - y - margin) / lineH);
+        const maxLines = Math.floor((hMm - y - margin.bottom) / lineH);
         const mid = Math.ceil(Math.min(lines.length, maxLines) / 2);
         doc.setFontSize(baseFontSize);
         doc.setFont(font, "normal");
-        doc.setTextColor(60, 60, 60);
-        doc.text(lines.slice(0, mid), margin, y);
-        doc.text(lines.slice(mid, maxLines), margin + colW + 8, y);
+        doc.setTextColor(...bodyColor);
+        doc.text(lines.slice(0, mid), margin.left, y);
+        doc.text(lines.slice(mid, maxLines), margin.left + colW + 8, y);
       }
       break;
     }
@@ -230,35 +426,35 @@ async function renderPage(
       break;
     }
     case "checklist": {
-      let y = margin;
-      if (c.heading) y = drawHeading(c.heading, margin, y + 5, 14, contentW) + 6;
+      let y = margin.top;
+      if (c.heading) y = drawHeading(c.heading, margin.left, y + 5, 14, contentW) + 6;
       doc.setFontSize(baseFontSize);
       doc.setFont(font, "normal");
-      doc.setTextColor(60, 60, 60);
+      doc.setTextColor(...bodyColor);
       for (const item of (c.items || [])) {
-        if (y > hMm - margin) break;
-        doc.setDrawColor(180, 180, 180);
-        doc.rect(margin, y - 2.5, 3.5, 3.5);
+        if (y > hMm - margin.bottom) break;
+        doc.setDrawColor(...accentColor);
+        doc.rect(margin.left, y - 2.5, 3.5, 3.5);
         const lines = wrapText(doc, item, contentW - 8);
-        doc.text(lines, margin + 6, y);
+        doc.text(lines, margin.left + 6, y);
         y += lines.length * baseFontSize * 0.45 + 3;
       }
       break;
     }
     case "key-takeaways": {
-      let y = margin;
-      if (c.heading) y = drawHeading(c.heading, margin, y + 5, 14, contentW) + 6;
+      let y = margin.top;
+      if (c.heading) y = drawHeading(c.heading, margin.left, y + 5, 14, contentW) + 6;
       doc.setFontSize(baseFontSize);
       let idx = 1;
       for (const item of (c.items || [])) {
-        if (y > hMm - margin) break;
+        if (y > hMm - margin.bottom) break;
         doc.setFont(font, "bold");
-        doc.setTextColor(...headingColor);
-        doc.text(`${idx}.`, margin, y);
+        doc.setTextColor(...accentColor);
+        doc.text(`${idx}.`, margin.left, y);
         doc.setFont(font, "normal");
-        doc.setTextColor(60, 60, 60);
+        doc.setTextColor(...bodyColor);
         const lines = wrapText(doc, item, contentW - 10);
-        doc.text(lines, margin + 8, y);
+        doc.text(lines, margin.left + 8, y);
         y += lines.length * baseFontSize * 0.45 + 4;
         idx++;
       }
@@ -284,7 +480,7 @@ async function renderPage(
         const btnY = centerY + 35;
         const btnW = 50;
         const btnH = 10;
-        doc.setFillColor(...headingColor);
+        doc.setFillColor(...accentColor);
         doc.roundedRect(wMm / 2 - btnW / 2, btnY, btnW, btnH, 2, 2, "F");
         doc.setFontSize(10);
         doc.setFont(font, "bold");
@@ -294,10 +490,9 @@ async function renderPage(
       break;
     }
     default: {
-      // blank / fallback
-      let y = margin;
-      if (c.heading) y = drawHeading(c.heading, margin, y + 5, 16, contentW) + 4;
-      if (c.body) drawBody(c.body, margin, y, contentW, hMm - y - margin);
+      let y = margin.top;
+      if (c.heading) y = drawHeading(c.heading, margin.left, y + 5, 16, contentW) + 4;
+      if (c.body) drawBody(c.body, margin.left, y, contentW, hMm - y - margin.bottom);
       break;
     }
   }
@@ -321,6 +516,8 @@ export async function generatePDFFromPages(
 
   for (let i = 0; i < pages.length; i++) {
     if (i > 0) doc.addPage([wMm, hMm]);
+    // Render background decorations first
+    renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
     await renderPage(doc, pages[i], wMm, hMm, pdfStyle);
   }
 
@@ -329,7 +526,6 @@ export async function generatePDFFromPages(
 
 /**
  * Generate PDF from raw markdown (fallback when no page layouts exist).
- * Creates a simple text-based PDF.
  */
 export async function generatePDFFromMarkdown(
   markdown: string,
@@ -343,6 +539,7 @@ export async function generatePDFFromMarkdown(
   const font = getFontFamily(pdfStyle);
   const baseFontSize = getFontSize(pdfStyle);
   const headingColor = hexToRgb(pdfStyle.headingColor || "#1a1a2e");
+  const bodyColor = hexToRgb(pdfStyle.bodyColor || "#3c3c3c");
   const margin = wMm * 0.1;
   const contentW = wMm - margin * 2;
 
@@ -352,16 +549,25 @@ export async function generatePDFFromMarkdown(
     format: [wMm, hMm],
   });
 
+  // Render background on first page
+  renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
+
   doc.setFont(font);
   let y = margin;
   const lineH = baseFontSize * 0.45;
+
+  const addNewPage = () => {
+    doc.addPage([wMm, hMm]);
+    renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
+    y = margin;
+  };
 
   const lines = markdown.split("\n");
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) {
       y += lineH;
-      if (y > hMm - margin) { doc.addPage([wMm, hMm]); y = margin; }
+      if (y > hMm - margin) addNewPage();
       continue;
     }
 
@@ -370,14 +576,14 @@ export async function generatePDFFromMarkdown(
       doc.setFont(font, "bold");
       doc.setTextColor(...headingColor);
       const wrapped = wrapText(doc, trimmed.slice(2), contentW);
-      if (y + wrapped.length * 8 > hMm - margin) { doc.addPage([wMm, hMm]); y = margin; }
+      if (y + wrapped.length * 8 > hMm - margin) addNewPage();
       doc.text(wrapped, margin, y);
       y += wrapped.length * 8 + 4;
     } else if (trimmed.startsWith("## ")) {
       doc.setFontSize(16);
       doc.setFont(font, "bold");
       doc.setTextColor(...headingColor);
-      if (y > margin + 20) { doc.addPage([wMm, hMm]); y = margin; }
+      if (y > margin + 20) addNewPage();
       const wrapped = wrapText(doc, trimmed.slice(3), contentW);
       doc.text(wrapped, margin, y);
       y += wrapped.length * 7 + 4;
@@ -385,7 +591,7 @@ export async function generatePDFFromMarkdown(
       doc.setFontSize(13);
       doc.setFont(font, "bold");
       doc.setTextColor(...headingColor);
-      if (y + 10 > hMm - margin) { doc.addPage([wMm, hMm]); y = margin; }
+      if (y + 10 > hMm - margin) addNewPage();
       const wrapped = wrapText(doc, trimmed.slice(4), contentW);
       doc.text(wrapped, margin, y);
       y += wrapped.length * 6 + 3;
@@ -394,15 +600,14 @@ export async function generatePDFFromMarkdown(
       doc.line(margin, y, wMm - margin, y);
       y += 4;
     } else if (trimmed.startsWith("![")) {
-      // skip images in markdown fallback
       continue;
     } else {
       doc.setFontSize(baseFontSize);
       doc.setFont(font, "normal");
-      doc.setTextColor(60, 60, 60);
+      doc.setTextColor(...bodyColor);
       const clean = trimmed.replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1");
       const wrapped = wrapText(doc, clean, contentW);
-      if (y + wrapped.length * lineH > hMm - margin) { doc.addPage([wMm, hMm]); y = margin; }
+      if (y + wrapped.length * lineH > hMm - margin) addNewPage();
       doc.text(wrapped, margin, y);
       y += wrapped.length * lineH + 2;
     }
