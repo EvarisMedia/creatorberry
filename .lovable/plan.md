@@ -1,114 +1,79 @@
 
 
-# Theme Background Designs and Auto-Aligned Text
+# Fix PDF Export: Add Background Designs + Fix Expanded Content
 
-## Overview
+## Problem Analysis
 
-Each theme currently only sets colors and fonts -- pages have plain solid backgrounds. This plan adds decorative background designs (gradient overlays, geometric shapes, patterns, accent bars) unique to each theme, rendered as SVG/CSS overlays on every page. Text positioning automatically adjusts based on the background design to avoid overlapping decorative elements.
+There are **two distinct bugs** causing missing content in the exported PDF:
 
-## How It Works
+### Bug 1: Background designs are never rendered in the PDF
 
-Each theme gets a new `backgroundDesign` property that defines decorative elements rendered behind (or alongside) the page content. These are pure CSS/SVG -- no external images needed, so they export cleanly to PDF.
+The `generatePDF.ts` file uses raw jsPDF drawing commands (lines, rectangles, text) to build each page. It has **zero awareness** of the theme background system (`themeBackgrounds.ts`, `PageBackgroundRenderer.tsx`). Those decorative elements (gradients, blobs, waves, dots, accent bars) only appear in the browser preview via React components -- they are completely absent from the PDF generation path.
 
-### Background Design Types
+### Bug 2: Sections without `page_layouts` are silently skipped
 
-Each theme will have a set of decorative elements composed from:
-- **Gradient overlays** (subtle linear/radial gradients using theme colors)
-- **Geometric shapes** (circles, rectangles, triangles positioned at corners/edges)
-- **Accent bars/stripes** (header bars, sidebar stripes, bottom borders)
-- **Pattern overlays** (dots, grid lines, diagonal stripes at low opacity)
-
-### Per-Theme Designs
-
-| Theme | Background Design |
-|-------|------------------|
-| Minimal Clean | Subtle top-left corner circle + thin bottom accent line |
-| Classic Elegant | Warm gradient top edge + decorative corner flourish shapes |
-| Bold Modern | Large red diagonal stripe in corner + bold header bar |
-| Warm Earthy | Soft radial gradient + scattered small dot pattern |
-| Ocean Breeze | Wave-shaped SVG along bottom + light gradient wash |
-| Dark Professional | Geometric angular shapes in corners + subtle grid pattern |
-| Playful Creative | Colorful blob shapes in corners + confetti dots |
-| Nature Zen | Leaf-shaped SVG accents + soft green gradient edge |
-
-### Text Auto-Alignment
-
-Each background design specifies a `contentPadding` object that tells the layout renderer how much extra space to add on each side to avoid overlapping decorations:
-
-```
-contentPadding: { top: 40, right: 20, bottom: 30, left: 20 }
-```
-
-This padding is applied as an additional wrapper around the existing layout content, so text automatically flows within the safe area of each design.
+In `useProductExports.tsx` (the `generatePDFClientSide` function, lines ~240-260), the code loops through sections and only collects pages from sections that have `page_layouts` populated. Sections that were expanded (have content) but were never "designed" (no `page_layouts`) produce zero pages and are simply dropped. The fallback path (markdown export) only triggers when ALL sections have no pages.
 
 ---
 
-## Technical Changes
+## Fix 1: Render Background Designs in PDF
 
-### 1. Extend Theme Data (`ThemeGallery.tsx`)
+### What Changes
 
-Add `backgroundDesign` to the `DesignTheme` interface:
+Add a new function `renderPageBackground()` to `generatePDF.ts` that draws the theme's decorative elements using jsPDF native drawing commands before rendering page content.
 
-```typescript
-export interface ThemeBackgroundDesign {
-  // Array of SVG/CSS decorative elements
-  elements: BackgroundElement[];
-  // Extra padding to keep text away from decorations
-  contentPadding: { top: number; right: number; bottom: number; left: number };
-}
+Each background element type maps to jsPDF operations:
+- **circle** -- `doc.circle()` with fill color and opacity
+- **rect** -- `doc.rect()` with fill color, rotation, and opacity
+- **gradient** -- Simulated with multiple semi-transparent rectangles (jsPDF has no native gradient support, so we approximate with layered fills)
+- **line/stripe** -- `doc.rect()` thin filled rectangle
+- **wave/blob** -- Draw the SVG path data using jsPDF lines/curves (parse the `svgPath` into move/curve commands)
+- **dots** -- Draw small circles in a repeating grid pattern
 
-export interface BackgroundElement {
-  type: "circle" | "rect" | "gradient" | "wave" | "dots" | "stripe" | "blob";
-  // Position: CSS values
-  position: { top?: string; right?: string; bottom?: string; left?: string };
-  size: { width: string; height: string };
-  color: string; // theme color key or hex
-  opacity: number;
-  rotation?: number;
-  borderRadius?: string;
-}
-```
+Also apply the theme's `contentPadding` to the margin calculations so text stays within the safe zone.
 
-Each of the 8 themes gets a unique `backgroundDesign` with 2-4 decorative elements.
+### Files Modified
 
-### 2. New Background Renderer (`PageBackgroundRenderer.tsx`)
+**`src/lib/generatePDF.ts`**
+- Import `THEME_BACKGROUNDS` and `ThemeBackgroundDesign` from `themeBackgrounds.ts`
+- Add `renderPageBackground(doc, themeName, wMm, hMm)` function
+- Call it at the start of each page render in `generatePDFFromPages`
+- Update `renderPage` to use `backgroundColor` and `bodyColor` from the style config
+- Apply `contentPadding` from the theme to margin calculations
+- Use `accentColor` for numbered items, checkboxes, and CTA buttons
 
-A new component that renders decorative elements as absolutely-positioned divs/SVGs behind the page content:
+---
 
-- Receives the theme's `backgroundDesign` config
-- Renders each element as a positioned `div` with CSS gradients, border-radius, rotation, opacity
-- For complex shapes (waves, blobs), uses inline SVG paths
-- All elements use `pointer-events: none` so they don't interfere with editing
+## Fix 2: Include Sections Without Page Layouts
 
-### 3. Update Page Rendering (`EbookPage.tsx`)
+### What Changes
 
-- Import and render `PageBackgroundRenderer` behind the content
-- Apply `contentPadding` from the active theme's background design as an additional wrapper div around layout content
-- The background design name is stored in `PDFStyleConfig` so it persists
+In `useProductExports.tsx`, the `generatePDFClientSide` function currently skips sections that have expanded content but no `page_layouts`. The fix generates fallback pages for those sections automatically.
 
-### 4. Update Theme Gallery Preview (`ThemeGallery.tsx`)
+### Logic
 
-- The mini page preview in each theme card now shows a tiny version of the background decorations so users can see what the design looks like before selecting
+For each section that has expanded content but no `page_layouts`:
+1. Create a "chapter-opener" page from the section title
+2. Split the expanded content text into chunks of ~200 words
+3. Create "full-text" pages for each chunk
 
-### 5. Update PDF Export (`generatePDF.ts`)
+This matches the existing fallback behavior mentioned in the memory notes and ensures no content is lost.
 
-- When rendering pages to PDF canvas, include the background decorations
-- Since decorations are CSS/SVG-based (no external images), they render naturally with html2canvas or similar
+### Files Modified
+
+**`src/hooks/useProductExports.tsx`**
+- In `generatePDFClientSide`, after collecting pages from sections with `page_layouts`, also process sections that have expanded content but no page layouts
+- Generate fallback `EbookPageData[]` (chapter-opener + full-text pages) for those sections
+- Insert them in the correct sort order
 
 ---
 
 ## Files Summary
 
-### New Files
-1. `src/components/content/PageBackgroundRenderer.tsx` -- Renders decorative background elements
-2. `src/components/content/themeBackgrounds.ts` -- Background design definitions for all 8 themes
-
 ### Modified Files
-1. `src/components/content/ThemeGallery.tsx` -- Add `backgroundDesign` to theme data, update preview cards
-2. `src/components/content/EbookPage.tsx` -- Render background layer + apply content padding
-3. `src/components/content/PDFStyleSettings.tsx` -- Store background design reference in config
-4. `src/components/content/ebookLayouts.tsx` -- Accept and apply content padding in layout renderers
+1. **`src/lib/generatePDF.ts`** -- Add background rendering, apply theme colors and content padding
+2. **`src/hooks/useProductExports.tsx`** -- Generate fallback pages for expanded sections without page_layouts
 
-### No Database Changes
-- Background design name is stored in the existing `pdf_style_config` JSONB column
+### No New Files Required
+### No Database Changes Required
 
