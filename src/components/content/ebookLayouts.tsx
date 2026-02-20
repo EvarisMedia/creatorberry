@@ -10,11 +10,80 @@ export interface PageContent {
   attribution?: string;
 }
 
+export interface ContentBlock {
+  id: string;
+  type: "heading" | "subheading" | "body" | "image" | "items" | "quote" | "attribution" | "spacer";
+  content: string;
+  items?: string[];
+  imageWidth?: number; // percentage 10-100
+  imageHeight?: number; // px
+  alignment?: "left" | "center" | "right";
+}
+
 export interface EbookPageData {
   id: string;
   layout: LayoutType;
   content: PageContent;
   order: number;
+  blocks?: ContentBlock[];
+}
+
+// Convert template content + layout into ordered content blocks
+export function contentToBlocks(content: PageContent, layout: LayoutType): ContentBlock[] {
+  const blocks: ContentBlock[] = [];
+  const mkId = () => crypto.randomUUID();
+
+  // Heading
+  if (content.heading) {
+    blocks.push({ id: mkId(), type: "heading", content: content.heading, alignment: ["title", "chapter-opener", "call-to-action", "quote"].includes(layout) ? "center" : "left" });
+  }
+  // Subheading
+  if (content.subheading) {
+    blocks.push({ id: mkId(), type: "subheading", content: content.subheading, alignment: ["title", "chapter-opener", "call-to-action"].includes(layout) ? "center" : "left" });
+  }
+  // Image
+  if (content.image || ["text-image", "image-text", "full-image"].includes(layout)) {
+    blocks.push({ id: mkId(), type: "image", content: content.image || "", imageWidth: layout === "full-image" ? 100 : 40, alignment: "center" });
+  }
+  // Body
+  if (content.body) {
+    blocks.push({ id: mkId(), type: "body", content: content.body, alignment: ["title", "chapter-opener", "call-to-action", "quote"].includes(layout) ? "center" : "left" });
+  }
+  // Quote
+  if (content.quote) {
+    blocks.push({ id: mkId(), type: "quote", content: content.quote, alignment: "center" });
+  }
+  // Attribution
+  if (content.attribution) {
+    blocks.push({ id: mkId(), type: "attribution", content: content.attribution, alignment: "center" });
+  }
+  // Items
+  if (content.items && content.items.length > 0) {
+    blocks.push({ id: mkId(), type: "items", content: "", items: content.items });
+  }
+
+  if (blocks.length === 0) {
+    blocks.push({ id: mkId(), type: "body", content: "Click to edit..." });
+  }
+
+  return blocks;
+}
+
+// Convert blocks back to PageContent for backward compatibility
+export function blocksToContent(blocks: ContentBlock[]): PageContent {
+  const content: PageContent = {};
+  for (const block of blocks) {
+    switch (block.type) {
+      case "heading": content.heading = block.content; break;
+      case "subheading": content.subheading = block.content; break;
+      case "body": content.body = block.content; break;
+      case "image": content.image = block.content; break;
+      case "quote": content.quote = block.content; break;
+      case "attribution": content.attribution = block.content; break;
+      case "items": content.items = block.items || []; break;
+    }
+  }
+  return content;
 }
 
 export type LayoutType =
