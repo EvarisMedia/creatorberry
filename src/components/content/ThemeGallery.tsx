@@ -1,5 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PDFStyleConfig } from "./PDFStyleSettings";
+import { THEME_BACKGROUNDS } from "./themeBackgrounds";
+import { PageBackgroundRenderer } from "./PageBackgroundRenderer";
 
 export interface DesignTheme {
   name: string;
@@ -51,15 +53,20 @@ export function ThemeGallery({ open, onOpenChange, onSelectTheme, currentThemeNa
                 <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: theme.accentColor }} title="Accent" />
                 <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: theme.backgroundColor }} title="Background" />
               </div>
-              {/* Mini page preview */}
+              {/* Mini page preview with background design */}
               <div
-                className="rounded border h-16 mb-2 p-2 flex flex-col gap-1 overflow-hidden"
+                className="rounded border h-16 mb-2 p-2 flex flex-col gap-1 overflow-hidden relative"
                 style={{ backgroundColor: theme.backgroundColor }}
               >
-                <div className="h-1.5 rounded-sm w-3/4" style={{ backgroundColor: theme.headingColor }} />
-                <div className="h-1 rounded-sm w-full" style={{ backgroundColor: theme.bodyColor, opacity: 0.5 }} />
-                <div className="h-1 rounded-sm w-5/6" style={{ backgroundColor: theme.bodyColor, opacity: 0.5 }} />
-                <div className="h-2 rounded-sm w-1/3 mt-auto" style={{ backgroundColor: theme.accentColor }} />
+                {THEME_BACKGROUNDS[theme.name] && (
+                  <PageBackgroundRenderer design={THEME_BACKGROUNDS[theme.name]} width={100} height={64} />
+                )}
+                <div className="relative z-10 flex flex-col gap-1 h-full">
+                  <div className="h-1.5 rounded-sm w-3/4" style={{ backgroundColor: theme.headingColor }} />
+                  <div className="h-1 rounded-sm w-full" style={{ backgroundColor: theme.bodyColor, opacity: 0.5 }} />
+                  <div className="h-1 rounded-sm w-5/6" style={{ backgroundColor: theme.bodyColor, opacity: 0.5 }} />
+                  <div className="h-2 rounded-sm w-1/3 mt-auto" style={{ backgroundColor: theme.accentColor }} />
+                </div>
               </div>
               <p className="text-xs font-medium truncate">{theme.name}</p>
               <p className="text-[10px] text-muted-foreground">{theme.fontFamily}</p>

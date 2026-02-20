@@ -1,6 +1,8 @@
 import { renderPageLayout, EbookPageData, PAGE_SIZES, PageSizeKey, ContentBlock, contentToBlocks } from "./ebookLayouts";
 import { PDFStyleConfig } from "./PDFStyleSettings";
 import { FreeformPageRenderer } from "./FreeformPageRenderer";
+import { PageBackgroundRenderer } from "./PageBackgroundRenderer";
+import { THEME_BACKGROUNDS } from "./themeBackgrounds";
 
 interface Props {
   page: EbookPageData;
@@ -51,7 +53,7 @@ export function EbookPage({
       onClick={onClick}
     >
       <div
-        className={`border shadow-md overflow-hidden ${editable ? "" : "cursor-pointer"} transition-all ${isSelected ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"}`}
+        className={`border shadow-md overflow-hidden ${editable ? "" : "cursor-pointer"} transition-all ${isSelected ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"} relative`}
         style={{
           width: dims.width,
           height: dims.height,
@@ -60,27 +62,51 @@ export function EbookPage({
           backgroundColor: pdfStyle.backgroundColor || undefined,
         }}
       >
-        {freeformMode ? (
-          <FreeformPageRenderer
-            blocks={blocks}
-            style={styleProps}
-            editable={editable}
-            onBlocksChange={onBlocksChange}
-            onImageAction={onFreeformImageAction}
+        {/* Background decorations */}
+        {pdfStyle.themeName && THEME_BACKGROUNDS[pdfStyle.themeName] && (
+          <PageBackgroundRenderer
+            design={THEME_BACKGROUNDS[pdfStyle.themeName]}
+            width={dims.width}
+            height={dims.height}
           />
-        ) : (
-          renderPageLayout(
-            {
-              content: page.content,
-              style: styleProps,
-              editable,
-              onFieldChange,
-              onItemChange,
-              onImageAction,
-            },
-            page.layout
-          )
         )}
+        {/* Content with auto-padding from theme */}
+        <div
+          className="relative h-full"
+          style={{
+            zIndex: 1,
+            ...(pdfStyle.themeName && THEME_BACKGROUNDS[pdfStyle.themeName]
+              ? {
+                  paddingTop: THEME_BACKGROUNDS[pdfStyle.themeName].contentPadding.top,
+                  paddingRight: THEME_BACKGROUNDS[pdfStyle.themeName].contentPadding.right,
+                  paddingBottom: THEME_BACKGROUNDS[pdfStyle.themeName].contentPadding.bottom,
+                  paddingLeft: THEME_BACKGROUNDS[pdfStyle.themeName].contentPadding.left,
+                }
+              : {}),
+          }}
+        >
+          {freeformMode ? (
+            <FreeformPageRenderer
+              blocks={blocks}
+              style={styleProps}
+              editable={editable}
+              onBlocksChange={onBlocksChange}
+              onImageAction={onFreeformImageAction}
+            />
+          ) : (
+            renderPageLayout(
+              {
+                content: page.content,
+                style: styleProps,
+                editable,
+                onFieldChange,
+                onItemChange,
+                onImageAction,
+              },
+              page.layout
+            )
+          )}
+        </div>
       </div>
     </div>
   );
