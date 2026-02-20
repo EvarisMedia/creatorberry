@@ -1,172 +1,114 @@
 
 
-# Theme Gallery + One-Click "Expand & Design All" Workflow
+# Theme Background Designs and Auto-Aligned Text
 
 ## Overview
 
-Two major features to make the content creation process more automated and visually polished:
+Each theme currently only sets colors and fonts -- pages have plain solid backgrounds. This plan adds decorative background designs (gradient overlays, geometric shapes, patterns, accent bars) unique to each theme, rendered as SVG/CSS overlays on every page. Text positioning automatically adjusts based on the background design to avoid overlapping decorative elements.
 
-1. **Design Theme Gallery** -- Pre-built coordinated themes (colors, fonts, backgrounds) that users can apply to their entire ebook with one click
-2. **"Expand & Design All" Automation** -- A single button on the Outline page that sequentially expands every section with AI and then auto-generates page layouts, so users get a complete designed ebook draft with minimal effort
+## How It Works
+
+Each theme gets a new `backgroundDesign` property that defines decorative elements rendered behind (or alongside) the page content. These are pure CSS/SVG -- no external images needed, so they export cleanly to PDF.
+
+### Background Design Types
+
+Each theme will have a set of decorative elements composed from:
+- **Gradient overlays** (subtle linear/radial gradients using theme colors)
+- **Geometric shapes** (circles, rectangles, triangles positioned at corners/edges)
+- **Accent bars/stripes** (header bars, sidebar stripes, bottom borders)
+- **Pattern overlays** (dots, grid lines, diagonal stripes at low opacity)
+
+### Per-Theme Designs
+
+| Theme | Background Design |
+|-------|------------------|
+| Minimal Clean | Subtle top-left corner circle + thin bottom accent line |
+| Classic Elegant | Warm gradient top edge + decorative corner flourish shapes |
+| Bold Modern | Large red diagonal stripe in corner + bold header bar |
+| Warm Earthy | Soft radial gradient + scattered small dot pattern |
+| Ocean Breeze | Wave-shaped SVG along bottom + light gradient wash |
+| Dark Professional | Geometric angular shapes in corners + subtle grid pattern |
+| Playful Creative | Colorful blob shapes in corners + confetti dots |
+| Nature Zen | Leaf-shaped SVG accents + soft green gradient edge |
+
+### Text Auto-Alignment
+
+Each background design specifies a `contentPadding` object that tells the layout renderer how much extra space to add on each side to avoid overlapping decorations:
+
+```
+contentPadding: { top: 40, right: 20, bottom: 30, left: 20 }
+```
+
+This padding is applied as an additional wrapper around the existing layout content, so text automatically flows within the safe area of each design.
 
 ---
 
-## Feature 1: Design Theme Gallery
+## Technical Changes
 
-### What It Does
+### 1. Extend Theme Data (`ThemeGallery.tsx`)
 
-Instead of manually picking heading color, font family, and font size, users select a named theme like "Minimal Clean", "Bold & Modern", or "Warm Earthy" and it applies a coordinated set of styles across all pages.
+Add `backgroundDesign` to the `DesignTheme` interface:
 
-### Theme Data Structure
+```typescript
+export interface ThemeBackgroundDesign {
+  // Array of SVG/CSS decorative elements
+  elements: BackgroundElement[];
+  // Extra padding to keep text away from decorations
+  contentPadding: { top: number; right: number; bottom: number; left: number };
+}
 
-Each theme includes:
-- Name and thumbnail preview
-- Font family (serif / sans-serif / mono)
-- Font size (small / medium / large)
-- Heading color
-- Accent color (for bullets, CTA backgrounds, numbering)
-- Page background color
-- Body text color
-
-### Built-In Themes (8 Starter Themes)
-
-| Theme | Font | Heading | Accent | Background |
-|-------|------|---------|--------|------------|
-| Minimal Clean | sans-serif | #1a1a2e | #6366f1 | #ffffff |
-| Classic Elegant | serif | #2c1810 | #8b6f47 | #faf8f5 |
-| Bold Modern | sans-serif | #0f172a | #ef4444 | #ffffff |
-| Warm Earthy | serif | #3d2c1e | #d97706 | #fefbf3 |
-| Ocean Breeze | sans-serif | #0c4a6e | #0891b2 | #f0f9ff |
-| Dark Professional | sans-serif | #e2e8f0 | #818cf8 | #1e293b |
-| Playful Creative | sans-serif | #7c3aed | #ec4899 | #fdf4ff |
-| Nature Zen | serif | #14532d | #16a34a | #f0fdf4 |
-
-### Where It Lives in the UI
-
-- New "Themes" button added to the Page Style tab (alongside existing font/color/size controls)
-- Opens a dialog with theme cards showing preview swatches
-- Selecting a theme updates the `PDFStyleConfig` and adds new fields (`accentColor`, `backgroundColor`, `bodyColor`, `themeName`)
-- The `PDFStyleConfig` interface gets extended with these new fields
-
-### Technical Changes
-
-**New file: `src/components/content/ThemeGallery.tsx`**
-- Dialog component displaying 8 theme cards in a grid
-- Each card shows a mini color swatch preview + theme name
-- On select, calls `onChange(themeConfig)` to update all style fields at once
-
-**Modified: `src/components/content/PDFStyleSettings.tsx`**
-- Extend `PDFStyleConfig` with `accentColor`, `backgroundColor`, `bodyColor`, `themeName`
-- Add "Choose Theme" button that opens `ThemeGallery`
-- Selecting a theme auto-fills all style fields
-
-**Modified: `src/components/content/ebookLayouts.tsx`**
-- `PageRenderProps.style` gets `accentColor`, `backgroundColor`, `bodyColor`
-- Layout renderers use these for:
-  - Page wrapper background color
-  - Numbered circles in key-takeaways use accent color
-  - CTA button uses accent color
-  - Body text uses body color
-  - Checkbox borders use accent color
-
-**Modified: `src/components/content/EbookPage.tsx`**
-- Pass new style fields from `pdfStyle` config down to layout renderers
-
----
-
-## Feature 2: One-Click "Expand & Design All Sections"
-
-### What It Does
-
-On the Outline detail page, a new "Build All Sections" button appears. When clicked:
-
-1. For each section (sequentially to avoid rate limits):
-   a. Call `expand-content` edge function to generate the "Expand" mode content
-   b. Call `auto-layout-ebook` edge function to generate page layouts from that content
-   c. Save the page layouts to `expanded_content.page_layouts`
-2. Show a progress indicator: "Expanding section 2 of 8..." / "Designing section 3 of 8..."
-3. When complete, show a success toast with "View in Content Editor" link
-
-### User Flow
-
-```
-Outline Page (sections listed)
-  |
-  v  [User clicks "Build All Sections"]
-  |
-  v  Progress modal: "Expanding Module 1: Introduction..."
-  v  Progress modal: "Designing Module 1: Introduction..."
-  v  Progress modal: "Expanding Module 2: Getting Started..."
-  v  ... (repeats for each section)
-  |
-  v  Success: "All 8 sections expanded and designed!"
-  v  [Go to Content Editor] button
+export interface BackgroundElement {
+  type: "circle" | "rect" | "gradient" | "wave" | "dots" | "stripe" | "blob";
+  // Position: CSS values
+  position: { top?: string; right?: string; bottom?: string; left?: string };
+  size: { width: string; height: string };
+  color: string; // theme color key or hex
+  opacity: number;
+  rotation?: number;
+  borderRadius?: string;
+}
 ```
 
-### Skip Logic
+Each of the 8 themes gets a unique `backgroundDesign` with 2-4 decorative elements.
 
-- If a section already has expanded content for the default "expansion" mode, skip the expand step (use existing content)
-- If a section already has page layouts, skip the design step
-- This makes re-running safe -- it only fills gaps
+### 2. New Background Renderer (`PageBackgroundRenderer.tsx`)
 
-### Technical Changes
+A new component that renders decorative elements as absolutely-positioned divs/SVGs behind the page content:
 
-**New file: `src/components/outlines/BuildAllSectionsDialog.tsx`**
-- Modal dialog with progress bar and status text
-- Takes `outlineId`, `sections[]`, `brandId`, `brandContext` as props
-- Iterates sections sequentially, calling supabase functions
-- Shows per-section progress with checkmarks for completed ones
-- Has cancel button to stop mid-way (already-processed sections are saved)
-- On completion, offers "Open Content Editor" link to first section
+- Receives the theme's `backgroundDesign` config
+- Renders each element as a positioned `div` with CSS gradients, border-radius, rotation, opacity
+- For complex shapes (waves, blobs), uses inline SVG paths
+- All elements use `pointer-events: none` so they don't interfere with editing
 
-**Modified: `src/pages/ProductOutline.tsx`**
-- Add "Build All Sections" button next to the outline info card
-- Only visible when viewing an outline detail (has sections)
-- Opens `BuildAllSectionsDialog`
+### 3. Update Page Rendering (`EbookPage.tsx`)
 
-**Modified: `src/hooks/useContentExpansion.tsx`**
-- Add `expandSectionDirect` method that returns the content ID (for chaining with auto-layout)
-- Existing `expandSection` already does this but refetches all contents; the new method is lighter for batch use
+- Import and render `PageBackgroundRenderer` behind the content
+- Apply `contentPadding` from the active theme's background design as an additional wrapper div around layout content
+- The background design name is stored in `PDFStyleConfig` so it persists
 
-**Edge function changes: None required**
-- `expand-content` and `auto-layout-ebook` already work independently
-- The client orchestrates them sequentially
+### 4. Update Theme Gallery Preview (`ThemeGallery.tsx`)
 
-### Batch Processing Logic (in BuildAllSectionsDialog)
+- The mini page preview in each theme card now shows a tiny version of the background decorations so users can see what the design looks like before selecting
 
-```
-for each section:
-  1. Check if expanded_content exists for (section.id, mode="expansion")
-     - If yes: use existing content ID and text
-     - If no: call expand-content, get back content ID and text
-  
-  2. Check if page_layouts is populated for that content ID
-     - If yes: skip
-     - If no: call auto-layout-ebook with the content text
-     - Save returned pages to expanded_content.page_layouts
-  
-  3. Update progress bar: (currentIndex + 1) / totalSections
-  
-  Add 1-second delay between sections to avoid rate limits
-```
+### 5. Update PDF Export (`generatePDF.ts`)
+
+- When rendering pages to PDF canvas, include the background decorations
+- Since decorations are CSS/SVG-based (no external images), they render naturally with html2canvas or similar
 
 ---
 
 ## Files Summary
 
 ### New Files
-1. `src/components/content/ThemeGallery.tsx` -- Theme picker dialog with 8 built-in themes
-2. `src/components/outlines/BuildAllSectionsDialog.tsx` -- Progress dialog for batch expand+design
+1. `src/components/content/PageBackgroundRenderer.tsx` -- Renders decorative background elements
+2. `src/components/content/themeBackgrounds.ts` -- Background design definitions for all 8 themes
 
 ### Modified Files
-1. `src/components/content/PDFStyleSettings.tsx` -- Extend config interface, add theme button
-2. `src/components/content/ebookLayouts.tsx` -- Use accent/background/body colors in renderers
-3. `src/components/content/EbookPage.tsx` -- Pass extended style props
-4. `src/pages/ProductOutline.tsx` -- Add "Build All Sections" button
-5. `src/hooks/useContentExpansion.tsx` -- Add lightweight expand method for batch use
+1. `src/components/content/ThemeGallery.tsx` -- Add `backgroundDesign` to theme data, update preview cards
+2. `src/components/content/EbookPage.tsx` -- Render background layer + apply content padding
+3. `src/components/content/PDFStyleSettings.tsx` -- Store background design reference in config
+4. `src/components/content/ebookLayouts.tsx` -- Accept and apply content padding in layout renderers
 
-### No Database Changes Required
-- `pdf_style_config` is already a JSONB column that accepts any shape
-- `page_layouts` already exists on `expanded_content`
-- All new theme fields are stored in the existing JSONB config
+### No Database Changes
+- Background design name is stored in the existing `pdf_style_config` JSONB column
 
