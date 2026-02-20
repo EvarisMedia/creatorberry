@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2, Save, Plus, Trash2, Copy, ChevronUp, ChevronDown } from "lucide-react";
+import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2, Save, Plus, Trash2, Copy, ChevronUp, ChevronDown, MousePointerClick, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EbookPage } from "./EbookPage";
 import { PageLayoutPicker } from "./PageLayoutPicker";
-import { EbookPageData, LayoutType, PageSizeKey, PAGE_SIZES, LayoutWireframe } from "./ebookLayouts";
+import { EbookPageData, LayoutType, PageSizeKey, PAGE_SIZES, ContentBlock, contentToBlocks, blocksToContent } from "./ebookLayouts";
 import { PDFStyleConfig } from "./PDFStyleSettings";
 import { GenerateSectionImageDialog } from "./GenerateSectionImageDialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Props {
   content: string;
@@ -43,6 +44,8 @@ export function EbookPageDesigner({
   const [showAddPagePicker, setShowAddPagePicker] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
+  const [freeformMode, setFreeformMode] = useState(false);
+  const [activeImageBlockId, setActiveImageBlockId] = useState<string | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mainScale, setMainScale] = useState(0.6);
@@ -167,6 +170,49 @@ export function EbookPageDesigner({
     updatePages(updated);
   };
 
+  // Freeform block updates
+  const handleBlocksChange = (pageIndex: number, blocks: ContentBlock[]) => {
+    const updated = pages.map((p, i) => {
+      if (i !== pageIndex) return p;
+      // Sync blocks back to content for backward compatibility
+      const newContent = blocksToContent(blocks);
+      return { ...p, blocks, content: newContent };
+    });
+    updatePages(updated);
+  };
+
+  const handleFreeformImageAction = (action: "generate" | "upload" | "remove", blockId: string) => {
+    if (action === "generate") {
+      setActiveImageBlockId(blockId);
+      setShowImageDialog(true);
+    } else if (action === "upload") {
+      setActiveImageBlockId(blockId);
+      fileInputRef.current?.click();
+    } else if (action === "remove") {
+      const page = pages[selectedPageIndex];
+      if (!page?.blocks) return;
+      const updatedBlocks = page.blocks.map((b) =>
+        b.id === blockId ? { ...b, content: "" } : b
+      );
+      handleBlocksChange(selectedPageIndex, updatedBlocks);
+    }
+  };
+
+  // When switching to freeform mode, ensure blocks exist
+  const toggleFreeformMode = () => {
+    if (!freeformMode) {
+      // Initialize blocks for all pages that don't have them
+      const updated = pages.map((p) => {
+        if (p.blocks && p.blocks.length > 0) return p;
+        return { ...p, blocks: contentToBlocks(p.content, p.layout) };
+      });
+      setPages(updated);
+      onPagesChange?.(updated);
+      debouncedSave(updated);
+    }
+    setFreeformMode(!freeformMode);
+  };
+
   const handleLayoutChange = (layout: LayoutType) => {
     const updated = pages.map((p, i) =>
       i === selectedPageIndex ? { ...p, layout } : p
@@ -184,6 +230,9 @@ export function EbookPageDesigner({
       content: { heading: "New Page", body: "" },
       order: pages.length,
     };
+    if (freeformMode) {
+      newPage.blocks = contentToBlocks(newPage.content, layout);
+    }
     const updated = [...pages];
     updated.splice(selectedPageIndex + 1, 0, newPage);
     const reordered = updated.map((p, i) => ({ ...p, order: i }));
@@ -195,7 +244,13 @@ export function EbookPageDesigner({
 
   const duplicatePage = () => {
     if (!pages[selectedPageIndex]) return;
-    const clone = { ...pages[selectedPageIndex], id: crypto.randomUUID(), content: { ...pages[selectedPageIndex].content } };
+    const src = pages[selectedPageIndex];
+    const clone: EbookPageData = {
+      ...src,
+      id: crypto.randomUUID(),
+      content: { ...src.content },
+      blocks: src.blocks ? src.blocks.map((b) => ({ ...b, id: crypto.randomUUID() })) : undefined,
+    };
     const updated = [...pages];
     updated.splice(selectedPageIndex + 1, 0, clone);
     const reordered = updated.map((p, i) => ({ ...p, order: i }));
@@ -248,8 +303,10 @@ export function EbookPageDesigner({
 
   const handleImageAction = (action: "generate" | "upload" | "remove") => {
     if (action === "generate") {
+      setActiveImageBlockId(null);
       setShowImageDialog(true);
     } else if (action === "upload") {
+      setActiveImageBlockId(null);
       fileInputRef.current?.click();
     } else if (action === "remove") {
       updatePageContent(selectedPageIndex, "image", "");
@@ -257,8 +314,19 @@ export function EbookPageDesigner({
   };
 
   const handleImageGenerated = (imageUrl: string) => {
-    updatePageContent(selectedPageIndex, "image", imageUrl);
+    if (freeformMode && activeImageBlockId) {
+      const page = pages[selectedPageIndex];
+      if (page?.blocks) {
+        const updatedBlocks = page.blocks.map((b) =>
+          b.id === activeImageBlockId ? { ...b, content: imageUrl } : b
+        );
+        handleBlocksChange(selectedPageIndex, updatedBlocks);
+      }
+    } else {
+      updatePageContent(selectedPageIndex, "image", imageUrl);
+    }
     setShowImageDialog(false);
+    setActiveImageBlockId(null);
   };
 
   // Expose image insertion for parent component
@@ -286,8 +354,19 @@ export function EbookPageDesigner({
     }
     const { data: urlData } = supabase.storage.from("generated-images").getPublicUrl(path);
     if (urlData?.publicUrl) {
-      updatePageContent(selectedPageIndex, "image", urlData.publicUrl);
+      if (freeformMode && activeImageBlockId) {
+        const page = pages[selectedPageIndex];
+        if (page?.blocks) {
+          const updatedBlocks = page.blocks.map((b) =>
+            b.id === activeImageBlockId ? { ...b, content: urlData.publicUrl } : b
+          );
+          handleBlocksChange(selectedPageIndex, updatedBlocks);
+        }
+      } else {
+        updatePageContent(selectedPageIndex, "image", urlData.publicUrl);
+      }
       toast({ title: "Image uploaded" });
+      setActiveImageBlockId(null);
     }
   };
 
@@ -332,10 +411,33 @@ export function EbookPageDesigner({
             Page {selectedPageIndex + 1} of {pages.length}
           </span>
           <div className="w-px h-4 bg-border mx-1" />
+
+          {/* Editor mode toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant={freeformMode ? "default" : "outline"}
+                className="h-7 text-xs gap-1"
+                onClick={toggleFreeformMode}
+              >
+                {freeformMode ? <MousePointerClick className="w-3 h-3" /> : <Layers className="w-3 h-3" />}
+                {freeformMode ? "Freeform" : "Template"}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {freeformMode
+                ? "Freeform mode: Drag blocks, resize images, add/remove content blocks"
+                : "Template mode: Fixed layout with editable text slots"
+              }
+            </TooltipContent>
+          </Tooltip>
+
+          <div className="w-px h-4 bg-border mx-1" />
           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={generateLayouts} title="Regenerate all layouts">
             <RefreshCw className="w-3 h-3" />
           </Button>
-          {selectedPage && (
+          {selectedPage && !freeformMode && (
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLayoutPicker(true)}>
               <LayoutGrid className="w-3 h-3 mr-1" /> Layout
             </Button>
@@ -364,7 +466,9 @@ export function EbookPageDesigner({
           }}>
             <Save className="w-3 h-3 mr-1" /> Save
           </Button>
-          <span className="text-xs text-muted-foreground">Click text to edit</span>
+          <span className="text-xs text-muted-foreground">
+            {freeformMode ? "Drag blocks to reorder • Resize images" : "Click text to edit"}
+          </span>
         </div>
         {onToggleFullscreen && (
           <Button size="sm" variant="ghost" className="h-7" onClick={onToggleFullscreen}>
@@ -411,9 +515,12 @@ export function EbookPageDesigner({
                 scale={mainScale}
                 isSelected
                 editable
+                freeformMode={freeformMode}
                 onFieldChange={(field, value) => updatePageContent(selectedPageIndex, field, value)}
                 onItemChange={(idx, value) => updatePageItem(selectedPageIndex, idx, value)}
                 onImageAction={handleImageAction}
+                onBlocksChange={(blocks) => handleBlocksChange(selectedPageIndex, blocks)}
+                onFreeformImageAction={handleFreeformImageAction}
               />
               {/* Page number overlay */}
               <div className="absolute bottom-2 right-3 bg-muted/80 text-muted-foreground text-[10px] px-2 py-0.5 rounded font-medium">
