@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Type, Image, Square, CircleIcon, Minus, Trash2,
   BringToFront, SendToBack, AlignLeft, AlignCenter, AlignRight,
-  Bold, Italic,
+  Bold, Italic, Sparkles,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -92,6 +92,19 @@ export const FabricPageCanvas = forwardRef<FabricPageCanvasRef, Props>(
       });
       canvas.on("object:modified", emitChange);
       canvas.on("text:changed", emitChange);
+
+      // Canvas boundary clamping
+      canvas.on("object:moving", (e) => {
+        const obj = e.target;
+        if (!obj) return;
+        const bound = obj.getBoundingRect();
+        if (bound.left < 0) obj.set("left", obj.left! - bound.left);
+        if (bound.top < 0) obj.set("top", obj.top! - bound.top);
+        if (bound.left + bound.width > dims.width)
+          obj.set("left", obj.left! - (bound.left + bound.width - dims.width));
+        if (bound.top + bound.height > dims.height)
+          obj.set("top", obj.top! - (bound.top + bound.height - dims.height));
+      });
 
       // Load content
       loadPageContent(canvas, page, pageSize, pdfStyle);
@@ -259,7 +272,10 @@ export const FabricPageCanvas = forwardRef<FabricPageCanvasRef, Props>(
               <DropdownMenuItem onClick={addCircle}><CircleIcon className="w-3.5 h-3.5 mr-2" /> Circle</DropdownMenuItem>
               <DropdownMenuItem onClick={addLine}><Minus className="w-3.5 h-3.5 mr-2" /> Line</DropdownMenuItem>
               {onImageAction && (
-                <DropdownMenuItem onClick={() => onImageAction("upload")}><Image className="w-3.5 h-3.5 mr-2" /> Image</DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onClick={() => onImageAction("upload")}><Image className="w-3.5 h-3.5 mr-2" /> Upload Image</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onImageAction("generate")}><Sparkles className="w-3.5 h-3.5 mr-2" /> Generate with AI</DropdownMenuItem>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
