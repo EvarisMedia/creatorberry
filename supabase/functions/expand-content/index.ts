@@ -30,7 +30,12 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { sectionId, mode, brandId, sectionTitle, sectionDescription, subsections, wordCountTarget, brandContext } = await req.json();
+    const {
+      sectionId, mode, brandId, sectionTitle, sectionDescription,
+      subsections, wordCountTarget, brandContext,
+      // Phase 3: context-aware parameters
+      tableOfContents, previousChapters,
+    } = await req.json();
 
     if (!sectionId || !mode || !brandId) throw new Error("Missing required fields: sectionId, mode, brandId");
     if (!MODE_PROMPTS[mode]) throw new Error("Invalid mode. Must be one of: expansion, story, deep_dive, workbook");
@@ -52,13 +57,29 @@ serve(async (req) => {
 
     const systemPrompt = MODE_PROMPTS[mode];
 
+    // Build context-aware sections of the prompt
+    let contextBlock = "";
+    if (tableOfContents && Array.isArray(tableOfContents) && tableOfContents.length > 0) {
+      contextBlock += `\n## Book Structure (Table of Contents)\n`;
+      contextBlock += tableOfContents.map((ch: any, i: number) =>
+        `${i + 1}. ${ch.title}${ch.description ? ` — ${ch.description}` : ""}`
+      ).join("\n");
+      contextBlock += "\n";
+    }
+
+    if (previousChapters && Array.isArray(previousChapters) && previousChapters.length > 0) {
+      contextBlock += `\n## Previously Written Chapters (summaries)\n`;
+      contextBlock += previousChapters.map((c: any) => `- **${c.title}**: ${c.summary}`).join("\n");
+      contextBlock += `\n\nWrite this chapter with awareness of what came before. Do not repeat concepts already covered. Reference prior chapters naturally when relevant.\n`;
+    }
+
     const userPrompt = `
 ## Section to Expand
 **Title:** ${sectionTitle}
 **Description:** ${sectionDescription || "No description provided"}
 **Subsections:** ${subsections?.length ? subsections.join(", ") : "None specified"}
 **Target Word Count:** ${wordCountTarget || 500} words
-
+${contextBlock}
 ## Brand Context
 **Brand:** ${brandContext?.name || "Unknown"}
 **Tone:** ${brandContext?.tone || "professional"}
@@ -66,7 +87,11 @@ serve(async (req) => {
 **About:** ${brandContext?.about || "Not specified"}
 **Target Audience:** ${brandContext?.target_audience || "General audience"}
 
-Generate the expanded content now. Write in the brand's voice and tone. Output clean, well-formatted markdown content ready for publication.`;
+Generate the expanded content now. Write in the brand's voice and tone. Output clean, well-formatted markdown content ready for publication.
+
+IMPORTANT: At the very end of your response, on a new line, add a concise ~80-100 word summary of this chapter's key points in the following format:
+[CHAPTER_SUMMARY]: <your summary here>
+This summary will be used to provide context for subsequent chapters.`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!userApiKey && !LOVABLE_API_KEY) throw new Error("No API key configured");
@@ -118,12 +143,22 @@ Generate the expanded content now. Write in the brand's voice and tone. Output c
     }
 
     const aiData = await aiResponse.json();
-    let content: string;
+    let rawContent: string;
     if (userApiKey) {
-      content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      rawContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } else {
-      content = aiData.choices?.[0]?.message?.content || "";
+      rawContent = aiData.choices?.[0]?.message?.content || "";
     }
+
+    // Extract chapter summary if present
+    let content = rawContent;
+    let chapterSummary: string | null = null;
+    const summaryMatch = rawContent.match(/\[CHAPTER_SUMMARY\]:\s*(.+)/s);
+    if (summaryMatch) {
+      chapterSummary = summaryMatch[1].trim();
+      content = rawContent.replace(/\n?\[CHAPTER_SUMMARY\]:\s*.+/s, "").trim();
+    }
+
     const wordCount = content.split(/\s+/).filter(Boolean).length;
 
     // Check for existing content with same section + mode
@@ -159,7 +194,7 @@ Generate the expanded content now. Write in the brand's voice and tone. Output c
       throw new Error("Failed to save expanded content");
     }
 
-    return new Response(JSON.stringify({ content: saved }), {
+    return new Response(JSON.stringify({ content: saved, chapterSummary }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
