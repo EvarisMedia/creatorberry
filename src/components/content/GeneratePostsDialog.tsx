@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -70,6 +71,7 @@ interface GeneratedPostPreview {
 
 export function GeneratePostsDialog({ brand }: GeneratePostsDialogProps) {
   const { settings } = useUserSettings();
+  const { requireKey } = useRequireApiKey();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"config" | "results">("config");
   const [selectedSource, setSelectedSource] = useState<string>("none");
@@ -114,6 +116,7 @@ export function GeneratePostsDialog({ brand }: GeneratePostsDialogProps) {
   };
 
   const handleGenerate = async () => {
+    if (!requireKey()) return;
     const source = sources.find(s => s.id === selectedSource);
 
     const input: GeneratePostsInput = {

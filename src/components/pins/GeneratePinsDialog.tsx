@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -93,6 +94,7 @@ export function GeneratePinsDialog({ brand }: GeneratePinsDialogProps) {
   const [generatedPins, setGeneratedPins] = useState<GeneratedPin[]>([]);
   const [step, setStep] = useState<"input" | "review">("input");
   const [selectedTemplate, setSelectedTemplate] = useState<PinTemplate | null>(null);
+  const { requireKey } = useRequireApiKey();
 
   const { generatePins, createPinWithVariations } = usePins(brand.id);
   const { boards } = useBoards(brand.id);
@@ -153,6 +155,7 @@ export function GeneratePinsDialog({ brand }: GeneratePinsDialogProps) {
   const selectedBoard = boards.find((b) => b.id === selectedBoardId);
 
   const handleGenerate = async (data: FormData) => {
+    if (!requireKey()) return;
     setIsGenerating(true);
     try {
       const pins = await generatePins.mutateAsync({

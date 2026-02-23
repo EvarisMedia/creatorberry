@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useBrands } from "@/hooks/useBrands";
 import { sidebarItems } from "./sidebarItems";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import {
   Plus,
@@ -208,6 +209,7 @@ export function AppLayout({ children, title, subtitle, headerActions, hideHeader
             {headerActions}
           </header>
         )}
+        <ApiKeyGate />
         {children}
       </main>
     </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,11 +34,13 @@ export function AIEditToolbar({
   onClose,
 }: AIEditToolbarProps) {
   const { toast } = useToast();
+  const { requireKey } = useRequireApiKey();
   const [isProcessing, setIsProcessing] = useState(false);
   const [customInstruction, setCustomInstruction] = useState("");
   const [editedText, setEditedText] = useState<string | null>(null);
 
   const handleAIEdit = async (instruction: string) => {
+    if (!requireKey()) return;
     setIsProcessing(true);
     setEditedText(null);
     try {

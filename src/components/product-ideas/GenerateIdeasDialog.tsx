@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,8 +29,10 @@ export const GenerateIdeasDialog = ({
 }: GenerateIdeasDialogProps) => {
   const [numberOfIdeas, setNumberOfIdeas] = useState("5");
   const [seedPrompt, setSeedPrompt] = useState("");
+  const { requireKey } = useRequireApiKey();
 
   const handleGenerate = async () => {
+    if (!requireKey()) return;
     await onGenerate(parseInt(numberOfIdeas), seedPrompt.trim() || undefined);
     setSeedPrompt("");
     onOpenChange(false);

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -47,6 +48,7 @@ interface Props {
 export function GenerateSectionImageDialog({ section, brand, onImageGenerated, onInsertImage, triggerId, externalOpen, onExternalOpenChange }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { requireKey } = useRequireApiKey();
   const [internalOpen, setInternalOpen] = useState(false);
 
   const isControlled = externalOpen !== undefined;
@@ -67,6 +69,7 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
   const handleGenerate = async () => {
+    if (!requireKey()) return;
     if (!user) return;
     if (imageType === "custom_concept" && !customPrompt.trim()) {
       toast({ title: "Missing prompt", description: "Please enter your custom concept or idea.", variant: "destructive" });

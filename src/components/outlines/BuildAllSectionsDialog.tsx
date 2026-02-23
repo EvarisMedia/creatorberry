@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -26,12 +27,14 @@ interface SectionStatus {
 
 export default function BuildAllSectionsDialog({ open, onOpenChange, outlineId, sections, brandId, brandContext }: Props) {
   const navigate = useNavigate();
+  const { requireKey } = useRequireApiKey();
   const [isRunning, setIsRunning] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [sectionStatuses, setSectionStatuses] = useState<SectionStatus[]>([]);
   const cancelRef = useRef(false);
 
   const startBuild = async () => {
+    if (!requireKey()) return;
     cancelRef.current = false;
     setIsRunning(true);
     setIsDone(false);

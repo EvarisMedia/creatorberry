@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -66,8 +67,10 @@ export function GenerateImageDialog({
   }, [settings.id, settings.default_image_type, settings.default_image_style]);
   
   const { generateImage, isGenerating } = useGeneratedImages(brand.id);
+  const { requireKey } = useRequireApiKey();
 
   const handleGenerate = async () => {
+    if (!requireKey()) return;
     const result = await generateImage({
       brand,
       quote_text: imageType === "quote_card" ? quoteText : undefined,

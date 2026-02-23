@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import {
   Dialog,
   DialogContent,
@@ -29,10 +30,11 @@ const GenerateOutlineDialog = ({
   isGenerating,
 }: GenerateOutlineDialogProps) => {
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
-
+  const { requireKey } = useRequireApiKey();
   const handleGenerate = async () => {
     const idea = ideas.find((i) => i.id === selectedIdeaId);
     if (!idea || !brand) return;
+    if (!requireKey()) return;
     await onGenerate(idea, brand);
     onOpenChange(false);
     setSelectedIdeaId(null);

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { Bot, Send, Plus, Trash2, MessageSquare, X, Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ export function CopilotChat({ brand, currentPage, isOpen, onClose }: CopilotChat
   const [input, setInput] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { requireKey } = useRequireApiKey();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,6 +37,7 @@ export function CopilotChat({ brand, currentPage, isOpen, onClose }: CopilotChat
 
   const handleSend = async () => {
     if (!input.trim() || isSending) return;
+    if (!requireKey()) return;
     const msg = input;
     setInput("");
     setShowHistory(false);
