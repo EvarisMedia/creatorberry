@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { generatePDFFromPages, generatePDFFromMarkdown } from "@/lib/generatePDF";
 import { EbookPageData } from "@/components/content/ebookLayouts";
 import { PDFStyleConfig, DEFAULT_PDF_STYLE_CONFIG } from "@/components/content/PDFStyleSettings";
+import { renderPagesToDataURLs } from "@/lib/fabricOffscreenRenderer";
 
 export interface ProductExport {
   id: string;
@@ -312,7 +313,9 @@ async function generatePDFClientSide(
 
   let pdfBlob: Blob;
   if (allPages.length > 0) {
-    pdfBlob = await generatePDFFromPages(allPages, pdfStyle, outline.title);
+    // Render pages with fabricJSON via offscreen canvas for pixel-perfect export
+    const canvasDataURLs = await renderPagesToDataURLs(allPages, pdfStyle);
+    pdfBlob = await generatePDFFromPages(allPages, pdfStyle, outline.title, canvasDataURLs);
   } else {
     // Fallback: also call edge function for markdown then convert
     const { data: { session } } = await supabase.auth.getSession();
