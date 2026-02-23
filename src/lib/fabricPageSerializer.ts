@@ -199,20 +199,28 @@ function backgroundElementToFabric(el: any, pageW: number, pageH: number): Fabri
 
 // Layout helpers
 
+function estimateTextHeight(text: string, fontSize: number, width: number, lineHeight = 1.3): number {
+  const avgCharWidth = fontSize * 0.55;
+  const charsPerLine = Math.max(1, Math.floor(width / avgCharWidth));
+  const lines = Math.ceil(text.length / charsPerLine);
+  return Math.max(lines, 1) * fontSize * lineHeight;
+}
+
 function layoutTitle(
   objects: FabricObjectJSON[], c: PageContent,
   l: number, t: number, w: number, h: number,
   font: string, baseSize: number, headColor: string, bodyColor: string
 ) {
-  const centerX = l + w / 2;
-  const centerY = t + h * 0.4;
+  const textW = w * 0.8;
+  let y = t + h * 0.3;
 
   if (c.heading) {
+    const headH = estimateTextHeight(c.heading, baseSize * 2, textW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
-      top: centerY - 30,
-      width: w * 0.8,
+      top: y,
+      width: textW,
       text: c.heading,
       fontSize: baseSize * 2,
       fontFamily: font,
@@ -220,25 +228,29 @@ function layoutTitle(
       fill: headColor,
       textAlign: "center",
     });
+    y += headH + 16;
   }
   if (c.subheading) {
+    const subW = w * 0.7;
+    const subH = estimateTextHeight(c.subheading, baseSize * 1.1, subW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.15,
-      top: centerY + 30,
-      width: w * 0.7,
+      top: y,
+      width: subW,
       text: c.subheading,
       fontSize: baseSize * 1.1,
       fontFamily: font,
       fill: bodyColor,
       textAlign: "center",
     });
+    y += subH + 16;
   }
   if (c.attribution) {
     objects.push({
       type: "Textbox",
       left: l + w * 0.2,
-      top: centerY + 80,
+      top: y,
       width: w * 0.6,
       text: c.attribution,
       fontSize: baseSize * 0.85,
@@ -254,14 +266,16 @@ function layoutChapterOpener(
   l: number, t: number, w: number, h: number,
   font: string, baseSize: number, headColor: string, bodyColor: string
 ) {
-  const centerY = t + h * 0.35;
+  const textW = w * 0.8;
+  let y = t + h * 0.2;
 
   if (c.subheading) {
+    const subH = estimateTextHeight(c.subheading, baseSize * 0.7, textW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
-      top: centerY - 20,
-      width: w * 0.8,
+      top: y,
+      width: textW,
       text: c.subheading.toUpperCase(),
       fontSize: baseSize * 0.7,
       fontFamily: font,
@@ -269,13 +283,15 @@ function layoutChapterOpener(
       textAlign: "center",
       charSpacing: 300,
     });
+    y += subH + 12;
   }
   if (c.heading) {
+    const headH = estimateTextHeight(c.heading, baseSize * 1.5, textW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
-      top: centerY,
-      width: w * 0.8,
+      top: y,
+      width: textW,
       text: c.heading,
       fontSize: baseSize * 1.5,
       fontFamily: font,
@@ -283,24 +299,28 @@ function layoutChapterOpener(
       fill: headColor,
       textAlign: "center",
     });
+    y += headH + 16;
   }
   // Divider line
   objects.push({
     type: "Rect",
     left: l + w * 0.35,
-    top: centerY + 40,
+    top: y,
     width: w * 0.3,
     height: 1,
     fill: "#cccccc",
     selectable: true,
     evented: true,
   });
+  y += 16;
+
   if (c.body) {
+    const maxBodyH = (t + h) - y - 10;
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
-      top: centerY + 55,
-      width: w * 0.8,
+      top: y,
+      width: textW,
       text: c.body,
       fontSize: baseSize * 0.9,
       fontFamily: font,
@@ -455,12 +475,14 @@ function layoutQuote(
   l: number, t: number, w: number, h: number,
   font: string, baseSize: number, headColor: string
 ) {
-  const centerY = t + h * 0.3;
+  const textW = w * 0.8;
+  let y = t + h * 0.25;
 
+  // Quote mark
   objects.push({
     type: "Textbox",
     left: l + w * 0.4,
-    top: centerY - 30,
+    top: y,
     width: w * 0.2,
     text: '"',
     fontSize: 48,
@@ -468,13 +490,15 @@ function layoutQuote(
     fill: "#cccccc",
     textAlign: "center",
   });
+  y += 48 * 1.3 + 8;
 
   const quoteText = c.quote || c.body || "Quote text";
+  const quoteH = estimateTextHeight(quoteText, baseSize * 1.1, textW, 1.5);
   objects.push({
     type: "Textbox",
     left: l + w * 0.1,
-    top: centerY + 10,
-    width: w * 0.8,
+    top: y,
+    width: textW,
     text: quoteText,
     fontSize: baseSize * 1.1,
     fontFamily: font,
@@ -483,12 +507,13 @@ function layoutQuote(
     textAlign: "center",
     lineHeight: 1.5,
   });
+  y += quoteH + 16;
 
   if (c.attribution) {
     objects.push({
       type: "Textbox",
       left: l + w * 0.2,
-      top: centerY + 80,
+      top: y,
       width: w * 0.6,
       text: `— ${c.attribution}`,
       fontSize: baseSize * 0.85,
@@ -541,14 +566,16 @@ function layoutCTA(
   l: number, t: number, w: number, h: number,
   font: string, baseSize: number, headColor: string, bodyColor: string, accentColor: string
 ) {
-  const centerY = t + h * 0.3;
+  const textW = w * 0.8;
+  let y = t + h * 0.25;
 
   if (c.heading) {
+    const headH = estimateTextHeight(c.heading, baseSize * 1.6, textW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
-      top: centerY,
-      width: w * 0.8,
+      top: y,
+      width: textW,
       text: c.heading,
       fontSize: baseSize * 1.6,
       fontFamily: font,
@@ -556,28 +583,31 @@ function layoutCTA(
       fill: headColor,
       textAlign: "center",
     });
+    y += headH + 16;
   }
   if (c.body) {
+    const bodyW = w * 0.76;
+    const bodyH = estimateTextHeight(c.body, baseSize, bodyW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.12,
-      top: centerY + 50,
-      width: w * 0.76,
+      top: y,
+      width: bodyW,
       text: c.body,
       fontSize: baseSize,
       fontFamily: font,
       fill: bodyColor,
       textAlign: "center",
     });
+    y += bodyH + 20;
   }
   if (c.subheading) {
-    // Button rectangle
     const btnW = 150;
     const btnH = 36;
     objects.push({
       type: "Rect",
       left: l + (w - btnW) / 2,
-      top: centerY + 100,
+      top: y,
       width: btnW,
       height: btnH,
       fill: accentColor,
@@ -587,7 +617,7 @@ function layoutCTA(
     objects.push({
       type: "Textbox",
       left: l + (w - btnW) / 2,
-      top: centerY + 108,
+      top: y + 8,
       width: btnW,
       text: c.subheading,
       fontSize: baseSize * 0.85,
