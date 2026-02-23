@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2, Save, Plus, Trash2, Copy, ChevronUp, ChevronDown, MousePointerClick, Layers } from "lucide-react";
+import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2, Save, Plus, Trash2, Copy, ChevronUp, ChevronDown, MousePointerClick, Layers, PenTool } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EbookPage } from "./EbookPage";
@@ -10,6 +10,8 @@ import { EbookPageData, LayoutType, PageSizeKey, PAGE_SIZES, ContentBlock, conte
 import { PDFStyleConfig } from "./PDFStyleSettings";
 import { GenerateSectionImageDialog } from "./GenerateSectionImageDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { FabricPageCanvas, FabricPageCanvasRef } from "./FabricPageCanvas";
+import { fabricJSONToPageData } from "@/lib/fabricPageSerializer";
 
 interface Props {
   content: string;
@@ -45,7 +47,9 @@ export function EbookPageDesigner({
   const [hasLoaded, setHasLoaded] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
   const [freeformMode, setFreeformMode] = useState(false);
+  const [canvasMode, setCanvasMode] = useState(false);
   const [activeImageBlockId, setActiveImageBlockId] = useState<string | null>(null);
+  const fabricCanvasRef = useRef<FabricPageCanvasRef>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mainScale, setMainScale] = useState(0.6);
@@ -417,18 +421,29 @@ export function EbookPageDesigner({
             <TooltipTrigger asChild>
               <Button
                 size="sm"
-                variant={freeformMode ? "default" : "outline"}
+                variant={canvasMode ? "default" : freeformMode ? "secondary" : "outline"}
                 className="h-7 text-xs gap-1"
-                onClick={toggleFreeformMode}
+                onClick={() => {
+                  if (canvasMode) {
+                    setCanvasMode(false);
+                  } else if (freeformMode) {
+                    setFreeformMode(false);
+                    setCanvasMode(true);
+                  } else {
+                    toggleFreeformMode();
+                  }
+                }}
               >
-                {freeformMode ? <MousePointerClick className="w-3 h-3" /> : <Layers className="w-3 h-3" />}
-                {freeformMode ? "Freeform" : "Template"}
+                {canvasMode ? <PenTool className="w-3 h-3" /> : freeformMode ? <MousePointerClick className="w-3 h-3" /> : <Layers className="w-3 h-3" />}
+                {canvasMode ? "Canvas" : freeformMode ? "Freeform" : "Template"}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {freeformMode
-                ? "Freeform mode: Drag blocks, resize images, add/remove content blocks"
-                : "Template mode: Fixed layout with editable text slots"
+              {canvasMode
+                ? "Canvas mode: Full design freedom with drag, rotate, resize"
+                : freeformMode
+                ? "Freeform mode: Drag blocks, resize images. Click again for Canvas mode."
+                : "Template mode: Fixed layout. Click for Freeform mode."
               }
             </TooltipContent>
           </Tooltip>
@@ -467,7 +482,7 @@ export function EbookPageDesigner({
             <Save className="w-3 h-3 mr-1" /> Save
           </Button>
           <span className="text-xs text-muted-foreground">
-            {freeformMode ? "Drag blocks to reorder • Resize images" : "Click text to edit"}
+            {canvasMode ? "Canvas: drag, rotate, resize objects" : freeformMode ? "Drag blocks to reorder • Resize images" : "Click text to edit"}
           </span>
         </div>
         {onToggleFullscreen && (
@@ -506,7 +521,26 @@ export function EbookPageDesigner({
 
         {/* Main page view */}
         <div ref={mainRef} className="flex-1 flex flex-col items-center overflow-auto">
-          {selectedPage && (
+          {selectedPage && canvasMode ? (
+            <FabricPageCanvas
+              ref={fabricCanvasRef}
+              page={selectedPage}
+              pageSize={pageSize}
+              pdfStyle={pdfStyle}
+              scale={mainScale}
+              onChange={(json) => {
+                const updatedPage = fabricJSONToPageData(
+                  json,
+                  selectedPage
+                );
+                const updated = pages.map((p, i) =>
+                  i === selectedPageIndex ? updatedPage : p
+                );
+                updatePages(updated);
+              }}
+              onImageAction={handleImageAction}
+            />
+          ) : selectedPage ? (
             <div className="relative">
               <EbookPage
                 page={selectedPage}
@@ -527,7 +561,7 @@ export function EbookPageDesigner({
                 {selectedPageIndex + 1} / {pages.length}
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 

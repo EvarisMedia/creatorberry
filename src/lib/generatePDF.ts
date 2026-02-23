@@ -501,7 +501,8 @@ async function renderPage(
 export async function generatePDFFromPages(
   pages: EbookPageData[],
   pdfStyle: PDFStyleConfig,
-  title: string
+  title: string,
+  canvasDataURLs?: Record<string, string>
 ): Promise<Blob> {
   const sizeKey = pdfStyle.pageSize || "6x9";
   const dims = PAGE_SIZES[sizeKey] || PAGE_SIZES["6x9"];
@@ -516,7 +517,21 @@ export async function generatePDFFromPages(
 
   for (let i = 0; i < pages.length; i++) {
     if (i > 0) doc.addPage([wMm, hMm]);
-    // Render background decorations first
+
+    const page = pages[i];
+    const dataURL = canvasDataURLs?.[page.id];
+
+    if (dataURL) {
+      // Pixel-perfect canvas export: use the rendered image directly
+      try {
+        doc.addImage(dataURL, "PNG", 0, 0, wMm, hMm);
+        continue;
+      } catch (err) {
+        console.warn("Failed to add canvas image, falling back to jsPDF rendering:", err);
+      }
+    }
+
+    // Fallback: render with jsPDF drawing commands
     renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
     await renderPage(doc, pages[i], wMm, hMm, pdfStyle);
   }

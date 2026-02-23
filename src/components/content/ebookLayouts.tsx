@@ -26,6 +26,7 @@ export interface EbookPageData {
   content: PageContent;
   order: number;
   blocks?: ContentBlock[];
+  fabricJSON?: any;
 }
 
 // Convert template content + layout into ordered content blocks
