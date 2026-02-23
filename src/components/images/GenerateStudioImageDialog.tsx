@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -73,10 +74,12 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
   const { generateImage, isGenerating } = useGeneratedImages(brand.id);
+  const { requireKey } = useRequireApiKey();
 
   const selectedType = IMAGE_TYPES.find((t) => t.value === imageType);
 
   const handleGenerate = async () => {
+    if (!requireKey()) return;
     if (imageType === "custom_concept" && !customPrompt.trim()) return;
 
     const result = await generateImage({

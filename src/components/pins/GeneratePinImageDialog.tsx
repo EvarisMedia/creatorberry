@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import {
   Dialog,
   DialogContent,
@@ -81,6 +82,7 @@ export function GeneratePinImageDialog({
 
   const { templates } = usePinTemplates(brand.id);
   const { variations, createVariation, updateVariation } = usePinVariations(pin.id);
+  const { requireKey } = useRequireApiKey();
   
   const selectedVariation = variations.find((v) => v.is_selected);
   const defaultTemplate = templates.find((t) => t.is_default);
@@ -129,6 +131,7 @@ export function GeneratePinImageDialog({
   };
 
   const handleGenerate = async () => {
+    if (!requireKey()) return;
     setIsGenerating(true);
     setGeneratedImage(null);
 

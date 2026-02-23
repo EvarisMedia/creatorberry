@@ -332,7 +332,9 @@ async function generateFormattedExport(
   sections?: any[],
   contentMap?: Record<string, any>,
   imagesMap?: Record<string, any[]>,
-  pdfStyleConfig?: any
+  pdfStyleConfig?: any,
+  userApiKey?: string | null,
+  userTextModel?: string | null
 ) {
   if (format === "markdown") {
     return { content: markdown, mimeType: "text/markdown", extension: "md" };
@@ -485,18 +487,8 @@ async function generateFormattedExport(
       }
     );
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: "system",
-            content: `Convert the given Markdown into a complete, self-contained HTML document with professional styling. Include:
+    let response: Response;
+    const aiSystemPrompt = `Convert the given Markdown into a complete, self-contained HTML document with professional styling. Include:
 - Clean typography with a serif font for body, sans-serif for headings
 - Responsive layout with max-width 800px centered
 - Table of contents with clickable links
@@ -505,12 +497,36 @@ async function generateFormattedExport(
 - Print-friendly styles
 ${printCss ? '- Extra print CSS: ' + printCss : ''}
 - Keep all image tags with their original src attributes exactly as-is (they may be placeholders like __IMG_0__)
-Return ONLY the HTML, no explanation.`
-          },
-          { role: "user", content: cleanMarkdown }
-        ],
-      }),
-    });
+Return ONLY the HTML, no explanation.`;
+
+    if (userApiKey) {
+      const geminiModel = userTextModel || "gemini-2.5-flash";
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: aiSystemPrompt + "\n\n" + cleanMarkdown }] }],
+          }),
+        }
+      );
+    } else {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: aiSystemPrompt },
+            { role: "user", content: cleanMarkdown }
+          ],
+        }),
+      });
+    }
 
     if (!response.ok) {
       const errText = await response.text();
@@ -518,7 +534,12 @@ Return ONLY the HTML, no explanation.`
       throw new Error(`Failed to generate ${format.toUpperCase()}: AI returned ${response.status}`);
     }
     const data = await response.json();
-    let html = data.choices?.[0]?.message?.content || "";
+    let html: string;
+    if (userApiKey) {
+      html = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } else {
+      html = data.choices?.[0]?.message?.content || "";
+    }
     
     // Restore base64 image references
     for (const [key, dataUrl] of Object.entries(imageRefs)) {
@@ -601,8 +622,6 @@ serve(async (req) => {
   }
 
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("Missing authorization header");
 
@@ -615,6 +634,25 @@ serve(async (req) => {
     });
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
+
+    // Fetch user's API key for BYOK
+    let userApiKey: string | null = null;
+    let userTextModel: string | null = null;
+    try {
+      const { data: keyData } = await userClient
+        .from("user_api_keys")
+        .select("gemini_api_key, preferred_text_model")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (keyData?.gemini_api_key) {
+        userApiKey = keyData.gemini_api_key;
+        userTextModel = keyData.preferred_text_model;
+      }
+    } catch (e) { console.log("No user API key found"); }
+
+    if (!userApiKey && !LOVABLE_API_KEY) {
+      throw new Error("No API key configured. Please add your Gemini API key in Settings.");
+    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -650,7 +688,7 @@ serve(async (req) => {
       if (modelSetting?.setting_value) model = modelSetting.setting_value;
     } catch { /* use default */ }
 
-    const result = await generateFormattedExport(markdown, format, outline.title, model, sections, contentMap, imagesMap, outline.pdf_style_config);
+    const result = await generateFormattedExport(markdown, format, outline.title, model, sections, contentMap, imagesMap, outline.pdf_style_config, userApiKey, userTextModel);
 
     const fileSize = result.encoding === "base64" 
       ? Math.ceil(result.content.length * 0.75) 
