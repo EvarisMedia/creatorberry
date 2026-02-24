@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { OutlineSection } from "@/hooks/useProductOutlines";
 
-export type SectionPhase = "pending" | "expanding" | "designing" | "done" | "skipped" | "error";
+export type SectionPhase = "pending" | "expanding" | "designing" | "imaging" | "done" | "skipped" | "error";
 
 export interface BuildSectionStatus {
   id: string;
@@ -25,6 +25,10 @@ interface BuildOptions {
   brandId: string;
   brandContext: any;
   contextAware: boolean;
+  generateImages: boolean;
+  imagesPerChapter: number;
+  imageStyle: string;
+  themeName?: string;
 }
 
 export function useBookBuilder() {
@@ -54,7 +58,7 @@ export function useBookBuilder() {
     });
   };
 
-  const build = useCallback(async ({ sections, brandId, brandContext, contextAware }: BuildOptions) => {
+  const build = useCallback(async ({ sections, brandId, brandContext, contextAware, generateImages, imagesPerChapter, imageStyle, themeName }: BuildOptions) => {
     cancelRef.current = false;
     setIsRunning(true);
     setIsDone(false);
@@ -74,6 +78,13 @@ export function useBookBuilder() {
       : undefined;
 
     const chapterSummaries: { title: string; summary: string }[] = [];
+
+    // Get current user id for image inserts
+    let userId: string | null = null;
+    if (generateImages) {
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id || null;
+    }
 
     for (let i = 0; i < sections.length; i++) {
       if (cancelRef.current) break;
@@ -102,7 +113,6 @@ export function useBookBuilder() {
           // If already has layouts, skip entirely
           if (existing[0].page_layouts && Array.isArray(existing[0].page_layouts) && (existing[0].page_layouts as any[]).length > 0) {
             updateStatus(i, { phase: "skipped", finishedAt: Date.now() });
-            // Still add a summary placeholder for context
             if (contextAware && contentText) {
               chapterSummaries.push({
                 title: section.title,
@@ -134,7 +144,6 @@ export function useBookBuilder() {
           contentId = response.data?.content?.id || response.data?.contentId;
           contentText = response.data?.content?.content || response.data?.text;
 
-          // Collect chapter summary for subsequent chapters
           if (contextAware && response.data?.chapterSummary) {
             chapterSummaries.push({
               title: section.title,
@@ -164,6 +173,7 @@ export function useBookBuilder() {
               contentId,
               content: contentText,
               sectionTitle: section.title,
+              ...(themeName ? { themeName } : {}),
             },
           });
 
@@ -173,6 +183,58 @@ export function useBookBuilder() {
       } catch (err: any) {
         updateStatus(i, { phase: "error", error: err.message, finishedAt: Date.now() });
         continue;
+      }
+
+      if (cancelRef.current) break;
+
+      // --- IMAGING phase ---
+      if (generateImages && imagesPerChapter > 0 && userId) {
+        updateStatus(i, { phase: "imaging" });
+
+        const imageTypes = ["section_infographic", "chapter_illustration", "diagram"];
+
+        try {
+          for (let imgIdx = 0; imgIdx < imagesPerChapter; imgIdx++) {
+            if (cancelRef.current) break;
+            const imageType = imageTypes[imgIdx % imageTypes.length];
+
+            const response = await supabase.functions.invoke("generate-image", {
+              body: {
+                brand: {
+                  name: brandContext.name,
+                  primary_color: brandContext.primary_color || "#000000",
+                  secondary_color: brandContext.secondary_color || "#ffffff",
+                  tone: brandContext.tone,
+                },
+                quote_text: section.title,
+                style: imageStyle,
+                image_type: imageType,
+                aspect_ratio: "16:9",
+                section_context: {
+                  title: section.title,
+                  description: section.description,
+                  subsections: section.subsections,
+                },
+              },
+            });
+
+            if (response.data?.image_url) {
+              await supabase.from("generated_images").insert({
+                user_id: userId,
+                brand_id: brandId,
+                image_url: response.data.image_url,
+                prompt: response.data.prompt || "",
+                image_type: imageType,
+                quote_text: section.title,
+                style: imageStyle,
+                section_id: section.id,
+              });
+            }
+          }
+        } catch (err: any) {
+          updateStatus(i, { phase: "error", error: err.message, finishedAt: Date.now() });
+          continue;
+        }
       }
 
       updateStatus(i, { phase: "done", finishedAt: Date.now() });
@@ -191,14 +253,14 @@ export function useBookBuilder() {
   const completedCount = statuses.filter(s => s.phase === "done" || s.phase === "skipped").length;
   const errorCount = statuses.filter(s => s.phase === "error").length;
   const progressPercent = statuses.length > 0 ? (completedCount / statuses.length) * 100 : 0;
-  const currentSection = statuses.find(s => s.phase === "expanding" || s.phase === "designing");
+  const currentSection = statuses.find(s => s.phase === "expanding" || s.phase === "designing" || s.phase === "imaging");
 
-  // Estimate remaining time based on average completed time
+  // Estimate remaining time
   const completedWithTime = statuses.filter(s => s.finishedAt && s.startedAt && s.phase !== "skipped");
   const avgTimeMs = completedWithTime.length > 0
     ? completedWithTime.reduce((sum, s) => sum + ((s.finishedAt || 0) - (s.startedAt || 0)), 0) / completedWithTime.length
-    : 30000; // default 30s estimate
-  const remainingCount = statuses.filter(s => s.phase === "pending" || s.phase === "expanding" || s.phase === "designing").length;
+    : 30000;
+  const remainingCount = statuses.filter(s => s.phase === "pending" || s.phase === "expanding" || s.phase === "designing" || s.phase === "imaging").length;
   const estimatedRemainingMs = remainingCount * avgTimeMs;
 
   return {
