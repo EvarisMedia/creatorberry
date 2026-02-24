@@ -165,6 +165,48 @@ export function useProductOutlines(brandId: string | null) {
     return true;
   };
 
+  const deleteSection = async (sectionId: string) => {
+    const { error } = await supabase
+      .from("outline_sections")
+      .delete()
+      .eq("id", sectionId);
+
+    if (error) {
+      toast({ title: "Error", description: "Failed to delete section.", variant: "destructive" });
+      return false;
+    }
+    toast({ title: "Deleted", description: "Section removed." });
+    return true;
+  };
+
+  const addSection = async (outlineId: string, title: string, description: string, wordCountTarget: number) => {
+    const { data: existing } = await supabase
+      .from("outline_sections")
+      .select("sort_order")
+      .eq("outline_id", outlineId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+
+    const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+
+    const { error } = await supabase.from("outline_sections").insert({
+      outline_id: outlineId,
+      title,
+      description: description || null,
+      word_count_target: wordCountTarget,
+      sort_order: nextOrder,
+      section_number: nextOrder + 1,
+      subsections: [],
+    });
+
+    if (error) {
+      toast({ title: "Error", description: "Failed to add section.", variant: "destructive" });
+      return false;
+    }
+    toast({ title: "Section Added", description: `"${title}" added to outline.` });
+    return true;
+  };
+
   return {
     outlines,
     isLoading,
@@ -175,6 +217,8 @@ export function useProductOutlines(brandId: string | null) {
     reorderSections,
     deleteOutline,
     updateOutline,
+    deleteSection,
+    addSection,
     refetch: fetchOutlines,
   };
 }

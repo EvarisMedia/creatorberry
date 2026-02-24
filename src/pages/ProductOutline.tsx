@@ -21,6 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Loader2,
   FileText,
@@ -29,12 +31,13 @@ import {
   Sparkles,
   Wand2,
   Trash2,
+  Plus,
 } from "lucide-react";
 
 const ProductOutlinePage = () => {
   const { outlineId } = useParams();
   const { currentBrand } = useBrands();
-  const { outlines, isLoading: outlinesLoading, isGenerating, generateOutline, fetchOutlineWithSections, updateSection, deleteOutline } = useProductOutlines(currentBrand?.id || null);
+  const { outlines, isLoading: outlinesLoading, isGenerating, generateOutline, fetchOutlineWithSections, updateSection, deleteSection, addSection, deleteOutline } = useProductOutlines(currentBrand?.id || null);
   const { ideas } = useProductIdeas(currentBrand?.id || null);
   const navigate = useNavigate();
 
@@ -43,6 +46,10 @@ const ProductOutlinePage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeOutline, setActiveOutline] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [showAddSection, setShowAddSection] = useState(false);
+  const [newSectionTitle, setNewSectionTitle] = useState("");
+  const [newSectionDesc, setNewSectionDesc] = useState("");
+  const [newSectionWords, setNewSectionWords] = useState(1000);
 
   useEffect(() => {
     if (outlineId) {
@@ -72,6 +79,27 @@ const ProductOutlinePage = () => {
       setActiveOutline(updated);
     }
     return success;
+  };
+
+  const handleSectionDelete = async (sectionId: string) => {
+    const success = await deleteSection(sectionId);
+    if (success && activeOutline) {
+      const updated = await fetchOutlineWithSections(activeOutline.id);
+      setActiveOutline(updated);
+    }
+  };
+
+  const handleAddSection = async () => {
+    if (!newSectionTitle.trim() || !activeOutline) return;
+    const success = await addSection(activeOutline.id, newSectionTitle, newSectionDesc, newSectionWords);
+    if (success) {
+      const updated = await fetchOutlineWithSections(activeOutline.id);
+      setActiveOutline(updated);
+      setNewSectionTitle("");
+      setNewSectionDesc("");
+      setNewSectionWords(1000);
+      setShowAddSection(false);
+    }
   };
 
   return (
@@ -132,6 +160,7 @@ const ProductOutlinePage = () => {
                   section={section}
                   index={i}
                   onUpdate={handleSectionUpdate}
+                  onDelete={handleSectionDelete}
                   outlineId={activeOutline.id}
                 />
               ))}
@@ -141,6 +170,44 @@ const ProductOutlinePage = () => {
                   <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No sections found for this outline.</p>
                 </div>
+              )}
+
+              {/* Add Section */}
+              {showAddSection ? (
+                <Card className="p-4 space-y-3">
+                  <Input
+                    placeholder="Section title"
+                    value={newSectionTitle}
+                    onChange={(e) => setNewSectionTitle(e.target.value)}
+                  />
+                  <Textarea
+                    placeholder="Description (optional)"
+                    value={newSectionDesc}
+                    onChange={(e) => setNewSectionDesc(e.target.value)}
+                    rows={2}
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-muted-foreground">Word target:</label>
+                    <Input
+                      type="number"
+                      value={newSectionWords}
+                      onChange={(e) => setNewSectionWords(parseInt(e.target.value) || 1000)}
+                      className="w-24"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAddSection} disabled={!newSectionTitle.trim()}>
+                      <Plus className="w-3 h-3 mr-1" /> Add
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowAddSection(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
+                <Button variant="outline" className="w-full" onClick={() => setShowAddSection(true)}>
+                  <Plus className="w-4 h-4 mr-2" /> Add Section
+                </Button>
               )}
             </div>
           ) : (
