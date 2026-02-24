@@ -1,145 +1,46 @@
 
+# Simplify Editor: Remove Freeform Mode (Keep Template + Canvas)
 
-# Fix Chapter Opener Layout Overlap + Image Generation Guide
+## Overview
 
-## Problem 1: Chapter Opener Layout Content Overlap
+Remove the intermediate "Freeform" mode from the ebook designer, leaving only two clear modes:
+- **Template** -- Structured, layout-based editing with inline text editing
+- **Canvas** -- Full Fabric.js design freedom (drag, resize, rotate, layer)
 
-The `layoutChapterOpener` function in `src/lib/fabricPageSerializer.ts` uses **fixed vertical offsets** from a single `centerY` anchor point. When the heading text wraps to multiple lines, the Fabric.js Textbox grows downward, but the divider line and body text are placed at hardcoded positions (`centerY + 40`, `centerY + 55`), causing:
-- Heading overlaps the divider line
-- Divider overlaps the body text
-- Long body text overflows below the canvas boundary
+## Changes
 
-The same issue exists in other layouts (title, quote, CTA) that use fixed offsets instead of stacking.
+### File: `src/components/content/EbookPageDesigner.tsx`
 
-### Fix: Dynamic Vertical Stacking
+1. **Remove state & functions related to freeform:**
+   - Remove `freeformMode` state variable
+   - Remove `toggleFreeformMode()` function
+   - Remove `handleBlocksChange()` function
+   - Remove `handleFreeformImageAction()` function
+   - Remove `activeImageBlockId` state (only used by freeform)
+   - Remove freeform-related block initialization in `addPage()`
 
-**Modified: `src/lib/fabricPageSerializer.ts`**
+2. **Simplify mode toggle button** to a direct two-state switch:
+   - Template (Layers icon) -- click to switch to Canvas
+   - Canvas (PenTool icon) -- click to switch back to Template
+   - Update tooltip text accordingly
 
-Replace the fixed-offset approach with a **sequential stacking** pattern that estimates text height based on content length, font size, and available width:
+3. **Clean up the main page view** -- remove `freeformMode` prop from `EbookPage` and freeform-related callbacks (`onBlocksChange`, `onFreeformImageAction`)
 
-```text
-Before (fixed offsets):
-  subheading -> centerY - 20
-  heading    -> centerY        (fixed, ignores text wrap)
-  divider    -> centerY + 40   (overlaps if heading is 3+ lines)
-  body       -> centerY + 55   (overlaps divider, overflows canvas)
+4. **Show Layout button always in Template mode** (remove the `!freeformMode` condition since freeform no longer exists)
 
-After (dynamic stacking):
-  subheading -> startY
-  heading    -> startY + subheadingHeight + gap
-  divider    -> after heading with gap
-  body       -> after divider with gap (clamped to canvas bounds)
-```
+5. **Simplify image handling** -- remove freeform branch from `handleImageGenerated` and `handleFileUpload`
 
-Add a helper function `estimateTextHeight(text, fontSize, width, lineHeight)` that calculates approximate rendered height based on character count and available width. This is used to stack elements without overlap.
+6. **Update status text** from three options to two: "Click text to edit" (Template) vs "Canvas: drag, rotate, resize objects" (Canvas)
 
-Apply the same fix to these layout functions that have the same issue:
-- `layoutChapterOpener` -- primary fix
-- `layoutTitle` -- subheading/attribution can overlap on long titles
-- `layoutQuote` -- quote mark, quote text, and attribution overlap
-- `layoutCTA` -- heading, body, and button overlap
+7. **Remove unused imports:** `MousePointerClick`, `contentToBlocks`, `blocksToContent`, `ContentBlock`
 
-**Modified: `src/components/content/FabricPageCanvas.tsx`**
+### File: `src/components/content/EbookPage.tsx`
 
-Add **canvas boundary clamping** so objects cannot be dragged or resized beyond the page edges. This prevents users from accidentally moving content outside the visible area:
+- Remove the `freeformMode` prop and any conditional rendering that uses it
+- Remove references to `FreeformPageRenderer` if it's only used via freeform mode
 
-```typescript
-canvas.on("object:moving", (e) => {
-  const obj = e.target;
-  if (!obj) return;
-  const bound = obj.getBoundingRect();
-  if (bound.left < 0) obj.set("left", obj.left - bound.left);
-  if (bound.top < 0) obj.set("top", obj.top - bound.top);
-  if (bound.left + bound.width > dims.width) 
-    obj.set("left", obj.left - (bound.left + bound.width - dims.width));
-  if (bound.top + bound.height > dims.height) 
-    obj.set("top", obj.top - (bound.top + bound.height - dims.height));
-});
-```
+### File: `src/components/content/FreeformPageRenderer.tsx`
 
----
+- This file can be left in place (no breakage) or deleted entirely since nothing will reference it after the cleanup
 
-## Problem 2: Image Generation -- Where and How
-
-Images can be generated in two places:
-
-### A. Within the Content Editor (Design tab)
-The `GenerateSectionImageDialog` is already wired up in `EbookPageDesigner.tsx`. It opens when:
-- **Template/Freeform mode**: Click a placeholder image area on the page, then select "Generate" from the image action
-- **Canvas mode**: Use the **Add > Image** dropdown in the toolbar, then the `onImageAction("generate")` callback opens the dialog
-
-**Current issue**: In Canvas mode, the "Add > Image" dropdown only has an "upload" option. There is no "Generate with AI" option.
-
-**Fix: `src/components/content/FabricPageCanvas.tsx`**
-
-Add a "Generate with AI" menu item to the Add dropdown:
-
-```tsx
-{onImageAction && (
-  <>
-    <DropdownMenuItem onClick={() => onImageAction("upload")}>
-      <Image className="w-3.5 h-3.5 mr-2" /> Upload Image
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={() => onImageAction("generate")}>
-      <Sparkles className="w-3.5 h-3.5 mr-2" /> Generate with AI
-    </DropdownMenuItem>
-  </>
-)}
-```
-
-### B. From the Image Studio page (`/image-studio`)
-Users can generate standalone images from the sidebar navigation under "Image Studio". These can then be inserted into pages.
-
----
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/lib/fabricPageSerializer.ts` | Add `estimateTextHeight` helper; rewrite `layoutChapterOpener`, `layoutTitle`, `layoutQuote`, `layoutCTA` to use dynamic stacking instead of fixed offsets |
-| `src/components/content/FabricPageCanvas.tsx` | Add canvas boundary clamping on `object:moving`; add "Generate with AI" to the Add dropdown menu |
-
-## Technical Details
-
-### `estimateTextHeight` helper
-
-```typescript
-function estimateTextHeight(
-  text: string, fontSize: number, width: number, lineHeight = 1.3
-): number {
-  const avgCharWidth = fontSize * 0.55;
-  const charsPerLine = Math.max(1, Math.floor(width / avgCharWidth));
-  const lines = Math.ceil(text.length / charsPerLine);
-  return Math.max(lines, 1) * fontSize * lineHeight;
-}
-```
-
-### Revised `layoutChapterOpener` (conceptual)
-
-```typescript
-function layoutChapterOpener(...) {
-  let y = t + h * 0.2; // Start 20% down instead of 35%
-
-  if (c.subheading) {
-    const subH = estimateTextHeight(c.subheading, baseSize * 0.7, w * 0.8);
-    objects.push({ type: "Textbox", left: l + w*0.1, top: y, width: w*0.8, ... });
-    y += subH + 12;
-  }
-  if (c.heading) {
-    const headH = estimateTextHeight(c.heading, baseSize * 1.5, w * 0.8);
-    objects.push({ type: "Textbox", left: l + w*0.1, top: y, width: w*0.8, ... });
-    y += headH + 16;
-  }
-  // Divider
-  objects.push({ type: "Rect", left: l + w*0.35, top: y, width: w*0.3, height: 1 });
-  y += 16;
-  
-  if (c.body) {
-    // Clamp body height to remaining space
-    const maxBodyH = (t + h) - y - 10;
-    objects.push({ type: "Textbox", left: l + w*0.1, top: y, width: w*0.8, ... });
-  }
-}
-```
-
-No database changes required.
+## No database or backend changes required.
