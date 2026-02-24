@@ -5,18 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, ChevronDown, ChevronRight, Pencil, Check, X, BookOpen, PenTool } from "lucide-react";
+import { GripVertical, ChevronDown, ChevronRight, Pencil, Check, X, BookOpen, PenTool, Trash2 } from "lucide-react";
 import { OutlineSection } from "@/hooks/useProductOutlines";
 
 interface OutlineSectionCardProps {
   section: OutlineSection;
   index: number;
   onUpdate: (sectionId: string, updates: Partial<OutlineSection>) => Promise<boolean>;
+  onDelete?: (sectionId: string) => Promise<void>;
   dragHandleProps?: any;
   outlineId?: string;
 }
 
-const OutlineSectionCard = ({ section, index, onUpdate, dragHandleProps, outlineId }: OutlineSectionCardProps) => {
+const OutlineSectionCard = ({ section, index, onUpdate, onDelete, dragHandleProps, outlineId }: OutlineSectionCardProps) => {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -102,6 +103,11 @@ const OutlineSectionCard = ({ section, index, onUpdate, dragHandleProps, outline
                   <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setIsEditing(true)}>
                     <Pencil className="w-3 h-3" />
                   </Button>
+                  {onDelete && (
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-destructive hover:text-destructive" onClick={() => onDelete(section.id)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  )}
                   {outlineId && (
                     <Button size="sm" variant="ghost" className="h-6 px-2 text-primary" onClick={() => navigate(`/content-editor/${section.id}?outlineId=${outlineId}`)}>
                       <PenTool className="w-3 h-3 mr-1" /> Expand
