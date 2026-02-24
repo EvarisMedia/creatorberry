@@ -1,6 +1,5 @@
-import { renderPageLayout, EbookPageData, PAGE_SIZES, PageSizeKey, ContentBlock, contentToBlocks } from "./ebookLayouts";
+import { renderPageLayout, EbookPageData, PAGE_SIZES, PageSizeKey } from "./ebookLayouts";
 import { PDFStyleConfig } from "./PDFStyleSettings";
-import { FreeformPageRenderer } from "./FreeformPageRenderer";
 import { PageBackgroundRenderer } from "./PageBackgroundRenderer";
 import { THEME_BACKGROUNDS } from "./themeBackgrounds";
 
@@ -12,18 +11,14 @@ interface Props {
   isSelected?: boolean;
   onClick?: () => void;
   editable?: boolean;
-  freeformMode?: boolean;
   onFieldChange?: (field: string, value: string) => void;
   onItemChange?: (index: number, value: string) => void;
   onImageAction?: (action: "generate" | "upload" | "remove") => void;
-  onBlocksChange?: (blocks: ContentBlock[]) => void;
-  onFreeformImageAction?: (action: "generate" | "upload" | "remove", blockId: string) => void;
 }
 
 export function EbookPage({
   page, pageSize, pdfStyle, scale, isSelected, onClick, editable,
-  freeformMode, onFieldChange, onItemChange, onImageAction,
-  onBlocksChange, onFreeformImageAction,
+  onFieldChange, onItemChange, onImageAction,
 }: Props) {
   const dims = PAGE_SIZES[pageSize];
   const fontFamily = pdfStyle.fontFamily === "serif" ? "Georgia, serif" : pdfStyle.fontFamily === "mono" ? "'Courier New', monospace" : "system-ui, sans-serif";
@@ -37,11 +32,6 @@ export function EbookPage({
     backgroundColor: pdfStyle.backgroundColor,
     bodyColor: pdfStyle.bodyColor,
   };
-
-  // Get or generate blocks for freeform mode
-  const blocks = freeformMode
-    ? (page.blocks && page.blocks.length > 0 ? page.blocks : contentToBlocks(page.content, page.layout))
-    : [];
 
   return (
     <div
@@ -85,26 +75,16 @@ export function EbookPage({
               : {}),
           }}
         >
-          {freeformMode ? (
-            <FreeformPageRenderer
-              blocks={blocks}
-              style={styleProps}
-              editable={editable}
-              onBlocksChange={onBlocksChange}
-              onImageAction={onFreeformImageAction}
-            />
-          ) : (
-            renderPageLayout(
-              {
-                content: page.content,
-                style: styleProps,
-                editable,
-                onFieldChange,
-                onItemChange,
-                onImageAction,
-              },
-              page.layout
-            )
+          {renderPageLayout(
+            {
+              content: page.content,
+              style: styleProps,
+              editable,
+              onFieldChange,
+              onItemChange,
+              onImageAction,
+            },
+            page.layout
           )}
         </div>
       </div>
