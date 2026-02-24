@@ -1,33 +1,85 @@
 
 
-# Add Delete and Generate New Outline to Outline Detail View
+# Add & Delete Sections in Outline Detail View
 
 ## Overview
 
-Currently, when viewing an outline's detail page (`/outlines/:id`), the header only shows "Back to Outlines" and "Build All Sections." The user has no way to delete the current outline or generate a new one without going back to the list. This plan adds both actions to the detail view header.
+Add the ability to delete individual sections and add new sections directly from the outline detail page. Currently you can only edit existing sections -- this adds full section management.
 
 ## Changes
 
-### File: `src/pages/ProductOutline.tsx`
+### 1. `src/hooks/useProductOutlines.tsx` -- Add two new functions
 
-1. **Add a Delete button** to the `headerActions` area when viewing an outline detail (`outlineId` is present). Clicking it will call the existing `handleDeleteOutline` with a confirmation, then navigate back to `/outlines`.
+- **`deleteSection(sectionId: string)`** -- Deletes a section from the `outline_sections` table by ID. Shows a toast on success/error.
+- **`addSection(outlineId: string, title: string, description: string, wordCountTarget: number)`** -- Inserts a new row into `outline_sections` with `sort_order` set to the next available number (max existing + 1). Defaults: `section_number` = sort_order + 1, `subsections` = empty array.
 
-2. **Add a "Generate Outline" button** next to the delete button so users can create a new outline without leaving the detail view. This opens the existing `GenerateOutlineDialog`.
+Both functions are returned from the hook alongside existing ones.
 
-3. **Add a confirmation dialog** before deleting (using the existing `AlertDialog` component) to prevent accidental deletions.
+### 2. `src/components/outlines/OutlineSectionCard.tsx` -- Add delete button
 
-The header actions for the detail view will look like:
+- Add a `Trash2` icon button next to the existing Edit (pencil) button on each section card
+- Add an `onDelete` prop: `(sectionId: string) => Promise<void>`
+- Clicking the delete button calls `onDelete(section.id)` (with a confirmation dialog to prevent accidental deletion)
 
+### 3. `src/pages/ProductOutline.tsx` -- Add section button + wire up delete
+
+- Add an "Add Section" button (`Plus` icon) below the sections list
+- Clicking it shows a simple inline form or small dialog with fields: Title, Description (optional), Word Count Target (default 1000)
+- Wire the new `deleteSection` from the hook into `OutlineSectionCard` via an `onDelete` prop
+- After adding or deleting a section, re-fetch the outline detail to refresh the list
+
+## Technical Details
+
+### Delete Section Handler (in ProductOutline.tsx)
+
+```typescript
+const handleSectionDelete = async (sectionId: string) => {
+  await deleteSection(sectionId);
+  const updated = await fetchOutlineWithSections(activeOutline.id);
+  setActiveOutline(updated);
+};
 ```
-[Back to Outlines]   [+ Generate Outline]   [Delete (trash icon)]
+
+### Add Section (in useProductOutlines.tsx)
+
+```typescript
+const addSection = async (outlineId: string, title: string, description: string, wordCountTarget: number) => {
+  // Get next sort_order
+  const { data: existing } = await supabase
+    .from("outline_sections")
+    .select("sort_order")
+    .eq("outline_id", outlineId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+
+  const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+
+  const { error } = await supabase.from("outline_sections").insert({
+    outline_id: outlineId,
+    title,
+    description: description || null,
+    word_count_target: wordCountTarget,
+    sort_order: nextOrder,
+    section_number: nextOrder + 1,
+    subsections: [],
+  });
+
+  if (error) {
+    toast({ title: "Error", description: "Failed to add section.", variant: "destructive" });
+    return false;
+  }
+  toast({ title: "Section Added", description: `"${title}" added to outline.` });
+  return true;
+};
 ```
 
-### Technical Details
+### Files Modified
 
-- Import `Trash2` icon from lucide-react and `AlertDialog` components from the UI library
-- Add `showDeleteConfirm` state to manage the confirmation dialog
-- The "Generate Outline" button reuses the existing `setShowGenerateDialog(true)` already wired up
-- The delete confirmation dialog calls `handleDeleteOutline(outlineId)` on confirm
+| File | Change |
+|------|--------|
+| `src/hooks/useProductOutlines.tsx` | Add `addSection` and `deleteSection` functions |
+| `src/components/outlines/OutlineSectionCard.tsx` | Add delete button with `onDelete` prop |
+| `src/pages/ProductOutline.tsx` | Add "Add Section" button/form, wire delete to section cards |
 
-No database or backend changes needed -- all functions (`deleteOutline`, `generateOutline`) already exist.
+No database or backend changes needed -- the `outline_sections` table already supports insert and delete.
 
