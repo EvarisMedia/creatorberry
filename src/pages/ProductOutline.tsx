@@ -12,12 +12,23 @@ import GenerateOutlineDialog from "@/components/outlines/GenerateOutlineDialog";
 import BuildAllSectionsDialog from "@/components/outlines/BuildAllSectionsDialog";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Loader2,
   FileText,
   BookOpen,
   ArrowLeft,
   Sparkles,
   Wand2,
+  Trash2,
 } from "lucide-react";
 
 const ProductOutlinePage = () => {
@@ -29,6 +40,7 @@ const ProductOutlinePage = () => {
 
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [showBuildAll, setShowBuildAll] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeOutline, setActiveOutline] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
@@ -69,9 +81,17 @@ const ProductOutlinePage = () => {
       headerActions={
         <>
           {outlineId && (
-            <Button variant="ghost" size="sm" onClick={() => navigate("/outlines")}>
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Outlines
-            </Button>
+            <>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/outlines")}>
+                <ArrowLeft className="w-4 h-4 mr-2" /> Back to Outlines
+              </Button>
+              <Button onClick={() => setShowGenerateDialog(true)} disabled={!currentBrand} size="sm">
+                <Sparkles className="w-4 h-4 mr-2" /> Generate Outline
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
           )}
           {!outlineId && (
             <Button onClick={() => setShowGenerateDialog(true)} disabled={!currentBrand}>
@@ -184,6 +204,23 @@ const ProductOutlinePage = () => {
           }}
         />
       )}
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Outline</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this outline? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => outlineId && handleDeleteOutline(outlineId)}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
