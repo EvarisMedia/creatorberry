@@ -106,12 +106,10 @@ Analyze the content and return the optimal page-by-page layout assignment.`;
                 attribution: { type: "string", description: "Quote attribution or author name" },
               },
               required: ["layout"],
-              additionalProperties: false,
             },
           },
         },
         required: ["pages"],
-        additionalProperties: false,
       },
     };
 
