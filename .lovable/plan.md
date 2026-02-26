@@ -1,85 +1,45 @@
 
 
-# Add & Delete Sections in Outline Detail View
+# Fix: auto-layout-ebook Edge Function Google API Error
 
-## Overview
+## Problem
 
-Add the ability to delete individual sections and add new sections directly from the outline detail page. Currently you can only edit existing sections -- this adds full section management.
+The "Build All Sections" process fails at the **Designing** phase because the `auto-layout-ebook` edge function sends a tool/function schema to Google's Gemini API that includes `additionalProperties` fields. Google's function calling API does not support this property and returns a 400 error.
 
-## Changes
+## Root Cause
 
-### 1. `src/hooks/useProductOutlines.tsx` -- Add two new functions
+In the tool definition (`toolDef`), both the top-level `parameters` object and the nested `items` object contain `"additionalProperties": false`. When this schema is sent to the Google Generative AI API (for users with their own API key), it fails validation.
 
-- **`deleteSection(sectionId: string)`** -- Deletes a section from the `outline_sections` table by ID. Shows a toast on success/error.
-- **`addSection(outlineId: string, title: string, description: string, wordCountTarget: number)`** -- Inserts a new row into `outline_sections` with `sort_order` set to the next available number (max existing + 1). Defaults: `section_number` = sort_order + 1, `subsections` = empty array.
+## Fix
 
-Both functions are returned from the hook alongside existing ones.
+**File: `supabase/functions/auto-layout-ebook/index.ts`**
 
-### 2. `src/components/outlines/OutlineSectionCard.tsx` -- Add delete button
+Remove all `additionalProperties` fields from the tool definition schema. Specifically:
 
-- Add a `Trash2` icon button next to the existing Edit (pencil) button on each section card
-- Add an `onDelete` prop: `(sectionId: string) => Promise<void>`
-- Clicking the delete button calls `onDelete(section.id)` (with a confirmation dialog to prevent accidental deletion)
+1. Remove `additionalProperties: false` from the `items` object inside `pages` (the per-page schema)
+2. Remove `additionalProperties: false` from the top-level `parameters` object
 
-### 3. `src/pages/ProductOutline.tsx` -- Add section button + wire up delete
+This is a two-line removal. No other changes needed -- the Lovable gateway path (OpenAI-compatible) tolerates the field, but removing it there too keeps the schema consistent.
 
-- Add an "Add Section" button (`Plus` icon) below the sections list
-- Clicking it shows a simple inline form or small dialog with fields: Title, Description (optional), Word Count Target (default 1000)
-- Wire the new `deleteSection` from the hook into `OutlineSectionCard` via an `onDelete` prop
-- After adding or deleting a section, re-fetch the outline detail to refresh the list
+## Technical Detail
 
-## Technical Details
-
-### Delete Section Handler (in ProductOutline.tsx)
-
+Current schema (simplified):
 ```typescript
-const handleSectionDelete = async (sectionId: string) => {
-  await deleteSection(sectionId);
-  const updated = await fetchOutlineWithSections(activeOutline.id);
-  setActiveOutline(updated);
-};
+parameters: {
+  type: "object",
+  properties: { pages: { type: "array", items: { ..., additionalProperties: false } } },
+  required: ["pages"],
+  additionalProperties: false,  // REMOVE
+}
 ```
 
-### Add Section (in useProductOutlines.tsx)
-
+Fixed schema:
 ```typescript
-const addSection = async (outlineId: string, title: string, description: string, wordCountTarget: number) => {
-  // Get next sort_order
-  const { data: existing } = await supabase
-    .from("outline_sections")
-    .select("sort_order")
-    .eq("outline_id", outlineId)
-    .order("sort_order", { ascending: false })
-    .limit(1);
-
-  const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
-
-  const { error } = await supabase.from("outline_sections").insert({
-    outline_id: outlineId,
-    title,
-    description: description || null,
-    word_count_target: wordCountTarget,
-    sort_order: nextOrder,
-    section_number: nextOrder + 1,
-    subsections: [],
-  });
-
-  if (error) {
-    toast({ title: "Error", description: "Failed to add section.", variant: "destructive" });
-    return false;
-  }
-  toast({ title: "Section Added", description: `"${title}" added to outline.` });
-  return true;
-};
+parameters: {
+  type: "object",
+  properties: { pages: { type: "array", items: { ... } } },
+  required: ["pages"],
+}
 ```
 
-### Files Modified
-
-| File | Change |
-|------|--------|
-| `src/hooks/useProductOutlines.tsx` | Add `addSection` and `deleteSection` functions |
-| `src/components/outlines/OutlineSectionCard.tsx` | Add delete button with `onDelete` prop |
-| `src/pages/ProductOutline.tsx` | Add "Add Section" button/form, wire delete to section cards |
-
-No database or backend changes needed -- the `outline_sections` table already supports insert and delete.
-
+Only the `supabase/functions/auto-layout-ebook/index.ts` file needs to be modified.
