@@ -54,7 +54,6 @@ export function useProductExports(brandId: string | undefined) {
       format: string;
       settings?: Record<string, unknown>;
     }) => {
-      // For PDF, try client-side generation first
       if (format === "pdf") {
         return await generatePDFClientSide(outlineId, settings);
       }
@@ -85,7 +84,6 @@ export function useProductExports(brandId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ["product-exports", brandId] });
       
       if (data._pdfBlob) {
-        // Direct PDF blob download
         const url = URL.createObjectURL(data._pdfBlob);
         const a = document.createElement("a");
         a.href = url;
@@ -156,14 +154,9 @@ export function useProductExports(brandId: string | undefined) {
     },
     onSuccess: async (data) => {
       if (data.format === "pdf") {
-        // For PDF, fetch the HTML and re-generate as real PDF client-side
         try {
           const response = await fetch(data.url);
           const html = await response.text();
-          
-          // Try to extract page data from the HTML to rebuild, 
-          // but for simplicity just download the HTML as-is with a .pdf-like approach
-          // Actually, generate a simple PDF from the text content
           const tempDiv = document.createElement("div");
           tempDiv.innerHTML = html;
           const textContent = tempDiv.textContent || tempDiv.innerText || "";
@@ -185,7 +178,6 @@ export function useProductExports(brandId: string | undefined) {
           toast.success("PDF downloaded!");
         } catch (err) {
           console.error("PDF re-generation failed, falling back:", err);
-          // Fallback: download the HTML file
           const a = document.createElement("a");
           a.href = data.url;
           a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.html`;
@@ -217,41 +209,55 @@ export function useProductExports(brandId: string | undefined) {
     },
   });
 
-  return { exports, isLoading, exportProduct, deleteExport, downloadExport };
+  /**
+   * Generate a PDF blob for preview (no download).
+   */
+  const previewPDF = async (outlineId: string): Promise<Blob> => {
+    const result = await generatePDFClientSide(outlineId);
+    return result._pdfBlob;
+  };
+
+  return { exports, isLoading, exportProduct, deleteExport, downloadExport, previewPDF };
 }
 
 /**
  * Generate fallback pages for sections that have expanded content but no page_layouts.
+ * Fixed: skip opener snippet from full-text chunking to avoid duplicate content.
  */
 function generateFallbackPages(sectionTitle: string, content: string, startOrder: number): EbookPageData[] {
   const pages: EbookPageData[] = [];
   
-  // Chapter opener page
+  // Chapter opener page with a short snippet
+  const OPENER_CHARS = 200;
+  const openerSnippet = content.substring(0, OPENER_CHARS).trim();
   pages.push({
     id: crypto.randomUUID(),
     layout: "chapter-opener",
     content: {
       heading: sectionTitle,
-      body: content.substring(0, 200).trim() + (content.length > 200 ? "..." : ""),
+      body: openerSnippet + (content.length > OPENER_CHARS ? "..." : ""),
     },
     order: startOrder + pages.length,
   });
 
-  // Split remaining content into ~200-word chunks for full-text pages
-  const words = content.split(/\s+/);
-  const WORDS_PER_PAGE = 200;
-  for (let i = 0; i < words.length; i += WORDS_PER_PAGE) {
-    const chunk = words.slice(i, i + WORDS_PER_PAGE).join(" ");
-    if (chunk.trim()) {
-      pages.push({
-        id: crypto.randomUUID(),
-        layout: "full-text",
-        content: {
-          heading: i === 0 ? sectionTitle : undefined,
-          body: chunk,
-        },
-        order: startOrder + pages.length,
-      });
+  // Split remaining content (skip the opener snippet) into ~200-word chunks
+  const remainingContent = content.length > OPENER_CHARS ? content.substring(OPENER_CHARS).trim() : "";
+  if (remainingContent) {
+    const words = remainingContent.split(/\s+/);
+    const WORDS_PER_PAGE = 200;
+    for (let i = 0; i < words.length; i += WORDS_PER_PAGE) {
+      const chunk = words.slice(i, i + WORDS_PER_PAGE).join(" ");
+      if (chunk.trim()) {
+        pages.push({
+          id: crypto.randomUUID(),
+          layout: "full-text",
+          content: {
+            heading: i === 0 ? sectionTitle : undefined,
+            body: chunk,
+          },
+          order: startOrder + pages.length,
+        });
+      }
     }
   }
 
@@ -265,7 +271,6 @@ async function generatePDFClientSide(
   outlineId: string,
   settings?: Record<string, unknown>
 ): Promise<any> {
-  // Fetch outline with pdf_style_config
   const { data: outline, error: outlineErr } = await supabase
     .from("product_outlines")
     .select("*, outline_sections(*)")
@@ -281,8 +286,9 @@ async function generatePDFClientSide(
 
   const sections = (outline as any).outline_sections || [];
   const sectionIds = sections.map((s: any) => s.id);
+  const sortedSections = sections.sort((a: any, b: any) => a.sort_order - b.sort_order);
+  const sectionTitles = sortedSections.map((s: any) => s.title);
 
-  // Fetch expanded content with page_layouts
   let allPages: EbookPageData[] = [];
   if (sectionIds.length > 0) {
     const { data: expandedContent } = await supabase
@@ -298,13 +304,11 @@ async function generatePDFClientSide(
       }
     }
 
-    // Collect page layouts from all sections, with fallback for sections that have content but no layouts
-    for (const section of sections.sort((a: any, b: any) => a.sort_order - b.sort_order)) {
+    for (const section of sortedSections) {
       const ec = contentMap[section.id];
       if (ec?.page_layouts && Array.isArray(ec.page_layouts) && ec.page_layouts.length > 0) {
         allPages.push(...(ec.page_layouts as EbookPageData[]));
       } else if (ec?.content) {
-        // Generate fallback pages for sections with expanded content but no page_layouts
         const fallbackPages = generateFallbackPages(section.title, ec.content, allPages.length);
         allPages.push(...fallbackPages);
       }
@@ -313,11 +317,13 @@ async function generatePDFClientSide(
 
   let pdfBlob: Blob;
   if (allPages.length > 0) {
-    // Render pages with fabricJSON via offscreen canvas for pixel-perfect export
     const canvasDataURLs = await renderPagesToDataURLs(allPages, pdfStyle);
-    pdfBlob = await generatePDFFromPages(allPages, pdfStyle, outline.title, canvasDataURLs);
+    pdfBlob = await generatePDFFromPages(allPages, pdfStyle, outline.title, canvasDataURLs, {
+      includeCoverPage: true,
+      includeToc: true,
+      sectionTitles,
+    });
   } else {
-    // Fallback: also call edge function for markdown then convert
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Not authenticated");
 

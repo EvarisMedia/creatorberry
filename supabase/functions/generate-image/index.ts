@@ -291,7 +291,7 @@ Design requirements:
     }
 
     // Fetch the configured model from settings
-    let model = "google/gemini-2.5-flash-image-preview";
+    let model = "google/gemini-2.5-flash-image";
     try {
       const { data: modelSetting } = await supabase
         .from("ai_settings")
