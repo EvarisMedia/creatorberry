@@ -49,7 +49,6 @@ export function useBrands() {
     } else {
       const typedData = data as Brand[];
       setBrands(typedData);
-      // Set first brand as current if none selected
       if (typedData.length > 0 && !currentBrand) {
         setCurrentBrand(typedData[0]);
       }
@@ -68,11 +67,46 @@ export function useBrands() {
     }
   };
 
+  const updateBrand = async (brandId: string, updates: Partial<Brand>) => {
+    const { error } = await supabase
+      .from("brands")
+      .update(updates)
+      .eq("id", brandId);
+    if (error) {
+      console.error("Error updating brand:", error);
+      return false;
+    }
+    await fetchBrands();
+    // Update currentBrand if it was the one updated
+    if (currentBrand?.id === brandId) {
+      setCurrentBrand((prev) => prev ? { ...prev, ...updates } : prev);
+    }
+    return true;
+  };
+
+  const deleteBrand = async (brandId: string) => {
+    const { error } = await supabase
+      .from("brands")
+      .delete()
+      .eq("id", brandId);
+    if (error) {
+      console.error("Error deleting brand:", error);
+      return false;
+    }
+    if (currentBrand?.id === brandId) {
+      setCurrentBrand(null);
+    }
+    await fetchBrands();
+    return true;
+  };
+
   return {
     brands,
     currentBrand,
     isLoading,
     selectBrand,
+    updateBrand,
+    deleteBrand,
     refetch: fetchBrands,
   };
 }

@@ -32,6 +32,7 @@ import {
   Wand2,
   Trash2,
   Plus,
+  Eye,
 } from "lucide-react";
 
 const ProductOutlinePage = () => {
@@ -146,6 +147,11 @@ const ProductOutlinePage = () => {
                     </span>
                    </div>
                    <div className="flex items-center gap-2">
+                     {activeOutline.sections?.length > 0 && (
+                       <Button variant="outline" size="sm" onClick={() => navigate(`/content-editor/${activeOutline.sections[0].id}`)}>
+                         <Eye className="w-4 h-4 mr-2" /> Preview
+                       </Button>
+                     )}
                      <Button variant="default" size="sm" onClick={() => setShowBuildAll(true)}>
                        <Wand2 className="w-4 h-4 mr-2" /> Build All Sections
                      </Button>
