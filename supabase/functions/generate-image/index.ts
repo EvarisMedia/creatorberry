@@ -307,7 +307,7 @@ Design requirements:
 
     let response: Response;
     if (userApiKey) {
-      const geminiModel = userImageModel || "gemini-2.5-flash-image-preview";
+      const geminiModel = userImageModel || "gemini-2.0-flash-exp";
       response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`,
         {
