@@ -13,7 +13,7 @@ interface UserApiKeys {
 const DEFAULT_KEYS: UserApiKeys = {
   gemini_api_key: null,
   preferred_text_model: "gemini-2.5-flash",
-  preferred_image_model: "gemini-2.5-flash-image-preview",
+  preferred_image_model: "gemini-2.0-flash-exp",
 };
 
 export function useUserApiKeys() {
