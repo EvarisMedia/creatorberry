@@ -127,26 +127,54 @@ const SalesPageBuilder = () => {
   };
 
   const generateHtml = (page: SalesPage) => {
-    let html = `<!DOCTYPE html>
+    const sectionColors = [
+      { bg: "#ffffff", text: "#1a1a2e" },
+      { bg: "#f8f9fc", text: "#1a1a2e" },
+      { bg: "#ffffff", text: "#1a1a2e" },
+      { bg: "#f1f3f9", text: "#1a1a2e" },
+    ];
+    
+    let sectionsHtml = "";
+    page.sections.forEach((section, i) => {
+      const colors = sectionColors[i % sectionColors.length];
+      const sectionType = (section as any).type || "";
+      let extraClass = "";
+      if (sectionType === "testimonials" || sectionType === "social_proof") extraClass = "testimonials";
+      if (sectionType === "benefits" || sectionType === "features") extraClass = "benefits";
+      
+      sectionsHtml += `<section class="sp-section ${extraClass}" style="background:${colors.bg};color:${colors.text}">
+  <div class="sp-container">
+    <h2 class="sp-section-title">${section.title}</h2>
+    <div class="sp-section-body">${section.content.replace(/\n/g, "<br>")}</div>
+  </div>
+</section>`;
+    });
+
+    return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${page.headline}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;line-height:1.6;color:#1a1a1a}
-.container{max-width:800px;margin:0 auto;padding:2rem}.hero{text-align:center;padding:4rem 2rem;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white}
-.hero h1{font-size:2.5rem;margin-bottom:1rem}.hero p{font-size:1.2rem;opacity:0.9}
-section{padding:3rem 2rem}.section-title{font-size:1.8rem;margin-bottom:1rem;color:#1a1a1a}
-.cta-section{text-align:center;padding:3rem;background:#f8f9fa}.cta-btn{display:inline-block;padding:1rem 2.5rem;background:#667eea;color:white;text-decoration:none;border-radius:8px;font-size:1.1rem;font-weight:600}
-</style></head><body>`;
-    html += `<div class="hero"><h1>${page.headline}</h1>`;
-    if (page.subheadline) html += `<p>${page.subheadline}</p>`;
-    html += `</div><div class="container">`;
-    for (const section of page.sections) {
-      html += `<section><h2 class="section-title">${section.title}</h2><div>${section.content.replace(/\n/g, "<br>")}</div></section>`;
-    }
-    if (page.cta_text) {
-      html += `<div class="cta-section"><a href="${page.cta_url || "#"}" class="cta-btn">${page.cta_text}</a></div>`;
-    }
-    html += `</div></body></html>`;
-    return html;
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;line-height:1.7;color:#1a1a2e;-webkit-font-smoothing:antialiased}
+.sp-container{max-width:720px;margin:0 auto;padding:0 2rem}
+.sp-hero{text-align:center;padding:5rem 2rem 4rem;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 50%,#a855f7 100%);color:white;position:relative;overflow:hidden}
+.sp-hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:60px;background:linear-gradient(to top,rgba(255,255,255,0.08),transparent)}
+.sp-hero h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;margin-bottom:1rem;letter-spacing:-0.02em;line-height:1.15}
+.sp-hero p{font-size:1.15rem;opacity:0.92;max-width:600px;margin:0 auto;line-height:1.6}
+.sp-section{padding:4rem 2rem}
+.sp-section-title{font-size:1.75rem;font-weight:700;margin-bottom:1.25rem;letter-spacing:-0.01em;line-height:1.3}
+.sp-section-body{font-size:1.05rem;color:#4a4a6a;line-height:1.8}
+.sp-section.benefits .sp-section-body{columns:2;column-gap:2rem}
+.sp-section.testimonials{background:#f8f7ff !important}
+.sp-cta{text-align:center;padding:4rem 2rem;background:linear-gradient(135deg,#f8f9fc,#eef0f7)}
+.sp-cta-btn{display:inline-block;padding:1rem 3rem;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;text-decoration:none;border-radius:12px;font-size:1.1rem;font-weight:700;letter-spacing:0.01em;transition:all 0.3s ease;box-shadow:0 4px 14px rgba(79,70,229,0.35)}
+.sp-cta-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(79,70,229,0.45)}
+@media(max-width:640px){.sp-section.benefits .sp-section-body{columns:1}.sp-hero{padding:3rem 1.5rem 2.5rem}.sp-section{padding:2.5rem 1.5rem}}
+</style></head><body>
+<div class="sp-hero"><div class="sp-container"><h1>${page.headline}</h1>${page.subheadline ? `<p>${page.subheadline}</p>` : ""}</div></div>
+${sectionsHtml}
+${page.cta_text ? `<div class="sp-cta"><a href="${page.cta_url || "#"}" class="sp-cta-btn">${page.cta_text}</a></div>` : ""}
+</body></html>`;
   };
 
   const handleSaveEdit = async () => {
@@ -357,23 +385,23 @@ section{padding:3rem 2rem}.section-title{font-size:1.8rem;margin-bottom:1rem;col
                 <TabsList><TabsTrigger value="desktop">Desktop</TabsTrigger><TabsTrigger value="content">Content</TabsTrigger></TabsList>
                 <TabsContent value="desktop">
                   <div className="border border-border rounded-xl overflow-hidden">
-                    <div className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-8 text-center">
-                      <h1 className="text-2xl font-bold mb-2">{previewPage.headline}</h1>
-                      {previewPage.subheadline && <p className="text-primary-foreground/80">{previewPage.subheadline}</p>}
+                    <div className="bg-gradient-to-br from-[#4f46e5] to-[#a855f7] text-white p-10 text-center">
+                      <h1 className="text-3xl font-extrabold mb-3 tracking-tight">{previewPage.headline}</h1>
+                      {previewPage.subheadline && <p className="text-white/85 text-lg max-w-lg mx-auto">{previewPage.subheadline}</p>}
                     </div>
-                    <div className="p-6 space-y-8">
+                    <div className="divide-y divide-border">
                       {previewPage.sections.map((section, i) => (
-                        <div key={i}>
-                          <h2 className="text-xl font-semibold mb-3">{section.title}</h2>
-                          <div className="text-muted-foreground whitespace-pre-wrap text-sm">{section.content}</div>
+                        <div key={i} className={`p-8 ${i % 2 === 1 ? "bg-muted/30" : "bg-background"}`}>
+                          <h2 className="text-xl font-bold mb-3 tracking-tight">{section.title}</h2>
+                          <div className="text-muted-foreground whitespace-pre-wrap text-sm leading-relaxed">{section.content}</div>
                         </div>
                       ))}
-                      {previewPage.cta_text && (
-                        <div className="text-center py-6">
-                          <Button size="lg">{previewPage.cta_text}</Button>
-                        </div>
-                      )}
                     </div>
+                    {previewPage.cta_text && (
+                      <div className="text-center py-10 bg-muted/20">
+                        <Button size="lg" className="px-8 text-base font-bold">{previewPage.cta_text}</Button>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
                 <TabsContent value="content">

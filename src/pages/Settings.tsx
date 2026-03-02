@@ -16,6 +16,17 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useUserApiKeys } from "@/hooks/useUserApiKeys";
 import { supabase } from "@/integrations/supabase/client";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   LayoutDashboard,
   Settings as SettingsIcon,
@@ -39,7 +50,10 @@ import {
   Rocket,
   Library,
   HelpCircle,
+  Trash2,
+  Edit,
 } from "lucide-react";
+import { Brand } from "@/hooks/useBrands";
 import creatorberryLogo from "@/assets/creatorberry-logo.png";
 import {
   DropdownMenu,
@@ -64,11 +78,141 @@ const sidebarItems = [
   { icon: SettingsIcon, label: "Settings", href: "/settings" },
 ];
 
+function BrandManagementCard({ brand, onUpdate, onDelete, toast }: {
+  brand: Brand;
+  onUpdate: (id: string, updates: Partial<Brand>) => Promise<boolean>;
+  onDelete: (id: string) => Promise<boolean>;
+  toast: any;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [name, setName] = useState(brand.name);
+  const [primaryColor, setPrimaryColor] = useState(brand.primary_color || "#000000");
+  const [secondaryColor, setSecondaryColor] = useState(brand.secondary_color || "#ffffff");
+  const [about, setAbout] = useState(brand.about || "");
+  const [targetAudience, setTargetAudience] = useState(brand.target_audience || "");
+
+  useEffect(() => {
+    setName(brand.name);
+    setPrimaryColor(brand.primary_color || "#000000");
+    setSecondaryColor(brand.secondary_color || "#ffffff");
+    setAbout(brand.about || "");
+    setTargetAudience(brand.target_audience || "");
+  }, [brand.id]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    const success = await onUpdate(brand.id, {
+      name, primary_color: primaryColor, secondary_color: secondaryColor,
+      about: about || null, target_audience: targetAudience || null,
+    });
+    setIsSaving(false);
+    if (success) {
+      toast({ title: "Brand updated" });
+      setIsEditing(false);
+    } else {
+      toast({ title: "Failed to update brand", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async () => {
+    const success = await onDelete(brand.id);
+    if (success) toast({ title: "Brand deleted" });
+    else toast({ title: "Failed to delete brand", variant: "destructive" });
+    setShowDeleteConfirm(false);
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Edit className="w-5 h-5" />
+            Brand Management
+          </CardTitle>
+          <CardDescription>Edit or delete "{brand.name}"</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isEditing ? (
+            <>
+              <div className="space-y-2">
+                <Label>Brand Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Primary Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-10 h-10 rounded border cursor-pointer" />
+                    <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="flex-1" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Secondary Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-10 h-10 rounded border cursor-pointer" />
+                    <Input value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="flex-1" />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>About</Label>
+                <Textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={3} />
+              </div>
+              <div className="space-y-2">
+                <Label>Target Audience</Label>
+                <Input value={targetAudience} onChange={(e) => setTargetAudience(e.target.value)} />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
+                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Save Brand
+                </Button>
+                <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1">
+                <div className="w-6 h-6 rounded border" style={{ backgroundColor: primaryColor }} />
+                <div className="w-6 h-6 rounded border" style={{ backgroundColor: secondaryColor }} />
+              </div>
+              <span className="font-medium flex-1">{brand.name}</span>
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Edit className="w-4 h-4 mr-1" /> Edit
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="w-4 h-4 mr-1" /> Delete
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Brand</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{brand.name}"? This will also delete all associated content.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 export default function Settings() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile, isAdmin, isLoading, signOut } = useAuth();
-  const { brands, currentBrand, isLoading: brandsLoading, selectBrand } = useBrands();
+  const { brands, currentBrand, isLoading: brandsLoading, selectBrand, updateBrand, deleteBrand } = useBrands();
   const { toast } = useToast();
 
   const { keys, maskedKey, isConfigured, isSaving: isKeysSaving, isTesting, saveKeys, testConnection } = useUserApiKeys();
@@ -430,7 +574,7 @@ export default function Settings() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                 <div className="space-y-2">
                   <Label>Preferred Image Model</Label>
                   <Select
                     value={keys.preferred_image_model}
@@ -440,14 +584,24 @@ export default function Settings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gemini-3-pro-image-preview">Gemini 3 Pro Image Preview (Latest)</SelectItem>
-                      <SelectItem value="gemini-2.5-flash-image-preview">Gemini 2.5 Flash Image</SelectItem>
+                      <SelectItem value="gemini-2.0-flash-preview-image-generation">Gemini 2.0 Flash Image (Recommended)</SelectItem>
+                      <SelectItem value="imagen-3.0-generate-002">Imagen 3.0 (High Quality)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Brand Management Section */}
+          {currentBrand && (
+            <BrandManagementCard
+              brand={currentBrand}
+              onUpdate={updateBrand}
+              onDelete={deleteBrand}
+              toast={toast}
+            />
+          )}
 
           {/* Account Section */}
           <Card>

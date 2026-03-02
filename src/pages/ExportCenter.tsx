@@ -289,11 +289,16 @@ export default function ExportCenter() {
           </DialogHeader>
           <div className="flex-1 min-h-0">
             {previewUrl && (
-              <iframe
-                src={previewUrl}
+              <object
+                data={previewUrl}
+                type="application/pdf"
                 className="w-full h-full rounded-lg border border-border"
-                title="PDF Preview"
-              />
+              >
+                <p className="text-center py-8 text-muted-foreground">
+                  Unable to display PDF preview.{" "}
+                  <a href={previewUrl} download className="text-primary underline">Download instead</a>.
+                </p>
+              </object>
             )}
           </div>
         </DialogContent>

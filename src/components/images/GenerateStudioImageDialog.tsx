@@ -125,7 +125,7 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <ScrollArea className="max-h-[60vh] -mx-6 px-6">
           <div className="space-y-5 py-4">
             {/* Brand Preview */}
             <div className="flex items-center gap-4 p-3 border rounded-xl bg-muted/50">

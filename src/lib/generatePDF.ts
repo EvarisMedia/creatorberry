@@ -72,7 +72,13 @@ function renderPageBackground(
 
   for (const el of theme.elements) {
     const [r, g, b] = hexToRgb(el.color);
-    const effectiveOpacity = Math.min(el.opacity, 1);
+    // Cap opacity for decorative elements to keep them subtle
+    let effectiveOpacity = Math.min(el.opacity, 1);
+    if (el.type === "line" || el.type === "stripe") {
+      effectiveOpacity = Math.min(effectiveOpacity, 0.05);
+    } else if (el.type === "rect") {
+      effectiveOpacity = Math.min(effectiveOpacity, 0.08);
+    }
 
     const x = el.position.left ? parseCssValue(el.position.left, wMm) : 
               el.position.right ? wMm - parseCssValue(el.position.right, wMm) - parseCssValue(el.size.width, wMm) : 0;
@@ -309,6 +315,7 @@ async function renderPage(
     doc.setFont(font, "normal");
     doc.setTextColor(...bodyColor);
     
+    // Split by double newlines into paragraphs, then by single newlines for line breaks/lists
     const paragraphs = text.split(/\n\n+/);
     let currentY = y;
     const bottomLimit = maxH ? y + maxH : hMm - margin.bottom;
@@ -317,21 +324,39 @@ async function renderPage(
       const para = paragraphs[pi].trim();
       if (!para) continue;
       if (currentY >= bottomLimit) {
-        // Return remaining paragraphs as overflow
         const remaining = paragraphs.slice(pi).join("\n\n");
         return { finalY: currentY, overflowText: remaining };
       }
-      const lines = wrapText(doc, para, maxW);
-      for (let li = 0; li < lines.length; li++) {
-        if (currentY >= bottomLimit) {
-          // Partial paragraph overflow: remaining lines of this paragraph + remaining paragraphs
-          const remainingLines = lines.slice(li).join(" ");
-          const remainingParas = paragraphs.slice(pi + 1).join("\n\n");
-          const overflow = remainingParas ? `${remainingLines}\n\n${remainingParas}` : remainingLines;
-          return { finalY: currentY, overflowText: overflow };
+      
+      // Split paragraph by single newlines to handle lists and line breaks
+      const subLines = para.split(/\n/);
+      
+      for (let si = 0; si < subLines.length; si++) {
+        const subLine = subLines[si].trim();
+        if (!subLine) { currentY += lineH * 0.5; continue; }
+        
+        // Detect list items for slight indent and spacing
+        const isListItem = /^\s*(?:\d+[\.\)]\s+|[-*•]\s+)/.test(subLine);
+        const indentX = isListItem ? x + 4 : x;
+        const lineMaxW = isListItem ? maxW - 4 : maxW;
+        
+        const wrappedLines = wrapText(doc, subLine, lineMaxW);
+        for (let li = 0; li < wrappedLines.length; li++) {
+          if (currentY >= bottomLimit) {
+            // Build overflow from remaining content
+            const remainingSubLines = wrappedLines.slice(li).join(" ");
+            const restOfPara = subLines.slice(si + 1).join("\n");
+            const restOfParas = paragraphs.slice(pi + 1).join("\n\n");
+            let overflow = remainingSubLines;
+            if (restOfPara) overflow += "\n" + restOfPara;
+            if (restOfParas) overflow += "\n\n" + restOfParas;
+            return { finalY: currentY, overflowText: overflow };
+          }
+          doc.text(wrappedLines[li], indentX, currentY);
+          currentY += lineH;
         }
-        doc.text(lines[li], x, currentY);
-        currentY += lineH;
+        // Add small gap after list items
+        if (isListItem) currentY += lineH * 0.3;
       }
       currentY += paragraphGap;
     }
@@ -555,12 +580,14 @@ async function renderPage(
       }
       if (c.subheading) {
         const btnY = centerY + 35;
-        const btnW = 50;
+        doc.setFontSize(10);
+        doc.setFont(font, "bold");
+        const textW = doc.getTextWidth(c.subheading);
+        const btnPadding = 20;
+        const btnW = Math.max(40, Math.min(textW + btnPadding, contentW * 0.8));
         const btnH = 10;
         doc.setFillColor(...accentColor);
         doc.roundedRect(wMm / 2 - btnW / 2, btnY, btnW, btnH, 2, 2, "F");
-        doc.setFontSize(10);
-        doc.setFont(font, "bold");
         doc.setTextColor(255, 255, 255);
         doc.text(c.subheading, wMm / 2, btnY + 6.5, { align: "center" });
       }

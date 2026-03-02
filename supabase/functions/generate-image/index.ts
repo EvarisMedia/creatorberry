@@ -307,15 +307,16 @@ Design requirements:
 
     let response: Response;
     if (userApiKey) {
-      // Whitelist of known working Gemini image-generation models
+      // Whitelist of known working Gemini image-generation models (as of March 2026)
       const VALID_IMAGE_MODELS = [
-        "gemini-2.0-flash-exp",
         "gemini-2.0-flash-preview-image-generation",
         "imagen-3.0-generate-002",
       ];
+      const DEFAULT_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation";
       const geminiModel = (userImageModel && VALID_IMAGE_MODELS.includes(userImageModel))
         ? userImageModel
-        : "gemini-2.0-flash-exp";
+        : DEFAULT_IMAGE_MODEL;
+      console.log("Using Gemini image model:", geminiModel, "(user requested:", userImageModel, ")");
       response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`,
         {
