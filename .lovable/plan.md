@@ -1,129 +1,94 @@
 
 
-# Fix Build All Sections: End-to-End Ebook Pipeline
+# Comprehensive Fix: PDF Export Quality, Images, Text Flow, and Preview
 
-## Problem Summary
+## Flaws Found in the Exported PDF
 
-The "Build All Sections" workflow has 5 critical issues:
+After analyzing the actual exported PDF (58+ pages), here are the specific issues:
 
-1. **Layouts never saved** -- The `auto-layout-ebook` edge function returns page designs, but the `useBookBuilder` hook discards the response and never writes `page_layouts` to the `expanded_content` table.
-2. **Images not generated** -- The image generation phase generates images and saves them to `generated_images`, but never links them back into the page layouts (no `image` field in the layout content).
-3. **Text overflow in layouts** -- The AI sometimes generates pages with too much body text for the page size. No content-length guardrails exist in the prompt or post-processing.
-4. **Canvas-to-PDF quality loss** -- When fabricJSON exists, pages render through the offscreen Fabric.js canvas at 2x, but most auto-built pages lack fabricJSON, so they fall through to jsPDF text rendering which has limited typography.
-5. **Weak template system** -- The AI layout prompt gives equal weight to all templates without guiding toward a professional book structure.
+### 1. No images anywhere in the PDF
+- **Root cause (gateway path)**: Line 294 of `generate-image/index.ts` still uses `google/gemini-2.5-flash-image-preview` which is an invalid model name. The previous fix only changed the user-API-key path (line 310), not the gateway default.
+- **Root cause (image storage)**: Generated images are base64 data URLs. These are saved to `generated_images` table and injected into `page_layouts` as `content.image`. But `loadImageAsBase64()` in `generatePDF.ts` tries to `fetch()` these URLs -- `fetch()` on a `data:` URI may fail silently in some environments, and even when it works, the function re-encodes to base64 via FileReader, adding unnecessary overhead.
+- **Root cause (image sizing)**: In `text-image` and `image-text` layouts, images stretch the full page height (`hMm - margin.top - margin.bottom`), creating a massive distorted image column.
+
+### 2. Text cut off mid-sentence (pages end abruptly)
+- **Root cause**: `drawBody()` stops rendering at `bottomLimit` but discards all remaining text. There is zero overflow/continuation logic -- text simply vanishes.
+- Pages 1, 3, 4, 7, 9 in the PDF all have numbered lists that get cut off partway through.
+
+### 3. Duplicate content across pages
+- Pages 1 and 3 have identical content ("The Mechanics of an InstaTheme Page"). This suggests the fallback page generator or the AI layout engine is duplicating content across the chapter-opener and the first full-text page.
+
+### 4. No page numbers in the PDF
+- There are no page numbers, headers, or footers -- making the document feel unprofessional.
+
+### 5. Heading text cut off (Page 11: "Your Niche, Your Brand, Your B")
+- The heading is truncated. The `drawHeading()` function wraps text but the heading for chapter-opener is rendered centered at a fixed Y position without checking if wrapped lines fit.
+
+### 6. No cover page or table of contents
+- The `BuildAllSectionsDialog` saves `includeCoverPage: true` and `includeToc: true` to the style config, but `generatePDFFromPages()` never generates these pages.
+
+### 7. No PDF preview before export
+- Users export blindly with no way to review the output.
+
+### 8. `pageSize` not passed from BuildAllSectionsDialog to builder
+- Line 80-89 of `BuildAllSectionsDialog.tsx`: `builder.build()` is called but `pageSize` is NOT included in the options object (it's defined in state but never passed).
+
+---
 
 ## Fix Plan
 
-### 1. Save AI layouts to database (useBookBuilder.tsx)
+### Fix 1: Pass `pageSize` to builder (BuildAllSectionsDialog.tsx)
+Add `pageSize` to the `builder.build()` call -- it's currently missing despite being a state variable.
 
-After calling `auto-layout-ebook`, take the returned `pages` array and save it as `page_layouts` on the `expanded_content` row:
+### Fix 2: Fix gateway image model (generate-image/index.ts)
+- Change line 294 default from `google/gemini-2.5-flash-image-preview` to `google/gemini-2.5-flash-image` (the correct Lovable gateway model name per documentation).
+- Fix `loadImageAsBase64` in `generatePDF.ts` to handle `data:` URIs directly (return them as-is instead of re-fetching).
 
-```typescript
-// After design phase succeeds
-const pages = layoutResponse.data?.pages || [];
-if (pages.length > 0 && contentId) {
-  // Convert to EbookPageData format with IDs and order
-  const pageLayouts = pages.map((p, idx) => ({
-    id: crypto.randomUUID(),
-    layout: p.layout,
-    content: {
-      heading: p.heading,
-      subheading: p.subheading,
-      body: p.body,
-      image: p.image,
-      items: p.items,
-      quote: p.quote,
-      attribution: p.attribution,
-    },
-    order: idx,
-  }));
+### Fix 3: Text overflow with continuation pages (generatePDF.ts)
+Refactor the PDF generation loop to handle text overflow:
+- Make `drawBody()` return the number of characters actually rendered.
+- In `generatePDFFromPages()`, when body text overflows, automatically insert continuation pages with the remaining text.
+- This prevents text from being silently cut off.
 
-  await supabase
-    .from("expanded_content")
-    .update({ page_layouts: pageLayouts })
-    .eq("id", contentId);
-}
-```
+### Fix 4: Fix image sizing in layouts (generatePDF.ts)
+- For `text-image` and `image-text`: size the image proportionally (max 60% of page height, maintain aspect ratio) instead of stretching full height.
+- For `full-image`: properly handle the full-bleed case.
 
-### 2. Link generated images into page layouts (useBookBuilder.tsx)
+### Fix 5: Add page numbers (generatePDF.ts)
+After rendering all pages, loop through and add page numbers at the bottom center of each page (skip page 1 if it's a cover).
 
-After the imaging phase, find pages with image-capable layouts (text-image, image-text, full-image) and inject the generated image URLs:
+### Fix 6: Add cover page and table of contents (generatePDF.ts + useProductExports.tsx)
+- Generate a cover page from the outline title and brand info.
+- Generate a table of contents from section titles with page numbers.
+- Insert these at the beginning of the `allPages` array before PDF generation.
 
-```typescript
-// After image generation, update page_layouts with image URLs
-if (generatedImageUrls.length > 0 && contentId) {
-  const { data: ec } = await supabase
-    .from("expanded_content")
-    .select("page_layouts")
-    .eq("id", contentId)
-    .single();
-  
-  if (ec?.page_layouts) {
-    const layouts = ec.page_layouts as any[];
-    let imgIdx = 0;
-    for (const page of layouts) {
-      if (["text-image", "image-text", "full-image"].includes(page.layout) && imgIdx < generatedImageUrls.length) {
-        page.content.image = generatedImageUrls[imgIdx];
-        imgIdx++;
-      }
-    }
-    // Also add remaining images as new image-text pages
-    while (imgIdx < generatedImageUrls.length) {
-      layouts.push({
-        id: crypto.randomUUID(),
-        layout: "full-image",
-        content: { image: generatedImageUrls[imgIdx], heading: section.title },
-        order: layouts.length,
-      });
-      imgIdx++;
-    }
-    await supabase
-      .from("expanded_content")
-      .update({ page_layouts: layouts })
-      .eq("id", contentId);
-  }
-}
-```
+### Fix 7: Fix content duplication
+- In `generateFallbackPages()`, the chapter-opener already includes the first 200 chars of content, then the full-text pages start from word 0 again. Fix: start the full-text chunking after skipping the opener content.
 
-### 3. Fix text overflow in auto-layout prompt (auto-layout-ebook/index.ts)
+### Fix 8: Add PDF preview (ExportCenter.tsx)
+- Add a "Preview" button that generates the PDF blob client-side and displays it in an iframe using an object URL.
+- Show the preview inline in a modal or expandable section.
 
-Improve the system prompt to enforce word limits per page:
+### Fix 9: Fix heading truncation (generatePDF.ts)
+- In `drawHeading()`, check if wrapped lines fit in available vertical space. If not, reduce font size or allow heading to flow into body area.
 
-- Add explicit rule: "Each page body should contain at most 150 words for 6x9, 200 words for 8.5x11"
-- Add post-processing: truncate body text that exceeds the word limit per layout type
-- Add `pageSize` parameter pass-through (already sent but not fully utilized in word limits)
-
-### 4. Improve PDF rendering for non-fabricJSON pages (generatePDF.ts)
-
-For pages without fabricJSON (which is most auto-built pages), improve the jsPDF rendering:
-
-- Add proper text wrapping with overflow protection (check remaining vertical space before rendering)
-- Add page-break logic within body text when it exceeds available height
-- Ensure images are loaded and properly sized (aspect-ratio preserved)
-- Add proper line-height and paragraph spacing
-
-### 5. Improve template/layout intelligence (auto-layout-ebook/index.ts)
-
-Update the AI prompt for better book structure:
-
-- First page must be "chapter-opener"
-- Encourage "text-image" or "image-text" layouts when images will be generated (pass `generateImages` flag)
-- End with "key-takeaways" or "call-to-action"
-- Limit "full-text" pages to 3 consecutive maximum
-- Better word-count guidance per layout type
+---
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useBookBuilder.tsx` | Save layout response to DB; collect image URLs and inject into layouts; pass pageSize to design call |
-| `supabase/functions/auto-layout-ebook/index.ts` | Add word limits per page, image-aware layout hints, improved structure rules |
-| `src/lib/generatePDF.ts` | Add text overflow protection, better body text wrapping with page breaks |
+| `src/components/outlines/BuildAllSectionsDialog.tsx` | Pass `pageSize` to `builder.build()` |
+| `supabase/functions/generate-image/index.ts` | Fix gateway default model to `google/gemini-2.5-flash-image` |
+| `src/lib/generatePDF.ts` | Text overflow/continuation, image sizing, page numbers, cover page, TOC, heading fix, data URI handling |
+| `src/hooks/useProductExports.tsx` | Add cover/TOC generation, fix content duplication in fallback, add preview support |
+| `src/pages/ExportCenter.tsx` | Add Preview button and inline PDF viewer |
 
 ## Technical Sequence
 
-1. Fix `useBookBuilder.tsx` -- save layouts + link images (this is the critical fix)
-2. Fix `auto-layout-ebook/index.ts` -- better prompts and word limits
-3. Fix `generatePDF.ts` -- overflow protection in jsPDF rendering
+1. Fix `BuildAllSectionsDialog.tsx` -- pass `pageSize` (one-line fix)
+2. Fix `generate-image/index.ts` -- correct gateway model name
+3. Fix `generatePDF.ts` -- core rendering improvements (text flow, images, page numbers, cover/TOC)
+4. Fix `useProductExports.tsx` -- cover page generation, fallback duplication fix
+5. Fix `ExportCenter.tsx` -- add preview capability
 
-No database schema changes needed. No new dependencies.
