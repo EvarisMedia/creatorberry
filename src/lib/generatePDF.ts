@@ -286,12 +286,25 @@ async function renderPage(
     doc.setFontSize(baseFontSize);
     doc.setFont(font, "normal");
     doc.setTextColor(...bodyColor);
-    const lines = wrapText(doc, text, maxW);
+    
+    // Split into paragraphs first for better spacing
+    const paragraphs = text.split(/\n\n+/);
     const lineH = baseFontSize * 0.45;
-    const maxLines = maxH ? Math.floor(maxH / lineH) : lines.length;
-    const drawnLines = lines.slice(0, maxLines);
-    doc.text(drawnLines, x, y);
-    return y + drawnLines.length * lineH;
+    const paragraphGap = lineH * 0.8;
+    let currentY = y;
+    const bottomLimit = maxH ? y + maxH : hMm - margin.bottom;
+    
+    for (const para of paragraphs) {
+      if (currentY >= bottomLimit) break;
+      const lines = wrapText(doc, para.trim(), maxW);
+      for (const line of lines) {
+        if (currentY >= bottomLimit) break;
+        doc.text(line, x, currentY);
+        currentY += lineH;
+      }
+      currentY += paragraphGap;
+    }
+    return currentY;
   };
 
   const drawImage = async (url: string, x: number, y: number, w: number, h: number) => {

@@ -29,6 +29,7 @@ interface BuildOptions {
   imagesPerChapter: number;
   imageStyle: string;
   themeName?: string;
+  pageSize?: string;
 }
 
 export function useBookBuilder() {
@@ -58,7 +59,7 @@ export function useBookBuilder() {
     });
   };
 
-  const build = useCallback(async ({ sections, brandId, brandContext, contextAware, generateImages, imagesPerChapter, imageStyle, themeName }: BuildOptions) => {
+  const build = useCallback(async ({ sections, brandId, brandContext, contextAware, generateImages, imagesPerChapter, imageStyle, themeName, pageSize }: BuildOptions) => {
     cancelRef.current = false;
     setIsRunning(true);
     setIsDone(false);
@@ -173,12 +174,38 @@ export function useBookBuilder() {
               contentId,
               content: contentText,
               sectionTitle: section.title,
+              pageSize: pageSize || "6x9",
+              generateImages,
               ...(themeName ? { themeName } : {}),
             },
           });
 
           if (layoutResponse.error) throw new Error(layoutResponse.error.message || "Design failed");
           if (layoutResponse.data?.error) throw new Error(layoutResponse.data.error);
+
+          // Save the AI-generated page layouts to the database
+          const pages = layoutResponse.data?.pages || [];
+          if (pages.length > 0) {
+            const pageLayouts = pages.map((p: any, idx: number) => ({
+              id: crypto.randomUUID(),
+              layout: p.layout,
+              content: {
+                heading: p.heading || undefined,
+                subheading: p.subheading || undefined,
+                body: p.body || undefined,
+                image: p.image || undefined,
+                items: p.items || undefined,
+                quote: p.quote || undefined,
+                attribution: p.attribution || undefined,
+              },
+              order: idx,
+            }));
+
+            await supabase
+              .from("expanded_content")
+              .update({ page_layouts: pageLayouts })
+              .eq("id", contentId);
+          }
         }
       } catch (err: any) {
         updateStatus(i, { phase: "error", error: err.message, finishedAt: Date.now() });
@@ -192,6 +219,7 @@ export function useBookBuilder() {
         updateStatus(i, { phase: "imaging" });
 
         const imageTypes = ["section_infographic", "chapter_illustration", "diagram"];
+        const generatedImageUrls: string[] = [];
 
         try {
           for (let imgIdx = 0; imgIdx < imagesPerChapter; imgIdx++) {
@@ -219,6 +247,7 @@ export function useBookBuilder() {
             });
 
             if (response.data?.image_url) {
+              generatedImageUrls.push(response.data.image_url);
               await supabase.from("generated_images").insert({
                 user_id: userId,
                 brand_id: brandId,
@@ -229,6 +258,46 @@ export function useBookBuilder() {
                 style: imageStyle,
                 section_id: section.id,
               });
+            }
+          }
+
+          // Inject generated images into page layouts
+          if (generatedImageUrls.length > 0 && contentId) {
+            const { data: ec } = await supabase
+              .from("expanded_content")
+              .select("page_layouts")
+              .eq("id", contentId)
+              .single();
+
+            if (ec?.page_layouts && Array.isArray(ec.page_layouts)) {
+              const layouts = ec.page_layouts as any[];
+              let imgIdx = 0;
+
+              // Fill image-capable layouts first
+              for (const page of layouts) {
+                if (imgIdx >= generatedImageUrls.length) break;
+                if (["text-image", "image-text", "full-image"].includes(page.layout) && !page.content?.image) {
+                  if (!page.content) page.content = {};
+                  page.content.image = generatedImageUrls[imgIdx];
+                  imgIdx++;
+                }
+              }
+
+              // Add remaining images as full-image pages
+              while (imgIdx < generatedImageUrls.length) {
+                layouts.push({
+                  id: crypto.randomUUID(),
+                  layout: "full-image",
+                  content: { image: generatedImageUrls[imgIdx], heading: section.title },
+                  order: layouts.length,
+                });
+                imgIdx++;
+              }
+
+              await supabase
+                .from("expanded_content")
+                .update({ page_layouts: layouts })
+                .eq("id", contentId);
             }
           }
         } catch (err: any) {

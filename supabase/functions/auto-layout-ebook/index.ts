@@ -40,7 +40,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!userApiKey && !LOVABLE_API_KEY) throw new Error("No API key configured. Please add your Gemini API key in Settings.");
 
-    const { content, pageSize, brandContext, sectionTitle } = await req.json();
+    const { content, pageSize, brandContext, sectionTitle, generateImages } = await req.json();
 
     if (!content || !content.trim()) {
       return new Response(JSON.stringify({ error: "No content provided" }), {
@@ -48,6 +48,17 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Word limits per page based on page size
+    const wordLimits: Record<string, { fullText: number; bodyWithImage: number; opener: number }> = {
+      "6x9": { fullText: 150, bodyWithImage: 80, opener: 60 },
+      "5.5x8.5": { fullText: 130, bodyWithImage: 70, opener: 50 },
+      "8.5x11": { fullText: 220, bodyWithImage: 120, opener: 80 },
+      "8x8": { fullText: 180, bodyWithImage: 100, opener: 70 },
+      "a4": { fullText: 220, bodyWithImage: 120, opener: 80 },
+      "a5": { fullText: 140, bodyWithImage: 75, opener: 55 },
+    };
+    const limits = wordLimits[pageSize || "6x9"] || wordLimits["6x9"];
 
     const availableLayouts = [
       { name: "title", description: "Title page with large centered title, subtitle, and optional author name. Use for the very first page of a chapter or book." },
@@ -66,14 +77,23 @@ serve(async (req) => {
 
     const systemPrompt = `You are an expert ebook page layout designer. Given markdown content for a section of an ebook, analyze its structure and assign the best page layout template to each logical page.
 
-Rules:
-- Split content into logical pages. Each page should contain a reasonable amount of text (roughly 150-250 words for full-text pages).
-- The first page should typically be a "chapter-opener" layout.
+CRITICAL RULES:
+- The FIRST page of the section MUST be a "chapter-opener" layout.
+- Split content into logical pages. Each page must respect strict word limits to prevent text overflow.
+- WORD LIMITS PER PAGE (this is critical — exceeding these will cause text to be cut off):
+  * "full-text" body: maximum ${limits.fullText} words
+  * "two-column" body: maximum ${limits.fullText} words
+  * "text-image" / "image-text" body: maximum ${limits.bodyWithImage} words
+  * "chapter-opener" body: maximum ${limits.opener} words
+  * "quote" quote text: maximum 40 words
+  * "checklist" / "key-takeaways" items: maximum 8 items, each item maximum 15 words
+  * "call-to-action" body: maximum 40 words
+- Do NOT put more text than the word limit on any page. If content is longer, split it across multiple pages.
+- Maximum 3 consecutive "full-text" pages. Break the pattern with a "quote", "key-takeaways", or image layout.
+${generateImages ? '- Include at least 1-2 "text-image" or "image-text" layouts per section since images will be generated and injected.' : ''}
+- End the section with "key-takeaways" or "call-to-action" when appropriate.
 - Detect blockquotes and use the "quote" layout for them.
 - Detect bullet/numbered lists and use "key-takeaways" or "checklist" layouts.
-- If the content references images (markdown image syntax), pair them with adjacent text using "text-image" or "image-text" layouts.
-- Long text sections should be split across multiple "full-text" pages.
-- End sections with "key-takeaways" or "call-to-action" if appropriate.
 - Page size is ${pageSize || "6x9"} inches.
 ${brandContext?.name ? `- Brand: ${brandContext.name}` : ""}
 ${brandContext?.tone ? `- Tone: ${brandContext.tone}` : ""}
@@ -83,7 +103,7 @@ ${availableLayouts.map(l => `- "${l.name}": ${l.description}`).join("\n")}
 
 Section title: "${sectionTitle || "Untitled"}"
 
-Analyze the content and return the optimal page-by-page layout assignment.`;
+Analyze the content and return the optimal page-by-page layout assignment. Remember: respect word limits strictly.`;
 
     const toolDef = {
       name: "design_ebook_pages",
@@ -99,7 +119,7 @@ Analyze the content and return the optimal page-by-page layout assignment.`;
                 layout: { type: "string", enum: availableLayouts.map(l => l.name) },
                 heading: { type: "string", description: "Page heading or title" },
                 subheading: { type: "string", description: "Subtitle, chapter label, or button text for CTA" },
-                body: { type: "string", description: "Main body text for this page" },
+                body: { type: "string", description: "Main body text for this page (respect word limits!)" },
                 image: { type: "string", description: "Image URL if found in content" },
                 items: { type: "array", items: { type: "string" }, description: "List items for checklist or key-takeaways layouts" },
                 quote: { type: "string", description: "Quote text for quote layout" },
@@ -202,7 +222,35 @@ Analyze the content and return the optimal page-by-page layout assignment.`;
       result = JSON.parse(toolCall.function.arguments);
     }
 
-    return new Response(JSON.stringify({ pages: result.pages || [] }), {
+    // Post-process: enforce word limits on body text to prevent overflow
+    const pages = result.pages || [];
+    for (const page of pages) {
+      if (page.body) {
+        const maxWords = ["text-image", "image-text"].includes(page.layout)
+          ? limits.bodyWithImage
+          : ["chapter-opener"].includes(page.layout)
+          ? limits.opener
+          : ["call-to-action"].includes(page.layout)
+          ? 40
+          : limits.fullText;
+        
+        const words = page.body.split(/\s+/);
+        if (words.length > maxWords) {
+          page.body = words.slice(0, maxWords).join(" ") + "...";
+        }
+      }
+      if (page.quote) {
+        const words = page.quote.split(/\s+/);
+        if (words.length > 50) {
+          page.quote = words.slice(0, 50).join(" ") + "...";
+        }
+      }
+      if (page.items && page.items.length > 8) {
+        page.items = page.items.slice(0, 8);
+      }
+    }
+
+    return new Response(JSON.stringify({ pages }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
