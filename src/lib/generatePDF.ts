@@ -45,7 +45,6 @@ function parseCssValue(val: string, totalMm: number): number {
   if (val.endsWith("px")) return parseFloat(val) * PX_TO_MM;
   if (val.endsWith("%")) return (parseFloat(val) / 100) * totalMm;
   if (val.startsWith("calc(")) {
-    // Handle calc(100% - 80px) simply
     const match = val.match(/calc\(\s*100%\s*-\s*(\d+)px\s*\)/);
     if (match) return totalMm - parseFloat(match[1]) * PX_TO_MM;
     return totalMm;
@@ -53,9 +52,6 @@ function parseCssValue(val: string, totalMm: number): number {
   return parseFloat(val) * PX_TO_MM || 0;
 }
 
-/**
- * Render theme background decorative elements onto the PDF page using jsPDF drawing commands.
- */
 function renderPageBackground(
   doc: jsPDF,
   themeName: string | undefined,
@@ -78,7 +74,6 @@ function renderPageBackground(
     const [r, g, b] = hexToRgb(el.color);
     const effectiveOpacity = Math.min(el.opacity, 1);
 
-    // Calculate position
     const x = el.position.left ? parseCssValue(el.position.left, wMm) : 
               el.position.right ? wMm - parseCssValue(el.position.right, wMm) - parseCssValue(el.size.width, wMm) : 0;
     const y = el.position.top ? parseCssValue(el.position.top, hMm) :
@@ -86,7 +81,6 @@ function renderPageBackground(
     const w = parseCssValue(el.size.width, wMm);
     const h = parseCssValue(el.size.height, hMm);
 
-    // jsPDF uses GState for opacity
     const gState = new (doc as any).GState({ opacity: effectiveOpacity, "stroke-opacity": effectiveOpacity });
 
     switch (el.type) {
@@ -106,7 +100,6 @@ function renderPageBackground(
         doc.setGState(gState);
         doc.setFillColor(r, g, b);
         if (el.rotation) {
-          // For rotated rects, approximate with a diamond shape
           const cx = x + w / 2;
           const cy = y + h / 2;
           const halfW = w / 2;
@@ -147,7 +140,6 @@ function renderPageBackground(
       }
 
       case "gradient": {
-        // Simulate gradient with layered semi-transparent rectangles
         doc.saveGraphicsState();
         const steps = 10;
         for (let i = 0; i < steps; i++) {
@@ -167,7 +159,7 @@ function renderPageBackground(
         const dotGState = new (doc as any).GState({ opacity: effectiveOpacity });
         doc.setGState(dotGState);
         doc.setFillColor(r, g, b);
-        const spacing = 12; // mm between dots
+        const spacing = 12;
         const dotRadius = 0.5;
         for (let dx = spacing; dx < wMm - spacing; dx += spacing) {
           for (let dy = spacing; dy < hMm - spacing; dy += spacing) {
@@ -179,11 +171,9 @@ function renderPageBackground(
       }
 
       case "wave": {
-        // Draw simplified wave shape at the bottom
         doc.saveGraphicsState();
         doc.setGState(gState);
         doc.setFillColor(r, g, b);
-        // Simple wave approximation with rectangles
         const waveH = h;
         const segments = 20;
         const segW = wMm / segments;
@@ -201,7 +191,6 @@ function renderPageBackground(
       }
 
       case "blob": {
-        // Draw blob as a filled circle approximation
         doc.saveGraphicsState();
         doc.setGState(gState);
         doc.setFillColor(r, g, b);
@@ -218,7 +207,6 @@ function getThemeContentPadding(themeName?: string): { top: number; right: numbe
   if (!themeName) return { top: 0, right: 0, bottom: 0, left: 0 };
   const theme = THEME_BACKGROUNDS[themeName];
   if (!theme) return { top: 0, right: 0, bottom: 0, left: 0 };
-  // Convert px padding to mm
   return {
     top: theme.contentPadding.top * PX_TO_MM,
     right: theme.contentPadding.right * PX_TO_MM,
@@ -229,6 +217,10 @@ function getThemeContentPadding(themeName?: string): { top: number; right: numbe
 
 async function loadImageAsBase64(url: string): Promise<string | null> {
   try {
+    // Handle data URIs directly — no need to re-fetch
+    if (url.startsWith("data:")) {
+      return url;
+    }
     const response = await fetch(url);
     const blob = await response.blob();
     return new Promise((resolve) => {
@@ -246,13 +238,28 @@ function wrapText(doc: jsPDF, text: string, maxWidth: number): string[] {
   return doc.splitTextToSize(text, maxWidth);
 }
 
+interface RenderResult {
+  overflowText?: string;
+}
+
+function getMargins(wMm: number, hMm: number, config: PDFStyleConfig) {
+  const themePad = getThemeContentPadding(config.themeName);
+  const baseMargin = wMm * 0.08;
+  return {
+    top: baseMargin + themePad.top,
+    right: baseMargin + themePad.right,
+    bottom: baseMargin + themePad.bottom,
+    left: baseMargin + themePad.left,
+  };
+}
+
 async function renderPage(
   doc: jsPDF,
   page: EbookPageData,
   wMm: number,
   hMm: number,
   config: PDFStyleConfig
-) {
+): Promise<RenderResult> {
   const c = page.content;
   const font = getFontFamily(config);
   const baseFontSize = getFontSize(config);
@@ -260,78 +267,112 @@ async function renderPage(
   const bodyColor = hexToRgb(config.bodyColor || "#3c3c3c");
   const accentColor = hexToRgb(config.accentColor || "#6366f1");
   
-  // Apply theme content padding on top of base margin
-  const themePad = getThemeContentPadding(config.themeName);
-  const baseMargin = wMm * 0.08;
-  const margin = {
-    top: baseMargin + themePad.top,
-    right: baseMargin + themePad.right,
-    bottom: baseMargin + themePad.bottom,
-    left: baseMargin + themePad.left,
-  };
+  const margin = getMargins(wMm, hMm, config);
   const contentW = wMm - margin.left - margin.right;
 
   doc.setFont(font);
 
-  const drawHeading = (text: string, x: number, y: number, size: number, maxW: number): number => {
-    doc.setFontSize(size);
+  const lineH = baseFontSize * 0.45;
+  const paragraphGap = lineH * 0.8;
+
+  const drawHeading = (text: string, x: number, y: number, size: number, maxW: number, align?: string): number => {
+    // Try the requested size, shrink if it doesn't fit
+    let currentSize = size;
+    let lines: string[];
+    const availH = hMm * 0.25; // max 25% of page for heading
+    while (currentSize >= 10) {
+      doc.setFontSize(currentSize);
+      doc.setFont(font, "bold");
+      lines = wrapText(doc, text, maxW);
+      const totalH = lines.length * currentSize * 0.4;
+      if (totalH <= availH) break;
+      currentSize -= 1;
+    }
+    doc.setFontSize(currentSize);
     doc.setFont(font, "bold");
     doc.setTextColor(...headingColor);
-    const lines = wrapText(doc, text, maxW);
-    doc.text(lines, x, y);
-    return y + lines.length * size * 0.4;
+    lines = wrapText(doc, text, maxW);
+    if (align === "center") {
+      doc.text(lines, x, y, { align: "center" });
+    } else {
+      doc.text(lines, x, y);
+    }
+    return y + lines.length * currentSize * 0.4;
   };
 
-  const drawBody = (text: string, x: number, y: number, maxW: number, maxH?: number): number => {
+  /**
+   * Draw body text and return { finalY, overflowText }.
+   * If text doesn't fit, overflowText contains the remainder.
+   */
+  const drawBody = (text: string, x: number, y: number, maxW: number, maxH?: number): { finalY: number; overflowText?: string } => {
     doc.setFontSize(baseFontSize);
     doc.setFont(font, "normal");
     doc.setTextColor(...bodyColor);
     
-    // Split into paragraphs first for better spacing
     const paragraphs = text.split(/\n\n+/);
-    const lineH = baseFontSize * 0.45;
-    const paragraphGap = lineH * 0.8;
     let currentY = y;
     const bottomLimit = maxH ? y + maxH : hMm - margin.bottom;
     
-    for (const para of paragraphs) {
-      if (currentY >= bottomLimit) break;
-      const lines = wrapText(doc, para.trim(), maxW);
-      for (const line of lines) {
-        if (currentY >= bottomLimit) break;
-        doc.text(line, x, currentY);
+    for (let pi = 0; pi < paragraphs.length; pi++) {
+      const para = paragraphs[pi].trim();
+      if (!para) continue;
+      if (currentY >= bottomLimit) {
+        // Return remaining paragraphs as overflow
+        const remaining = paragraphs.slice(pi).join("\n\n");
+        return { finalY: currentY, overflowText: remaining };
+      }
+      const lines = wrapText(doc, para, maxW);
+      for (let li = 0; li < lines.length; li++) {
+        if (currentY >= bottomLimit) {
+          // Partial paragraph overflow: remaining lines of this paragraph + remaining paragraphs
+          const remainingLines = lines.slice(li).join(" ");
+          const remainingParas = paragraphs.slice(pi + 1).join("\n\n");
+          const overflow = remainingParas ? `${remainingLines}\n\n${remainingParas}` : remainingLines;
+          return { finalY: currentY, overflowText: overflow };
+        }
+        doc.text(lines[li], x, currentY);
         currentY += lineH;
       }
       currentY += paragraphGap;
     }
-    return currentY;
+    return { finalY: currentY };
   };
 
-  const drawImage = async (url: string, x: number, y: number, w: number, h: number) => {
+  const drawImage = async (url: string, x: number, y: number, maxW: number, maxH: number) => {
     const base64 = await loadImageAsBase64(url);
     if (base64) {
       try {
-        doc.addImage(base64, "JPEG", x, y, w, h);
+        // Proportional sizing: fit within maxW × maxH, keeping aspect ratio
+        // Default to 4:3 if we can't detect dimensions
+        let imgW = maxW;
+        let imgH = Math.min(maxH, maxW * 0.75); // default 4:3
+        
+        // Limit to 60% of page height for side layouts
+        if (imgH > hMm * 0.6) {
+          imgH = hMm * 0.6;
+          imgW = imgH * (4 / 3);
+          if (imgW > maxW) imgW = maxW;
+        }
+        
+        doc.addImage(base64, "JPEG", x, y, imgW, imgH);
       } catch {
         doc.setDrawColor(200, 200, 200);
-        doc.rect(x, y, w, h);
+        doc.rect(x, y, maxW, Math.min(maxH, maxW * 0.75));
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
-        doc.text("Image", x + w / 2, y + h / 2, { align: "center" });
+        doc.text("Image", x + maxW / 2, y + Math.min(maxH, maxW * 0.75) / 2, { align: "center" });
       }
     }
   };
+
+  let result: RenderResult = {};
 
   switch (page.layout) {
     case "title": {
       const centerY = hMm * 0.4;
       if (c.heading) {
-        doc.setFontSize(24);
-        doc.setFont(font, "bold");
-        doc.setTextColor(...headingColor);
-        const lines = wrapText(doc, c.heading, contentW * 0.8);
-        doc.text(lines, wMm / 2, centerY, { align: "center" });
-        let y2 = centerY + lines.length * 10;
+        drawHeading(c.heading, wMm / 2, centerY, 24, contentW * 0.8, "center");
+        let y2 = centerY + 20;
         if (c.subheading) {
           doc.setFontSize(14);
           doc.setFont(font, "normal");
@@ -356,20 +397,27 @@ async function renderPage(
         doc.text(c.subheading.toUpperCase(), wMm / 2, centerY, { align: "center" });
       }
       if (c.heading) {
-        drawHeading(c.heading, wMm / 2, centerY + 10, 20, contentW * 0.8);
-        doc.text("", 0, 0);
+        const headEndY = drawHeading(c.heading, wMm / 2, centerY + 10, 20, contentW * 0.8, "center");
         doc.setDrawColor(200, 200, 200);
-        doc.line(wMm / 2 - 15, centerY + 22, wMm / 2 + 15, centerY + 22);
-      }
-      if (c.body) {
-        drawBody(c.body, wMm / 2, centerY + 30, contentW * 0.7);
+        doc.line(wMm / 2 - 15, headEndY + 4, wMm / 2 + 15, headEndY + 4);
+        
+        if (c.body) {
+          const bodyResult = drawBody(c.body, margin.left + contentW * 0.15, headEndY + 10, contentW * 0.7, hMm - headEndY - 10 - margin.bottom);
+          result.overflowText = bodyResult.overflowText;
+        }
+      } else if (c.body) {
+        const bodyResult = drawBody(c.body, margin.left + contentW * 0.15, centerY + 30, contentW * 0.7, hMm - centerY - 30 - margin.bottom);
+        result.overflowText = bodyResult.overflowText;
       }
       break;
     }
     case "full-text": {
       let y = margin.top;
       if (c.heading) y = drawHeading(c.heading, margin.left, y + 5, 16, contentW) + 4;
-      if (c.body) drawBody(c.body, margin.left, y, contentW, hMm - y - margin.bottom);
+      if (c.body) {
+        const bodyResult = drawBody(c.body, margin.left, y, contentW, hMm - y - margin.bottom);
+        result.overflowText = bodyResult.overflowText;
+      }
       break;
     }
     case "text-image": {
@@ -377,8 +425,14 @@ async function renderPage(
       const imgW = contentW * 0.4;
       let y = margin.top;
       if (c.heading) y = drawHeading(c.heading, margin.left, y + 5, 14, textW) + 4;
-      if (c.body) drawBody(c.body, margin.left, y, textW, hMm - y - margin.bottom);
-      if (c.image) await drawImage(c.image, margin.left + textW + contentW * 0.05, margin.top, imgW, hMm - margin.top - margin.bottom);
+      if (c.body) {
+        const bodyResult = drawBody(c.body, margin.left, y, textW, hMm - y - margin.bottom);
+        result.overflowText = bodyResult.overflowText;
+      }
+      if (c.image) {
+        const imgMaxH = hMm * 0.6;
+        await drawImage(c.image, margin.left + textW + contentW * 0.05, margin.top + 5, imgW, imgMaxH);
+      }
       break;
     }
     case "image-text": {
@@ -386,13 +440,19 @@ async function renderPage(
       const textX = margin.left + imgW + contentW * 0.05;
       const textW = contentW * 0.55;
       let y = margin.top;
-      if (c.image) await drawImage(c.image, margin.left, margin.top, imgW, hMm - margin.top - margin.bottom);
+      if (c.image) {
+        const imgMaxH = hMm * 0.6;
+        await drawImage(c.image, margin.left, margin.top + 5, imgW, imgMaxH);
+      }
       if (c.heading) y = drawHeading(c.heading, textX, y + 5, 14, textW) + 4;
-      if (c.body) drawBody(c.body, textX, y, textW, hMm - y - margin.bottom);
+      if (c.body) {
+        const bodyResult = drawBody(c.body, textX, y, textW, hMm - y - margin.bottom);
+        result.overflowText = bodyResult.overflowText;
+      }
       break;
     }
     case "full-image": {
-      if (c.image) await drawImage(c.image, 0, 0, wMm, hMm - (c.heading ? 10 : 0));
+      if (c.image) await drawImage(c.image, margin.left, margin.top, contentW, hMm - margin.top - margin.bottom - (c.heading ? 10 : 0));
       if (c.heading) {
         doc.setFontSize(8);
         doc.setFont(font, "italic");
@@ -407,7 +467,6 @@ async function renderPage(
       if (c.body) {
         const colW = (contentW - 8) / 2;
         const lines = wrapText(doc, c.body, colW);
-        const lineH = baseFontSize * 0.45;
         const maxLines = Math.floor((hMm - y - margin.bottom) / lineH);
         const mid = Math.ceil(Math.min(lines.length, maxLines) / 2);
         doc.setFontSize(baseFontSize);
@@ -415,6 +474,11 @@ async function renderPage(
         doc.setTextColor(...bodyColor);
         doc.text(lines.slice(0, mid), margin.left, y);
         doc.text(lines.slice(mid, maxLines), margin.left + colW + 8, y);
+        if (lines.length > maxLines) {
+          // Overflow for two-column
+          const overflowLines = lines.slice(maxLines);
+          result.overflowText = overflowLines.join(" ");
+        }
       }
       break;
     }
@@ -505,9 +569,125 @@ async function renderPage(
     default: {
       let y = margin.top;
       if (c.heading) y = drawHeading(c.heading, margin.left, y + 5, 16, contentW) + 4;
-      if (c.body) drawBody(c.body, margin.left, y, contentW, hMm - y - margin.bottom);
+      if (c.body) {
+        const bodyResult = drawBody(c.body, margin.left, y, contentW, hMm - y - margin.bottom);
+        result.overflowText = bodyResult.overflowText;
+      }
       break;
     }
+  }
+
+  return result;
+}
+
+/**
+ * Render a cover page.
+ */
+function renderCoverPage(
+  doc: jsPDF,
+  title: string,
+  subtitle: string | undefined,
+  wMm: number,
+  hMm: number,
+  config: PDFStyleConfig
+) {
+  const font = getFontFamily(config);
+  const headingColor = hexToRgb(config.headingColor || "#1a1a2e");
+  const accentColor = hexToRgb(config.accentColor || "#6366f1");
+
+  // Accent bar at top
+  const [ar, ag, ab] = accentColor;
+  doc.setFillColor(ar, ag, ab);
+  doc.rect(0, 0, wMm, hMm * 0.03, "F");
+
+  // Title
+  const centerY = hMm * 0.38;
+  doc.setFontSize(28);
+  doc.setFont(font, "bold");
+  doc.setTextColor(...headingColor);
+  const titleLines = wrapText(doc, title, wMm * 0.7);
+  doc.text(titleLines, wMm / 2, centerY, { align: "center" });
+
+  // Decorative line
+  const lineY = centerY + titleLines.length * 12 + 6;
+  doc.setDrawColor(ar, ag, ab);
+  doc.setLineWidth(0.5);
+  doc.line(wMm / 2 - 20, lineY, wMm / 2 + 20, lineY);
+
+  if (subtitle) {
+    doc.setFontSize(13);
+    doc.setFont(font, "normal");
+    doc.setTextColor(100, 100, 100);
+    const subLines = wrapText(doc, subtitle, wMm * 0.6);
+    doc.text(subLines, wMm / 2, lineY + 10, { align: "center" });
+  }
+}
+
+/**
+ * Render a table of contents page. Returns actual page-number mapping.
+ */
+function renderTocPage(
+  doc: jsPDF,
+  tocEntries: { title: string; pageNum: number }[],
+  wMm: number,
+  hMm: number,
+  config: PDFStyleConfig
+) {
+  const font = getFontFamily(config);
+  const headingColor = hexToRgb(config.headingColor || "#1a1a2e");
+  const bodyColor = hexToRgb(config.bodyColor || "#3c3c3c");
+  const margin = getMargins(wMm, hMm, config);
+
+  let y = margin.top + 5;
+  doc.setFontSize(20);
+  doc.setFont(font, "bold");
+  doc.setTextColor(...headingColor);
+  doc.text("Table of Contents", wMm / 2, y, { align: "center" });
+  y += 14;
+
+  doc.setFontSize(11);
+  doc.setFont(font, "normal");
+  const contentW = wMm - margin.left - margin.right;
+  
+  for (const entry of tocEntries) {
+    if (y > hMm - margin.bottom) break;
+    doc.setTextColor(...bodyColor);
+    const titleLines = wrapText(doc, entry.title, contentW - 20);
+    doc.text(titleLines[0], margin.left, y);
+    doc.setTextColor(150, 150, 150);
+    doc.text(String(entry.pageNum), wMm - margin.right, y, { align: "right" });
+    
+    // Dot leader
+    const titleWidth = doc.getTextWidth(titleLines[0]);
+    const numWidth = doc.getTextWidth(String(entry.pageNum));
+    const dotStart = margin.left + titleWidth + 2;
+    const dotEnd = wMm - margin.right - numWidth - 2;
+    if (dotEnd > dotStart + 5) {
+      doc.setTextColor(200, 200, 200);
+      let dx = dotStart;
+      while (dx < dotEnd) {
+        doc.text(".", dx, y);
+        dx += 2;
+      }
+    }
+    
+    y += titleLines.length * 6 + 3;
+  }
+}
+
+/**
+ * Add page numbers to all pages (skip first page if it's a cover).
+ */
+function addPageNumbers(doc: jsPDF, totalPages: number, skipFirst: boolean, wMm: number, hMm: number) {
+  const font = doc.getFont().fontName || "helvetica";
+  for (let i = 0; i < totalPages; i++) {
+    if (skipFirst && i === 0) continue;
+    doc.setPage(i + 1);
+    doc.setFontSize(9);
+    doc.setFont(font, "normal");
+    doc.setTextColor(150, 150, 150);
+    const pageLabel = skipFirst ? String(i) : String(i + 1);
+    doc.text(pageLabel, wMm / 2, hMm - 5, { align: "center" });
   }
 }
 
@@ -515,7 +695,12 @@ export async function generatePDFFromPages(
   pages: EbookPageData[],
   pdfStyle: PDFStyleConfig,
   title: string,
-  canvasDataURLs?: Record<string, string>
+  canvasDataURLs?: Record<string, string>,
+  options?: {
+    includeCoverPage?: boolean;
+    includeToc?: boolean;
+    sectionTitles?: string[];
+  }
 ): Promise<Blob> {
   const sizeKey = pdfStyle.pageSize || "6x9";
   const dims = PAGE_SIZES[sizeKey] || PAGE_SIZES["6x9"];
@@ -528,26 +713,84 @@ export async function generatePDFFromPages(
     format: [wMm, hMm],
   });
 
+  let currentPdfPage = 0;
+  const hasCover = options?.includeCoverPage !== false;
+  const hasToc = options?.includeToc !== false && (options?.sectionTitles?.length ?? 0) > 0;
+
+  // 1. Cover page
+  if (hasCover) {
+    renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
+    renderCoverPage(doc, title, undefined, wMm, hMm, pdfStyle);
+    currentPdfPage++;
+  }
+
+  // 2. TOC page (placeholder — we'll update page numbers after rendering content)
+  const tocPageIndex = currentPdfPage;
+  if (hasToc) {
+    doc.addPage([wMm, hMm]);
+    renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
+    currentPdfPage++;
+  }
+
+  // Track which PDF page each chapter-opener lands on
+  const chapterPageMap: { title: string; pageNum: number }[] = [];
+
+  // 3. Render content pages with overflow handling
   for (let i = 0; i < pages.length; i++) {
-    if (i > 0) doc.addPage([wMm, hMm]);
+    if (currentPdfPage > 0) {
+      doc.addPage([wMm, hMm]);
+    }
+    currentPdfPage++;
 
     const page = pages[i];
     const dataURL = canvasDataURLs?.[page.id];
 
+    // Track chapter openers for TOC
+    if (page.layout === "chapter-opener" && page.content.heading) {
+      chapterPageMap.push({ title: page.content.heading, pageNum: currentPdfPage });
+    }
+
     if (dataURL) {
-      // Pixel-perfect canvas export: use the rendered image directly
       try {
         doc.addImage(dataURL, "PNG", 0, 0, wMm, hMm);
         continue;
       } catch (err) {
-        console.warn("Failed to add canvas image, falling back to jsPDF rendering:", err);
+        console.warn("Failed to add canvas image, falling back:", err);
       }
     }
 
-    // Fallback: render with jsPDF drawing commands
+    // Render with jsPDF
     renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
-    await renderPage(doc, pages[i], wMm, hMm, pdfStyle);
+    const renderResult = await renderPage(doc, page, wMm, hMm, pdfStyle);
+
+    // Handle overflow: create continuation pages for remaining text
+    let overflowText = renderResult.overflowText;
+    while (overflowText && overflowText.trim()) {
+      doc.addPage([wMm, hMm]);
+      currentPdfPage++;
+      renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
+
+      const continuationPage: EbookPageData = {
+        id: crypto.randomUUID(),
+        layout: "full-text",
+        content: { body: overflowText },
+        order: 0,
+      };
+      const contResult = await renderPage(doc, continuationPage, wMm, hMm, pdfStyle);
+      overflowText = contResult.overflowText;
+    }
   }
+
+  // 4. Render TOC with actual page numbers
+  if (hasToc && chapterPageMap.length > 0) {
+    doc.setPage(tocPageIndex + 1);
+    // Clear the page by redrawing background
+    renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
+    renderTocPage(doc, chapterPageMap, wMm, hMm, pdfStyle);
+  }
+
+  // 5. Add page numbers
+  addPageNumbers(doc, currentPdfPage, hasCover, wMm, hMm);
 
   return doc.output("blob");
 }
@@ -577,7 +820,6 @@ export async function generatePDFFromMarkdown(
     format: [wMm, hMm],
   });
 
-  // Render background on first page
   renderPageBackground(doc, pdfStyle.themeName, wMm, hMm, pdfStyle.backgroundColor);
 
   doc.setFont(font);
@@ -640,6 +882,10 @@ export async function generatePDFFromMarkdown(
       y += wrapped.length * lineH + 2;
     }
   }
+
+  // Add page numbers
+  const totalPages = doc.getNumberOfPages();
+  addPageNumbers(doc, totalPages, false, wMm, hMm);
 
   return doc.output("blob");
 }

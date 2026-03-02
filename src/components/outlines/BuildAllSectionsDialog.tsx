@@ -86,6 +86,7 @@ export default function BuildAllSectionsDialog({ open, onOpenChange, outlineId, 
       imagesPerChapter,
       imageStyle,
       themeName: selectedTheme.name,
+      pageSize,
     });
 
     const completed = builder.statuses.filter(s => s.phase === "done" || s.phase === "skipped").length;

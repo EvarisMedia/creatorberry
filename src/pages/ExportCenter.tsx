@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useBrands } from "@/hooks/useBrands";
 import { useProductOutlines } from "@/hooks/useProductOutlines";
 import { useProductExports } from "@/hooks/useProductExports";
@@ -21,6 +22,7 @@ import {
   BookOpen,
   FileText,
   Download,
+  Eye,
 } from "lucide-react";
 
 const formatOptions = [
@@ -44,12 +46,17 @@ function formatFileSize(bytes: number | null) {
 export default function ExportCenter() {
   const { currentBrand } = useBrands();
   const { outlines } = useProductOutlines(currentBrand?.id || null);
-  const { exports, isLoading: exportsLoading, exportProduct, deleteExport, downloadExport } = useProductExports(currentBrand?.id);
+  const { exports, isLoading: exportsLoading, exportProduct, deleteExport, downloadExport, previewPDF } = useProductExports(currentBrand?.id);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const [selectedOutline, setSelectedOutline] = useState<string>("");
   const [selectedFormat, setSelectedFormat] = useState<string>("markdown");
   const [includeToc, setIncludeToc] = useState(true);
+
+  // Preview state
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
 
   const handleExport = () => {
     if (!selectedOutline) return;
@@ -58,6 +65,31 @@ export default function ExportCenter() {
       format: selectedFormat,
       settings: { includeToc },
     });
+  };
+
+  const handlePreview = async () => {
+    if (!selectedOutline) return;
+    setIsPreviewing(true);
+    try {
+      const blob = await previewPDF(selectedOutline);
+      const url = URL.createObjectURL(blob);
+      // Clean up previous URL
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(url);
+      setIsPreviewOpen(true);
+    } catch (err) {
+      console.error("Preview failed:", err);
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const closePreview = () => {
+    setIsPreviewOpen(false);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
   };
 
   return (
@@ -127,24 +159,48 @@ export default function ExportCenter() {
               <Label htmlFor="toc" className="cursor-pointer">Include Table of Contents</Label>
             </div>
 
-            <Button
-              onClick={handleExport}
-              disabled={!selectedOutline || exportProduct.isPending}
-              className="w-full"
-              size="lg"
-            >
-              {exportProduct.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating Export...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export as {formatOptions.find((f) => f.value === selectedFormat)?.label}
-                </>
+            <div className="flex gap-3">
+              {/* Preview button (PDF only) */}
+              {selectedFormat === "pdf" && (
+                <Button
+                  variant="outline"
+                  onClick={handlePreview}
+                  disabled={!selectedOutline || isPreviewing}
+                  size="lg"
+                >
+                  {isPreviewing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating Preview...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-4 h-4 mr-2" />
+                      Preview PDF
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
+
+              <Button
+                onClick={handleExport}
+                disabled={!selectedOutline || exportProduct.isPending}
+                className="flex-1"
+                size="lg"
+              >
+                {exportProduct.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating Export...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Export as {formatOptions.find((f) => f.value === selectedFormat)?.label}
+                  </>
+                )}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -221,6 +277,27 @@ export default function ExportCenter() {
           </CardContent>
         </Card>
       </div>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={isPreviewOpen} onOpenChange={(open) => { if (!open) closePreview(); }}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5 text-primary" />
+              PDF Preview
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0">
+            {previewUrl && (
+              <iframe
+                src={previewUrl}
+                className="w-full h-full rounded-lg border border-border"
+                title="PDF Preview"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
