@@ -57,8 +57,18 @@ serve(async (req) => {
       "8x8": { fullText: 180, bodyWithImage: 100, opener: 70 },
       "a4": { fullText: 220, bodyWithImage: 120, opener: 80 },
       "a5": { fullText: 140, bodyWithImage: 75, opener: 55 },
+      "16x9": { fullText: 180, bodyWithImage: 100, opener: 70 },
+      "a4-landscape": { fullText: 220, bodyWithImage: 120, opener: 80 },
+      "letter-landscape": { fullText: 200, bodyWithImage: 110, opener: 75 },
     };
     const limits = wordLimits[pageSize || "6x9"] || wordLimits["6x9"];
+
+    // Truncate content to prevent AI timeout on very long sections
+    const MAX_CONTENT_WORDS = 4000;
+    const contentWords = content.split(/\s+/);
+    const truncatedContent = contentWords.length > MAX_CONTENT_WORDS
+      ? contentWords.slice(0, MAX_CONTENT_WORDS).join(" ")
+      : content;
 
     const availableLayouts = [
       { name: "title", description: "Title page with large centered title, subtitle, and optional author name. Use for the very first page of a chapter or book." },
@@ -152,7 +162,7 @@ Analyze the content and return the optimal page-by-page layout assignment. Remem
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + content }] }],
+            contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + truncatedContent }] }],
             tools: [googleToolDef],
             toolConfig: { functionCallingConfig: { mode: "ANY", allowedFunctionNames: ["design_ebook_pages"] } },
           }),
@@ -188,7 +198,7 @@ Analyze the content and return the optimal page-by-page layout assignment. Remem
           model: "google/gemini-3-flash-preview",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content },
+            { role: "user", content: truncatedContent },
           ],
           tools: [{
             type: "function",
