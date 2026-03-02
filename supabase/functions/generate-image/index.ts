@@ -309,10 +309,11 @@ Design requirements:
     if (userApiKey) {
       // Whitelist of known working Gemini image-generation models (as of March 2026)
       const VALID_IMAGE_MODELS = [
+        "gemini-2.0-flash-exp-image-generation",
         "gemini-2.0-flash-preview-image-generation",
         "imagen-3.0-generate-002",
       ];
-      const DEFAULT_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation";
+      const DEFAULT_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation";
       const geminiModel = (userImageModel && VALID_IMAGE_MODELS.includes(userImageModel))
         ? userImageModel
         : DEFAULT_IMAGE_MODEL;
@@ -358,8 +359,11 @@ Design requirements:
       }
       const errorText = await response.text();
       console.error("AI error:", response.status, errorText);
+      const errorMsg = response.status === 404 
+        ? "Image model not found. Please go to Settings and update your preferred image model to 'gemini-2.0-flash-exp-image-generation'."
+        : "Failed to generate image";
       return new Response(
-        JSON.stringify({ error: "Failed to generate image" }),
+        JSON.stringify({ error: errorMsg }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

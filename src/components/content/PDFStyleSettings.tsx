@@ -12,6 +12,8 @@ import { ThemeGallery, DesignTheme } from "./ThemeGallery";
 export interface PDFStyleConfig {
   fontFamily: "serif" | "sans-serif" | "mono";
   fontSize: "small" | "medium" | "large";
+  headingFontSize?: number;
+  bodyFontSize?: number;
   headingColor: string;
   accentColor: string;
   backgroundColor: string;
@@ -246,6 +248,34 @@ export function PDFStyleSettings({ config, onChange, variant = "card" }: Props) 
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Custom Heading Font Size */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Heading Size (pt)</Label>
+                <Input
+                  type="number"
+                  min={10}
+                  max={48}
+                  value={config.headingFontSize ?? ""}
+                  onChange={(e) => update({ headingFontSize: e.target.value ? Number(e.target.value) : undefined })}
+                  placeholder="Auto"
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              {/* Custom Body Font Size */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Body Size (pt)</Label>
+                <Input
+                  type="number"
+                  min={8}
+                  max={24}
+                  value={config.bodyFontSize ?? ""}
+                  onChange={(e) => update({ bodyFontSize: e.target.value ? Number(e.target.value) : undefined })}
+                  placeholder="Auto"
+                  className="h-9 text-xs"
+                />
               </div>
             </div>
 

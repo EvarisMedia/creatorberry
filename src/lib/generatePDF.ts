@@ -27,11 +27,18 @@ function getFontFamily(config: PDFStyleConfig): string {
 }
 
 function getFontSize(config: PDFStyleConfig): number {
+  if (config.bodyFontSize) return config.bodyFontSize;
   switch (config.fontSize) {
     case "small": return 10;
     case "large": return 14;
     default: return 12;
   }
+}
+
+function getHeadingFontSize(config: PDFStyleConfig, scale: number): number {
+  if (config.headingFontSize) return config.headingFontSize * scale;
+  const base = getFontSize(config);
+  return base * scale;
 }
 
 function hexToRgb(hex: string): [number, number, number] {

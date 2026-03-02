@@ -148,7 +148,7 @@ const ProductOutlinePage = () => {
                    </div>
                    <div className="flex items-center gap-2">
                      {activeOutline.sections?.length > 0 && (
-                       <Button variant="outline" size="sm" onClick={() => navigate(`/content-editor/${activeOutline.sections[0].id}`)}>
+                       <Button variant="outline" size="sm" onClick={() => navigate(`/content-editor/${activeOutline.sections[0].id}?outlineId=${activeOutline.id}`)}>
                          <Eye className="w-4 h-4 mr-2" /> Preview
                        </Button>
                      )}

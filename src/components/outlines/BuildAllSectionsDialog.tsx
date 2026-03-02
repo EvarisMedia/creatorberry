@@ -302,7 +302,7 @@ export default function BuildAllSectionsDialog({ open, onOpenChange, outlineId, 
               <Button variant="outline" onClick={() => { handleClose(); navigate(`/export-center`); }}>
                 <FileDown className="w-4 h-4 mr-2" /> Export PDF
               </Button>
-              <Button onClick={() => { handleClose(); navigate(`/content-editor/${sections[0]?.id}`); }}>
+              <Button onClick={() => { handleClose(); navigate(`/content-editor/${sections[0]?.id}?outlineId=${outlineId}`); }}>
                 <BookOpen className="w-4 h-4 mr-2" /> Open Content Editor
               </Button>
             </>

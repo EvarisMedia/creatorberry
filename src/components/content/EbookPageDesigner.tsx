@@ -266,8 +266,24 @@ export function EbookPageDesigner({
     }
   };
 
-  const handleImageGenerated = (imageUrl: string) => {
+  const handleImageGenerated = async (imageUrl: string) => {
     updatePageContent(selectedPageIndex, "image", imageUrl);
+    // Also add directly to Fabric canvas if in canvas mode
+    if (canvasMode && fabricCanvasRef.current) {
+      const canvas = fabricCanvasRef.current.getCanvas();
+      if (canvas) {
+        const { FabricImage } = await import("fabric");
+        const img = await FabricImage.fromURL(imageUrl, { crossOrigin: "anonymous" });
+        const maxW = canvas.width! * 0.6;
+        const maxH = canvas.height! * 0.4;
+        const scale = Math.min(maxW / (img.width || 1), maxH / (img.height || 1), 1);
+        img.scale(scale);
+        img.set({ left: 50, top: 50 });
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+      }
+    }
     setShowImageDialog(false);
   };
 
@@ -297,6 +313,22 @@ export function EbookPageDesigner({
     const { data: urlData } = supabase.storage.from("generated-images").getPublicUrl(path);
     if (urlData?.publicUrl) {
       updatePageContent(selectedPageIndex, "image", urlData.publicUrl);
+      // Also add directly to Fabric canvas if in canvas mode
+      if (canvasMode && fabricCanvasRef.current) {
+        const canvas = fabricCanvasRef.current.getCanvas();
+        if (canvas) {
+          const { FabricImage } = await import("fabric");
+          const img = await FabricImage.fromURL(urlData.publicUrl, { crossOrigin: "anonymous" });
+          const maxW = canvas.width! * 0.6;
+          const maxH = canvas.height! * 0.4;
+          const scale = Math.min(maxW / (img.width || 1), maxH / (img.height || 1), 1);
+          img.scale(scale);
+          img.set({ left: 50, top: 50 });
+          canvas.add(img);
+          canvas.setActiveObject(img);
+          canvas.renderAll();
+        }
+      }
       toast({ title: "Image uploaded" });
     }
   };

@@ -165,7 +165,7 @@ export function GenerateSectionImageDialog({ section, brand, onImageGenerated, o
           <DialogDescription>Create an AI-generated image based on this section's content.</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <ScrollArea className="max-h-[60vh] -mx-6 px-6">
           <div className="space-y-4 pb-4">
             {/* Section context preview */}
             <div className="p-3 rounded-lg bg-muted/50 border border-border">
