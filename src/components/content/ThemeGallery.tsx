@@ -22,6 +22,10 @@ export const BUILT_IN_THEMES: DesignTheme[] = [
   { name: "Dark Professional", fontFamily: "sans-serif", fontSize: "medium", headingColor: "#e2e8f0", accentColor: "#818cf8", backgroundColor: "#1e293b", bodyColor: "#cbd5e1" },
   { name: "Playful Creative", fontFamily: "sans-serif", fontSize: "medium", headingColor: "#7c3aed", accentColor: "#ec4899", backgroundColor: "#fdf4ff", bodyColor: "#4b5563" },
   { name: "Nature Zen", fontFamily: "serif", fontSize: "medium", headingColor: "#14532d", accentColor: "#16a34a", backgroundColor: "#f0fdf4", bodyColor: "#3f3f46" },
+  { name: "Sunset Glow", fontFamily: "sans-serif", fontSize: "medium", headingColor: "#7c2d12", accentColor: "#f97316", backgroundColor: "#fffbeb", bodyColor: "#44403c" },
+  { name: "Midnight Luxe", fontFamily: "serif", fontSize: "medium", headingColor: "#fef3c7", accentColor: "#d4a853", backgroundColor: "#0f172a", bodyColor: "#d1d5db" },
+  { name: "Pastel Dreams", fontFamily: "sans-serif", fontSize: "medium", headingColor: "#831843", accentColor: "#e879a8", backgroundColor: "#fdf2f8", bodyColor: "#6b7280" },
+  { name: "Tech Grid", fontFamily: "sans-serif", fontSize: "medium", headingColor: "#e2e8f0", accentColor: "#06b6d4", backgroundColor: "#0c1222", bodyColor: "#94a3b8" },
 ];
 
 interface Props {

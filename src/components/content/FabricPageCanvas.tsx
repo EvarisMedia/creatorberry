@@ -93,6 +93,14 @@ export const FabricPageCanvas = forwardRef<FabricPageCanvasRef, Props>(
       canvas.on("object:modified", emitChange);
       canvas.on("text:changed", emitChange);
 
+      // Double-click handler for image placeholders
+      canvas.on("mouse:dblclick", (e) => {
+        const target = e.target;
+        if (target && (target as any).isImagePlaceholder && onImageAction) {
+          onImageAction("generate");
+        }
+      });
+
       // Canvas boundary clamping
       canvas.on("object:moving", (e) => {
         const obj = e.target;
@@ -395,6 +403,9 @@ async function loadPageContent(
             evented: objData.evented !== false,
             charSpacing: (objData.charSpacing as number) || 0,
           });
+          if (objData.isImagePlaceholder) {
+            (obj as any).isImagePlaceholder = true;
+          }
           break;
 
         case "Rect":
@@ -410,7 +421,13 @@ async function loadPageContent(
             angle: objData.angle || 0,
             selectable: objData.selectable !== false,
             evented: objData.evented !== false,
+            stroke: objData.stroke || undefined,
+            strokeWidth: objData.strokeWidth || 0,
+            strokeDashArray: objData.strokeDashArray as number[] || undefined,
           });
+          if (objData.isImagePlaceholder) {
+            (obj as any).isImagePlaceholder = true;
+          }
           break;
 
         case "Circle":
@@ -446,10 +463,14 @@ async function loadPageContent(
                 top: objData.top,
                 width: objData.width || 200,
                 height: objData.height || 150,
-                fill: "#f1f5f9",
-                rx: 4,
-                ry: 4,
+                fill: "#f8fafc",
+                rx: 8,
+                ry: 8,
+                stroke: "#cbd5e1",
+                strokeWidth: 2,
+                strokeDashArray: [8, 4],
               });
+              (obj as any).isImagePlaceholder = true;
             }
           }
           break;

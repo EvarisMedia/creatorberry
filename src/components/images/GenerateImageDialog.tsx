@@ -59,7 +59,6 @@ export function GenerateImageDialog({
   const [quoteText, setQuoteText] = useState(defaultQuote);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
-  // Update defaults when settings load
   useEffect(() => {
     if (settings.id) {
       setImageType(settings.default_image_type);
@@ -111,137 +110,105 @@ export function GenerateImageDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] -mx-6 px-6">
-        <div className="space-y-6 py-4">
-          {/* Brand Preview */}
-          <div className="flex items-center gap-4 p-4 border bg-muted/50">
-            <div className="flex gap-2">
-              <div 
-                className="w-8 h-8 border"
-                style={{ backgroundColor: brand.primary_color || "#000000" }}
-                title="Primary Color"
-              />
-              <div 
-                className="w-8 h-8 border"
-                style={{ backgroundColor: brand.secondary_color || "#ffffff" }}
-                title="Secondary Color"
-              />
-            </div>
-            <div>
-              <p className="font-medium">{brand.name}</p>
-              <p className="text-sm text-muted-foreground capitalize">{brand.tone} tone</p>
-            </div>
-          </div>
-
-          {/* Image Type Selection */}
-          <div className="space-y-2">
-            <Label>Image Type</Label>
-            <Select value={imageType} onValueChange={setImageType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {IMAGE_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    <div>
-                      <span className="font-medium">{type.label}</span>
-                      <span className="text-muted-foreground ml-2">— {type.description}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Quote Text (for quote cards) */}
-          {imageType === "quote_card" && (
-            <div className="space-y-2">
-              <Label htmlFor="quote">Quote Text</Label>
-              <Textarea
-                id="quote"
-                placeholder="Enter the quote or text to display on the image..."
-                value={quoteText}
-                onChange={(e) => setQuoteText(e.target.value)}
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground">
-                Keep it concise for better readability
-              </p>
-            </div>
-          )}
-
-          {/* Style Selection */}
-          <div className="space-y-2">
-            <Label>Visual Style</Label>
-            <Select value={style} onValueChange={setStyle}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STYLES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Generated Image Preview */}
-          {generatedImageUrl && (
-            <div className="space-y-2">
-              <Label>Generated Image</Label>
-              <div className="border p-2 bg-muted/30">
-                <img 
-                  src={generatedImageUrl} 
-                  alt="Generated branded image"
-                  className="w-full h-auto max-h-80 object-contain"
-                />
-              </div>
+        <ScrollArea className="flex-1 min-h-0 -mx-6 px-6">
+          <div className="space-y-6 py-4">
+            {/* Brand Preview */}
+            <div className="flex items-center gap-4 p-4 border bg-muted/50">
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(generatedImageUrl, "_blank")}
-                >
-                  Open Full Size
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
+                <div className="w-8 h-8 border" style={{ backgroundColor: brand.primary_color || "#000000" }} title="Primary Color" />
+                <div className="w-8 h-8 border" style={{ backgroundColor: brand.secondary_color || "#ffffff" }} title="Secondary Color" />
+              </div>
+              <div>
+                <p className="font-medium">{brand.name}</p>
+                <p className="text-sm text-muted-foreground capitalize">{brand.tone} tone</p>
+              </div>
+            </div>
+
+            {/* Image Type Selection */}
+            <div className="space-y-2">
+              <Label>Image Type</Label>
+              <Select value={imageType} onValueChange={setImageType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {IMAGE_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      <div>
+                        <span className="font-medium">{type.label}</span>
+                        <span className="text-muted-foreground ml-2">— {type.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Quote Text (for quote cards) */}
+            {imageType === "quote_card" && (
+              <div className="space-y-2">
+                <Label htmlFor="quote">Quote Text</Label>
+                <Textarea
+                  id="quote"
+                  placeholder="Enter the quote or text to display on the image..."
+                  value={quoteText}
+                  onChange={(e) => setQuoteText(e.target.value)}
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">Keep it concise for better readability</p>
+              </div>
+            )}
+
+            {/* Style Selection */}
+            <div className="space-y-2">
+              <Label>Visual Style</Label>
+              <Select value={style} onValueChange={setStyle}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STYLES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Generated Image Preview */}
+            {generatedImageUrl && (
+              <div className="space-y-2">
+                <Label>Generated Image</Label>
+                <div className="border p-2 bg-muted/30">
+                  <img src={generatedImageUrl} alt="Generated branded image" className="w-full h-auto max-h-80 object-contain" />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => window.open(generatedImageUrl, "_blank")}>Open Full Size</Button>
+                  <Button variant="outline" size="sm" onClick={() => {
                     const link = document.createElement("a");
                     link.href = generatedImageUrl;
                     link.download = `${brand.name.toLowerCase().replace(/\s+/g, "-")}-${imageType}.png`;
                     link.click();
-                  }}
-                >
-                  Download
-                </Button>
+                  }}>Download</Button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        </ScrollArea>
 
-          {/* Generate Button */}
+        {/* Sticky footer */}
+        <div className="pt-4 border-t">
           <Button 
             onClick={handleGenerate} 
             disabled={isGenerating || (imageType === "quote_card" && !quoteText.trim())}
             className="w-full"
           >
             {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Generating...
-              </>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
             ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                {generatedImageUrl ? "Regenerate Image" : "Generate Image"}
-              </>
+              <><Sparkles className="h-4 w-4 mr-2" />{generatedImageUrl ? "Regenerate Image" : "Generate Image"}</>
             )}
           </Button>
         </div>
-        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
