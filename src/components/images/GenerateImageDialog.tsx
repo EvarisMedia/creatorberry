@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRequireApiKey } from "@/hooks/useRequireApiKey";
 import { Button } from "@/components/ui/button";
 import {
@@ -99,7 +100,7 @@ export function GenerateImageDialog({
           Generate Image
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
@@ -110,6 +111,7 @@ export function GenerateImageDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <ScrollArea className="max-h-[60vh] -mx-6 px-6">
         <div className="space-y-6 py-4">
           {/* Brand Preview */}
           <div className="flex items-center gap-4 p-4 border bg-muted/50">
@@ -239,6 +241,7 @@ export function GenerateImageDialog({
             )}
           </Button>
         </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
