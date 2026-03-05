@@ -30,6 +30,9 @@ interface FabricObjectJSON {
   ry?: number;
   radius?: number;
   angle?: number;
+  stroke?: string;
+  strokeWidth?: number;
+  strokeDashArray?: number[];
   [key: string]: unknown;
 }
 
@@ -52,7 +55,8 @@ export function pageDataToFabricJSON(
     : pdfStyle.fontFamily === "mono" ? "'Courier New', monospace"
     : "system-ui, -apple-system, sans-serif";
 
-  const baseFontSize = pdfStyle.fontSize === "small" ? 14 : pdfStyle.fontSize === "large" ? 18 : 16;
+  const baseFontSize = (pdfStyle as any).bodyFontSize ?? (pdfStyle.fontSize === "small" ? 14 : pdfStyle.fontSize === "large" ? 18 : 16);
+  const headingSize = (pdfStyle as any).headingFontSize ?? Math.round(baseFontSize * 1.6);
   const headingColor = pdfStyle.headingColor || "#1a1a2e";
   const bodyColor = pdfStyle.bodyColor || "#334155";
   const accentColor = pdfStyle.accentColor || "#6366f1";
@@ -78,39 +82,47 @@ export function pageDataToFabricJSON(
     }
   }
 
+  const contentStartIdx = objects.length;
+
   // Layout-specific content placement
   switch (layout) {
     case "title":
-      layoutTitle(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingColor, bodyColor);
+      layoutTitle(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingSize, headingColor, bodyColor);
       break;
     case "chapter-opener":
-      layoutChapterOpener(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingColor, bodyColor);
+      layoutChapterOpener(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingSize, headingColor, bodyColor);
       break;
     case "full-text":
-      layoutFullText(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingColor, bodyColor);
+      layoutFullText(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingSize, headingColor, bodyColor);
       break;
     case "text-image":
-      layoutTextImage(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingColor, bodyColor, false);
+      layoutTextImage(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingSize, headingColor, bodyColor, false);
       break;
     case "image-text":
-      layoutTextImage(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingColor, bodyColor, true);
+      layoutTextImage(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingSize, headingColor, bodyColor, true);
       break;
     case "full-image":
       layoutFullImage(objects, content, dims.width, dims.height, fontFamily, bodyColor);
       break;
     case "quote":
-      layoutQuote(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingColor);
+      layoutQuote(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingSize, headingColor);
       break;
     case "checklist":
     case "key-takeaways":
-      layoutList(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingColor, bodyColor, accentColor);
+      layoutList(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingSize, headingColor, bodyColor, accentColor);
       break;
     case "call-to-action":
-      layoutCTA(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingColor, bodyColor, accentColor);
+      layoutCTA(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingSize, headingColor, bodyColor, accentColor);
       break;
     default:
-      layoutFullText(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingColor, bodyColor);
+      layoutFullText(objects, content, contentLeft, contentTop, contentWidth, contentHeight, fontFamily, baseFontSize, headingSize, headingColor, bodyColor);
       break;
+  }
+
+  // Vertically center content for centered layouts when content is short
+  const centeredLayouts: LayoutType[] = ["title", "chapter-opener", "quote", "call-to-action"];
+  if (centeredLayouts.includes(layout)) {
+    verticalCenterObjects(objects, contentStartIdx, contentTop, contentHeight);
   }
 
   return {
@@ -118,6 +130,32 @@ export function pageDataToFabricJSON(
     objects,
     background: pdfStyle.backgroundColor || "#ffffff",
   };
+}
+
+/**
+ * Vertically center content objects when they occupy less than 50% of available height.
+ */
+function verticalCenterObjects(objects: FabricObjectJSON[], startIdx: number, contentTop: number, contentHeight: number) {
+  const contentObjects = objects.slice(startIdx).filter(o => o.selectable !== false);
+  if (contentObjects.length === 0) return;
+
+  let minTop = Infinity;
+  let maxBottom = -Infinity;
+  for (const obj of contentObjects) {
+    const objTop = obj.top;
+    const objHeight = obj.height || (obj.fontSize ? estimateTextHeight(obj.text || "", obj.fontSize, obj.width || 200) : 30);
+    minTop = Math.min(minTop, objTop);
+    maxBottom = Math.max(maxBottom, objTop + objHeight);
+  }
+
+  const totalH = maxBottom - minTop;
+  if (totalH < contentHeight * 0.5) {
+    const targetTop = contentTop + (contentHeight - totalH) / 2;
+    const shift = targetTop - minTop;
+    for (const obj of contentObjects) {
+      obj.top += shift;
+    }
+  }
 }
 
 function backgroundElementToFabric(el: any, pageW: number, pageH: number): FabricObjectJSON | null {
@@ -209,20 +247,21 @@ function estimateTextHeight(text: string, fontSize: number, width: number, lineH
 function layoutTitle(
   objects: FabricObjectJSON[], c: PageContent,
   l: number, t: number, w: number, h: number,
-  font: string, baseSize: number, headColor: string, bodyColor: string
+  font: string, baseSize: number, headSize: number, headColor: string, bodyColor: string
 ) {
   const textW = w * 0.8;
   let y = t + h * 0.3;
 
   if (c.heading) {
-    const headH = estimateTextHeight(c.heading, baseSize * 2, textW);
+    const titleSize = Math.round(headSize * 1.25);
+    const headH = estimateTextHeight(c.heading, titleSize, textW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
       top: y,
       width: textW,
       text: c.heading,
-      fontSize: baseSize * 2,
+      fontSize: titleSize,
       fontFamily: font,
       fontWeight: "bold",
       fill: headColor,
@@ -232,14 +271,15 @@ function layoutTitle(
   }
   if (c.subheading) {
     const subW = w * 0.7;
-    const subH = estimateTextHeight(c.subheading, baseSize * 1.1, subW);
+    const subSize = Math.round(baseSize * 1.1);
+    const subH = estimateTextHeight(c.subheading, subSize, subW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.15,
       top: y,
       width: subW,
       text: c.subheading,
-      fontSize: baseSize * 1.1,
+      fontSize: subSize,
       fontFamily: font,
       fill: bodyColor,
       textAlign: "center",
@@ -253,7 +293,7 @@ function layoutTitle(
       top: y,
       width: w * 0.6,
       text: c.attribution,
-      fontSize: baseSize * 0.85,
+      fontSize: Math.round(baseSize * 0.85),
       fontFamily: font,
       fill: "#999999",
       textAlign: "center",
@@ -264,20 +304,21 @@ function layoutTitle(
 function layoutChapterOpener(
   objects: FabricObjectJSON[], c: PageContent,
   l: number, t: number, w: number, h: number,
-  font: string, baseSize: number, headColor: string, bodyColor: string
+  font: string, baseSize: number, headSize: number, headColor: string, bodyColor: string
 ) {
   const textW = w * 0.8;
   let y = t + h * 0.2;
 
   if (c.subheading) {
-    const subH = estimateTextHeight(c.subheading, baseSize * 0.7, textW);
+    const labelSize = Math.round(baseSize * 0.7);
+    const subH = estimateTextHeight(c.subheading, labelSize, textW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
       top: y,
       width: textW,
       text: c.subheading.toUpperCase(),
-      fontSize: baseSize * 0.7,
+      fontSize: labelSize,
       fontFamily: font,
       fill: "#999999",
       textAlign: "center",
@@ -286,14 +327,14 @@ function layoutChapterOpener(
     y += subH + 12;
   }
   if (c.heading) {
-    const headH = estimateTextHeight(c.heading, baseSize * 1.5, textW);
+    const headH = estimateTextHeight(c.heading, headSize, textW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
       top: y,
       width: textW,
       text: c.heading,
-      fontSize: baseSize * 1.5,
+      fontSize: headSize,
       fontFamily: font,
       fontWeight: "bold",
       fill: headColor,
@@ -315,14 +356,13 @@ function layoutChapterOpener(
   y += 16;
 
   if (c.body) {
-    const maxBodyH = (t + h) - y - 10;
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
       top: y,
       width: textW,
       text: c.body,
-      fontSize: baseSize * 0.9,
+      fontSize: Math.round(baseSize * 0.9),
       fontFamily: font,
       fill: bodyColor,
       textAlign: "center",
@@ -333,17 +373,18 @@ function layoutChapterOpener(
 function layoutFullText(
   objects: FabricObjectJSON[], c: PageContent,
   l: number, t: number, w: number, h: number,
-  font: string, baseSize: number, headColor: string, bodyColor: string
+  font: string, baseSize: number, headSize: number, headColor: string, bodyColor: string
 ) {
   let y = t + 10;
   if (c.heading) {
+    const hSize = Math.round(headSize * 0.8);
     objects.push({
       type: "Textbox",
       left: l,
       top: y,
       width: w,
       text: c.heading,
-      fontSize: baseSize * 1.3,
+      fontSize: hSize,
       fontFamily: font,
       fontWeight: "bold",
       fill: headColor,
@@ -351,6 +392,12 @@ function layoutFullText(
     y += 40;
   }
   if (c.body) {
+    // Estimate body height and center if short
+    const bodyH = estimateTextHeight(c.body, baseSize, w, 1.5);
+    const availableH = h - (y - t);
+    if (bodyH < availableH * 0.4) {
+      y += (availableH - bodyH) / 2 - 20;
+    }
     objects.push({
       type: "Textbox",
       left: l,
@@ -368,7 +415,7 @@ function layoutFullText(
 function layoutTextImage(
   objects: FabricObjectJSON[], c: PageContent,
   l: number, t: number, w: number, h: number,
-  font: string, baseSize: number, headColor: string, bodyColor: string,
+  font: string, baseSize: number, headSize: number, headColor: string, bodyColor: string,
   imageFirst: boolean
 ) {
   const gap = 20;
@@ -379,13 +426,14 @@ function layoutTextImage(
 
   let y = t + 10;
   if (c.heading) {
+    const hSize = Math.round(headSize * 0.72);
     objects.push({
       type: "Textbox",
       left: textX,
       top: y,
       width: textW,
       text: c.heading,
-      fontSize: baseSize * 1.15,
+      fontSize: hSize,
       fontFamily: font,
       fontWeight: "bold",
       fill: headColor,
@@ -405,7 +453,7 @@ function layoutTextImage(
       lineHeight: 1.5,
     });
   }
-  // Image placeholder
+  // Image or placeholder
   if (c.image) {
     objects.push({
       type: "Image",
@@ -416,15 +464,35 @@ function layoutTextImage(
       src: c.image,
     });
   } else {
+    // Dashed placeholder
+    const placeholderH = h * 0.6;
     objects.push({
       type: "Rect",
       left: imgX,
       top: t,
       width: imgW,
-      height: h * 0.6,
-      fill: "#f1f5f9",
-      rx: 4,
-      ry: 4,
+      height: placeholderH,
+      fill: "#f8fafc",
+      rx: 8,
+      ry: 8,
+      stroke: "#cbd5e1",
+      strokeWidth: 2,
+      strokeDashArray: [8, 4],
+      isImagePlaceholder: true,
+    });
+    objects.push({
+      type: "Textbox",
+      left: imgX,
+      top: t + placeholderH / 2 - 12,
+      width: imgW,
+      text: "🖼 Image",
+      fontSize: 14,
+      fontFamily: font,
+      fill: "#94a3b8",
+      textAlign: "center",
+      selectable: false,
+      evented: false,
+      isImagePlaceholder: true,
     });
   }
 }
@@ -443,15 +511,34 @@ function layoutFullImage(
       src: c.image,
     });
   } else {
+    const placeholderH = pageH - 40;
     objects.push({
       type: "Rect",
       left: 10,
       top: 10,
       width: pageW - 20,
-      height: pageH - 40,
-      fill: "#f1f5f9",
-      rx: 4,
-      ry: 4,
+      height: placeholderH,
+      fill: "#f8fafc",
+      rx: 8,
+      ry: 8,
+      stroke: "#cbd5e1",
+      strokeWidth: 2,
+      strokeDashArray: [8, 4],
+      isImagePlaceholder: true,
+    });
+    objects.push({
+      type: "Textbox",
+      left: 10,
+      top: 10 + placeholderH / 2 - 12,
+      width: pageW - 20,
+      text: "🖼 Image",
+      fontSize: 16,
+      fontFamily: font,
+      fill: "#94a3b8",
+      textAlign: "center",
+      selectable: false,
+      evented: false,
+      isImagePlaceholder: true,
     });
   }
   if (c.heading) {
@@ -473,7 +560,7 @@ function layoutFullImage(
 function layoutQuote(
   objects: FabricObjectJSON[], c: PageContent,
   l: number, t: number, w: number, h: number,
-  font: string, baseSize: number, headColor: string
+  font: string, baseSize: number, headSize: number, headColor: string
 ) {
   const textW = w * 0.8;
   let y = t + h * 0.25;
@@ -493,14 +580,15 @@ function layoutQuote(
   y += 48 * 1.3 + 8;
 
   const quoteText = c.quote || c.body || "Quote text";
-  const quoteH = estimateTextHeight(quoteText, baseSize * 1.1, textW, 1.5);
+  const quoteSize = Math.round(baseSize * 1.1);
+  const quoteH = estimateTextHeight(quoteText, quoteSize, textW, 1.5);
   objects.push({
     type: "Textbox",
     left: l + w * 0.1,
     top: y,
     width: textW,
     text: quoteText,
-    fontSize: baseSize * 1.1,
+    fontSize: quoteSize,
     fontFamily: font,
     fontStyle: "italic",
     fill: headColor,
@@ -516,7 +604,7 @@ function layoutQuote(
       top: y,
       width: w * 0.6,
       text: `— ${c.attribution}`,
-      fontSize: baseSize * 0.85,
+      fontSize: Math.round(baseSize * 0.85),
       fontFamily: font,
       fill: "#999999",
       textAlign: "center",
@@ -527,17 +615,18 @@ function layoutQuote(
 function layoutList(
   objects: FabricObjectJSON[], c: PageContent,
   l: number, t: number, w: number, h: number,
-  font: string, baseSize: number, headColor: string, bodyColor: string, accentColor: string
+  font: string, baseSize: number, headSize: number, headColor: string, bodyColor: string, accentColor: string
 ) {
   let y = t + 10;
   if (c.heading) {
+    const hSize = Math.round(headSize * 0.75);
     objects.push({
       type: "Textbox",
       left: l,
       top: y,
       width: w,
       text: c.heading,
-      fontSize: baseSize * 1.2,
+      fontSize: hSize,
       fontFamily: font,
       fontWeight: "bold",
       fill: headColor,
@@ -545,6 +634,11 @@ function layoutList(
     y += 40;
   }
   const items = c.items || [];
+  const itemsH = items.length * 30;
+  const availableH = h - (y - t);
+  if (itemsH < availableH * 0.4) {
+    y += (availableH - itemsH) / 2 - 20;
+  }
   for (let i = 0; i < items.length; i++) {
     objects.push({
       type: "Textbox",
@@ -564,20 +658,20 @@ function layoutList(
 function layoutCTA(
   objects: FabricObjectJSON[], c: PageContent,
   l: number, t: number, w: number, h: number,
-  font: string, baseSize: number, headColor: string, bodyColor: string, accentColor: string
+  font: string, baseSize: number, headSize: number, headColor: string, bodyColor: string, accentColor: string
 ) {
   const textW = w * 0.8;
   let y = t + h * 0.25;
 
   if (c.heading) {
-    const headH = estimateTextHeight(c.heading, baseSize * 1.6, textW);
+    const headH = estimateTextHeight(c.heading, headSize, textW);
     objects.push({
       type: "Textbox",
       left: l + w * 0.1,
       top: y,
       width: textW,
       text: c.heading,
-      fontSize: baseSize * 1.6,
+      fontSize: headSize,
       fontFamily: font,
       fontWeight: "bold",
       fill: headColor,
@@ -620,7 +714,7 @@ function layoutCTA(
       top: y + 8,
       width: btnW,
       text: c.subheading,
-      fontSize: baseSize * 0.85,
+      fontSize: Math.round(baseSize * 0.85),
       fontFamily: font,
       fontWeight: "bold",
       fill: "#ffffff",

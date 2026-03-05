@@ -125,7 +125,7 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] -mx-6 px-6">
+        <ScrollArea className="flex-1 min-h-0 -mx-6 px-6">
           <div className="space-y-5 py-4">
             {/* Brand Preview */}
             <div className="flex items-center gap-4 p-3 border rounded-xl bg-muted/50">
@@ -143,9 +143,7 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
             <div className="space-y-2">
               <Label>Image Type</Label>
               <Select value={imageType} onValueChange={setImageType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {IMAGE_TYPES.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
@@ -163,12 +161,7 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
             {selectedType?.hasText && (
               <div className="space-y-2">
                 <Label>{selectedType.textLabel}</Label>
-                <Textarea
-                  placeholder={selectedType.textPlaceholder}
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  rows={2}
-                />
+                <Textarea placeholder={selectedType.textPlaceholder} value={textInput} onChange={(e) => setTextInput(e.target.value)} rows={2} />
               </div>
             )}
 
@@ -176,12 +169,7 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
             {imageType === "custom_concept" && (
               <div className="space-y-2">
                 <Label>Your Concept / Idea *</Label>
-                <Textarea
-                  placeholder="Describe the image you want to create, e.g. 'A person climbing a mountain with a glowing light at the top representing achievement...'"
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  rows={3}
-                />
+                <Textarea placeholder="Describe the image you want to create..." value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} rows={3} />
               </div>
             )}
 
@@ -190,12 +178,7 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
               <Label>Visual Style</Label>
               <div className="flex flex-wrap gap-2">
                 {STYLES.map((s) => (
-                  <Badge
-                    key={s.value}
-                    variant={style === s.value ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => setStyle(s.value)}
-                  >
+                  <Badge key={s.value} variant={style === s.value ? "default" : "outline"} className="cursor-pointer" onClick={() => setStyle(s.value)}>
                     {s.label}
                   </Badge>
                 ))}
@@ -206,9 +189,7 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
             <div className="space-y-2">
               <Label>Aspect Ratio <span className="text-xs text-muted-foreground">(best-effort)</span></Label>
               <Select value={aspectRatio} onValueChange={setAspectRatio}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {ASPECT_RATIOS.map((ar) => (
                     <SelectItem key={ar.value} value={ar.value}>{ar.label}</SelectItem>
@@ -220,11 +201,7 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
             {/* Additional Context */}
             <div className="space-y-2">
               <Label>Additional Context <span className="text-xs text-muted-foreground">(optional)</span></Label>
-              <Input
-                placeholder="e.g. focus on minimalism, include nature elements, warm tones..."
-                value={extraContext}
-                onChange={(e) => setExtraContext(e.target.value)}
-              />
+              <Input placeholder="e.g. focus on minimalism, include nature elements, warm tones..." value={extraContext} onChange={(e) => setExtraContext(e.target.value)} />
             </div>
 
             {/* Preview */}
@@ -235,45 +212,33 @@ export function GenerateStudioImageDialog({ brand, onGenerated, defaultType }: G
                   <img src={generatedImageUrl} alt="Generated" className="w-full h-auto max-h-80 object-contain rounded-lg" />
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => window.open(generatedImageUrl, "_blank")}>
-                    Open Full Size
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const link = document.createElement("a");
-                      link.href = generatedImageUrl;
-                      link.download = `${brand.name.toLowerCase().replace(/\s+/g, "-")}-${imageType}.png`;
-                      link.click();
-                    }}
-                  >
-                    Download
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => window.open(generatedImageUrl, "_blank")}>Open Full Size</Button>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = generatedImageUrl;
+                    link.download = `${brand.name.toLowerCase().replace(/\s+/g, "-")}-${imageType}.png`;
+                    link.click();
+                  }}>Download</Button>
                 </div>
               </div>
             )}
-
-            {/* Generate Button */}
-            <Button
-              onClick={handleGenerate}
-              disabled={isGenerating || (selectedType?.hasText && !textInput.trim()) || (imageType === "custom_concept" && !customPrompt.trim())}
-              className="w-full"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {generatedImageUrl ? "Regenerate" : "Generate Image"}
-                </>
-              )}
-            </Button>
           </div>
         </ScrollArea>
+
+        {/* Sticky footer */}
+        <div className="pt-4 border-t">
+          <Button
+            onClick={handleGenerate}
+            disabled={isGenerating || (selectedType?.hasText && !textInput.trim()) || (imageType === "custom_concept" && !customPrompt.trim())}
+            className="w-full"
+          >
+            {isGenerating ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
+            ) : (
+              <><Sparkles className="h-4 w-4 mr-2" />{generatedImageUrl ? "Regenerate" : "Generate Image"}</>
+            )}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
