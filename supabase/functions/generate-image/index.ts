@@ -310,8 +310,6 @@ Design requirements:
       // Whitelist of known working Gemini image-generation models (as of March 2026)
       const VALID_IMAGE_MODELS = [
         "gemini-2.0-flash-exp-image-generation",
-        "gemini-2.0-flash-preview-image-generation",
-        "imagen-3.0-generate-002",
       ];
       const DEFAULT_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation";
       const geminiModel = (userImageModel && VALID_IMAGE_MODELS.includes(userImageModel))
