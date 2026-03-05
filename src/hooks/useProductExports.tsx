@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
 import { generatePDFFromPagesReact, generatePDFFromMarkdownReact } from "@/lib/generatePDFReact";
+import { generateDOCX } from "@/lib/exporters/docx";
+import { generateEPUB } from "@/lib/exporters/epub";
 import { EbookPageData } from "@/components/content/ebookLayouts";
 import { PDFStyleConfig, DEFAULT_PDF_STYLE_CONFIG } from "@/components/content/PDFStyleSettings";
 
@@ -57,6 +59,14 @@ export function useProductExports(brandId: string | undefined) {
         return await generatePDFClientSide(outlineId, settings);
       }
 
+      if (format === "docx") {
+        return await generateDocxClientSide(outlineId, settings);
+      }
+
+      if (format === "epub") {
+        return await generateEpubClientSide(outlineId, settings);
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
@@ -82,16 +92,17 @@ export function useProductExports(brandId: string | undefined) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["product-exports", brandId] });
       
-      if (data._pdfBlob) {
-        const url = URL.createObjectURL(data._pdfBlob);
+      if (data._pdfBlob || data._blob) {
+        const blob = data._pdfBlob || data._blob;
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+        a.download = `${data.title.replace(/[^a-zA-Z0-9]/g, "_")}.${data.extension}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast.success("PDF downloaded successfully!");
+        toast.success(`${data.extension.toUpperCase()} downloaded successfully!`);
         return;
       }
 
@@ -264,12 +275,14 @@ function generateFallbackPages(sectionTitle: string, content: string, startOrder
 }
 
 /**
- * Client-side PDF generation: fetches page layouts from DB and uses jsPDF.
+ * Shared: fetch outline data + expanded content pages from DB.
  */
-async function generatePDFClientSide(
-  outlineId: string,
-  settings?: Record<string, unknown>
-): Promise<any> {
+async function fetchOutlinePages(outlineId: string): Promise<{
+  outline: any;
+  allPages: EbookPageData[];
+  sectionTitles: string[];
+  pdfStyle: PDFStyleConfig;
+}> {
   const { data: outline, error: outlineErr } = await supabase
     .from("product_outlines")
     .select("*, outline_sections(*)")
@@ -314,6 +327,18 @@ async function generatePDFClientSide(
     }
   }
 
+  return { outline, allPages, sectionTitles, pdfStyle };
+}
+
+/**
+ * Client-side PDF generation.
+ */
+async function generatePDFClientSide(
+  outlineId: string,
+  settings?: Record<string, unknown>
+): Promise<any> {
+  const { outline, allPages, sectionTitles, pdfStyle } = await fetchOutlinePages(outlineId);
+
   let pdfBlob: Blob;
   if (allPages.length > 0) {
     pdfBlob = await generatePDFFromPagesReact(allPages, pdfStyle, outline.title, {
@@ -345,5 +370,53 @@ async function generatePDFClientSide(
     _pdfBlob: pdfBlob,
     title: outline.title,
     extension: "pdf",
+  };
+}
+
+/**
+ * Client-side DOCX generation.
+ */
+async function generateDocxClientSide(
+  outlineId: string,
+  settings?: Record<string, unknown>
+): Promise<any> {
+  const { outline, allPages, sectionTitles, pdfStyle } = await fetchOutlinePages(outlineId);
+
+  const blob = await generateDOCX(allPages, {
+    title: outline.title,
+    themeName: pdfStyle.themeName,
+    includeToc: true,
+    includeCover: true,
+    sectionTitles,
+  });
+
+  return {
+    _blob: blob,
+    title: outline.title,
+    extension: "docx",
+  };
+}
+
+/**
+ * Client-side EPUB generation.
+ */
+async function generateEpubClientSide(
+  outlineId: string,
+  settings?: Record<string, unknown>
+): Promise<any> {
+  const { outline, allPages, sectionTitles, pdfStyle } = await fetchOutlinePages(outlineId);
+
+  const blob = await generateEPUB(allPages, {
+    title: outline.title,
+    themeName: pdfStyle.themeName,
+    includeToc: true,
+    includeCover: true,
+    sectionTitles,
+  });
+
+  return {
+    _blob: blob,
+    title: outline.title,
+    extension: "epub",
   };
 }
