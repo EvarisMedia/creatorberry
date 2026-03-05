@@ -32,8 +32,6 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
     const { brand, quote_text, style, image_type, custom_prompt, aspect_ratio, section_context, custom_context }: GenerateImageRequest = await req.json();
 
     let prompt = "";
@@ -286,61 +284,29 @@ Design requirements:
       } catch (e) { console.log("No user API key found"); }
     }
 
-    if (!userApiKey && !LOVABLE_API_KEY) {
-      throw new Error("No API key configured");
-    }
-
-    // Fetch the configured model from settings
-    let model = "google/gemini-2.5-flash-image";
-    try {
-      const { data: modelSetting } = await supabase
-        .from("ai_settings")
-        .select("setting_value")
-        .eq("setting_key", "model_image_generation")
-        .single();
-      if (modelSetting?.setting_value) model = modelSetting.setting_value;
-    } catch (err) {
-      console.log("Using default model for image generation");
-    }
-
-    console.log("Generating image with source:", userApiKey ? "user-key" : "gateway", "type:", image_type);
-
-    let response: Response;
-    if (userApiKey) {
-      // Whitelist of known working Gemini image-generation models (as of March 2026)
-      const VALID_IMAGE_MODELS = [
-        "gemini-2.0-flash-exp-image-generation",
-      ];
-      const DEFAULT_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation";
-      const geminiModel = (userImageModel && VALID_IMAGE_MODELS.includes(userImageModel))
-        ? userImageModel
-        : DEFAULT_IMAGE_MODEL;
-      console.log("Using Gemini image model:", geminiModel, "(user requested:", userImageModel, ")");
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
-          }),
-        }
+    if (!userApiKey) {
+      return new Response(
+        JSON.stringify({ error: "No Gemini API key configured. Please go to Settings and add your API key." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-    } else {
-      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          modalities: ["image", "text"],
-        }),
-      });
     }
+
+    // Use the only known working Gemini image model
+    const DEFAULT_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation";
+    const geminiModel = DEFAULT_IMAGE_MODEL;
+    console.log("Using Gemini image model:", geminiModel, "(user preferred:", userImageModel, ")");
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${userApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
+        }),
+      }
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -349,19 +315,10 @@ Design requirements:
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required, please add funds." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const errorText = await response.text();
-      console.error("AI error:", response.status, errorText);
-      const errorMsg = response.status === 404 
-        ? "Image model not found. Please go to Settings and update your preferred image model to 'gemini-2.0-flash-exp-image-generation'."
-        : "Failed to generate image";
+      console.error("Gemini API error:", response.status, errorText);
       return new Response(
-        JSON.stringify({ error: errorMsg }),
+        JSON.stringify({ error: `Gemini API error (${response.status}): ${errorText.substring(0, 200)}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -369,21 +326,17 @@ Design requirements:
     const data = await response.json();
     let imageUrl: string | undefined;
 
-    if (userApiKey) {
-      // Gemini API response: extract inline_data base64 image
-      const parts = data.candidates?.[0]?.content?.parts || [];
-      const imagePart = parts.find((p: any) => p.inlineData);
-      if (imagePart?.inlineData) {
-        imageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
-      }
-    } else {
-      imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    // Parse Gemini direct API response (inline base64)
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find((p: any) => p.inlineData);
+    if (imagePart?.inlineData) {
+      imageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
     }
 
     if (!imageUrl) {
-      console.error("No image URL in response:", data);
+      console.error("No image in Gemini response:", JSON.stringify(data).substring(0, 500));
       return new Response(
-        JSON.stringify({ error: "No image generated" }),
+        JSON.stringify({ error: "No image generated. The model may have refused the prompt." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
