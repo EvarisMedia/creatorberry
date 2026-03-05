@@ -22,12 +22,15 @@ export function EbookPage({
 }: Props) {
   const dims = PAGE_SIZES[pageSize];
   const fontFamily = pdfStyle.fontFamily === "serif" ? "Georgia, serif" : pdfStyle.fontFamily === "mono" ? "'Courier New', monospace" : "system-ui, sans-serif";
-  const fontSize = pdfStyle.fontSize === "small" ? "14px" : pdfStyle.fontSize === "large" ? "18px" : "16px";
+  const baseFontSize = pdfStyle.fontSize === "small" ? 14 : pdfStyle.fontSize === "large" ? 18 : 16;
+  const bodyPx = pdfStyle.bodyFontSize ?? baseFontSize;
+  const headingPx = pdfStyle.headingFontSize ?? Math.round(bodyPx * 1.6);
 
   const styleProps = {
     fontFamily,
     headingColor: pdfStyle.headingColor,
-    fontSize,
+    fontSize: `${bodyPx}px`,
+    headingFontSize: `${headingPx}px`,
     accentColor: pdfStyle.accentColor,
     backgroundColor: pdfStyle.backgroundColor,
     bodyColor: pdfStyle.bodyColor,

@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { Check, Loader2, X, Sparkles, BookOpen, FileDown, SkipForward, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -50,6 +52,9 @@ export default function BuildAllSectionsDialog({ open, onOpenChange, outlineId, 
   const [contextAware, setContextAware] = useState(true);
   const [selectedTheme, setSelectedTheme] = useState<DesignTheme>(BUILT_IN_THEMES[0]);
   const [pageSize, setPageSize] = useState("6x9");
+  const [fontSize, setFontSize] = useState<"small" | "medium" | "large">("medium");
+  const [headingFontSize, setHeadingFontSize] = useState<number | undefined>(undefined);
+  const [bodyFontSize, setBodyFontSize] = useState<number | undefined>(undefined);
   const [generateImages, setGenerateImages] = useState(false);
   const [imagesPerChapter, setImagesPerChapter] = useState(1);
   const [imageStyle, setImageStyle] = useState("Modern");
@@ -62,7 +67,9 @@ export default function BuildAllSectionsDialog({ open, onOpenChange, outlineId, 
     await supabase.from("product_outlines").update({
       pdf_style_config: {
         fontFamily: selectedTheme.fontFamily,
-        fontSize: selectedTheme.fontSize,
+        fontSize,
+        headingFontSize,
+        bodyFontSize,
         headingColor: selectedTheme.headingColor,
         accentColor: selectedTheme.accentColor,
         backgroundColor: selectedTheme.backgroundColor,
@@ -113,7 +120,7 @@ export default function BuildAllSectionsDialog({ open, onOpenChange, outlineId, 
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!builder.isRunning) { builder.reset(); onOpenChange(v); } }}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
@@ -123,6 +130,7 @@ export default function BuildAllSectionsDialog({ open, onOpenChange, outlineId, 
 
         {/* PRE-BUILD SCREEN */}
         {!builder.isRunning && !builder.isDone && (
+          <ScrollArea className="max-h-[60vh] -mx-6 px-6">
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
               Configure your product design, then build all <strong>{sections.length}</strong> sections automatically.
@@ -164,6 +172,52 @@ export default function BuildAllSectionsDialog({ open, onOpenChange, outlineId, 
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Font Size */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Font Size</Label>
+              <div className="flex gap-2">
+                {(["small", "medium", "large"] as const).map((size) => (
+                  <Button
+                    key={size}
+                    size="sm"
+                    variant={fontSize === size ? "default" : "outline"}
+                    className="h-7 text-xs flex-1 capitalize"
+                    onClick={() => setFontSize(size)}
+                  >
+                    {size}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom font sizes */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Heading Size (pt)</Label>
+                <Input
+                  type="number"
+                  min={10}
+                  max={48}
+                  value={headingFontSize ?? ""}
+                  onChange={(e) => setHeadingFontSize(e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder="Auto"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Body Size (pt)</Label>
+                <Input
+                  type="number"
+                  min={8}
+                  max={24}
+                  value={bodyFontSize ?? ""}
+                  onChange={(e) => setBodyFontSize(e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder="Auto"
+                  className="h-8 text-xs"
+                />
+              </div>
             </div>
 
             {/* Context-aware toggle */}
@@ -233,6 +287,7 @@ export default function BuildAllSectionsDialog({ open, onOpenChange, outlineId, 
               Estimated time: ~{totalMinutes} minute{totalMinutes !== 1 ? "s" : ""}
             </div>
           </div>
+          </ScrollArea>
         )}
 
         {/* PROGRESS SCREEN */}

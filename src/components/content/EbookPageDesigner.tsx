@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2, Save, Plus, Trash2, Copy, ChevronUp, ChevronDown, Layers, PenTool } from "lucide-react";
+import { Loader2, RefreshCw, LayoutGrid, Maximize2, Minimize2, Save, Plus, Trash2, Copy, ChevronUp, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EbookPage } from "./EbookPage";
@@ -9,7 +9,6 @@ import { PageLayoutPicker } from "./PageLayoutPicker";
 import { EbookPageData, LayoutType, PageSizeKey, PAGE_SIZES } from "./ebookLayouts";
 import { PDFStyleConfig } from "./PDFStyleSettings";
 import { GenerateSectionImageDialog } from "./GenerateSectionImageDialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { FabricPageCanvas, FabricPageCanvasRef } from "./FabricPageCanvas";
 import { fabricJSONToPageData } from "@/lib/fabricPageSerializer";
 
@@ -42,11 +41,9 @@ export function EbookPageDesigner({
   const [pages, setPages] = useState<EbookPageData[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedPageIndex, setSelectedPageIndex] = useState(0);
-  const [showLayoutPicker, setShowLayoutPicker] = useState(false);
   const [showAddPagePicker, setShowAddPagePicker] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
-  const [canvasMode, setCanvasMode] = useState(false);
   const fabricCanvasRef = useRef<FabricPageCanvasRef>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -268,8 +265,8 @@ export function EbookPageDesigner({
 
   const handleImageGenerated = async (imageUrl: string) => {
     updatePageContent(selectedPageIndex, "image", imageUrl);
-    // Also add directly to Fabric canvas if in canvas mode
-    if (canvasMode && fabricCanvasRef.current) {
+    // Add directly to Fabric canvas
+    if (fabricCanvasRef.current) {
       const canvas = fabricCanvasRef.current.getCanvas();
       if (canvas) {
         const { FabricImage } = await import("fabric");
@@ -313,8 +310,8 @@ export function EbookPageDesigner({
     const { data: urlData } = supabase.storage.from("generated-images").getPublicUrl(path);
     if (urlData?.publicUrl) {
       updatePageContent(selectedPageIndex, "image", urlData.publicUrl);
-      // Also add directly to Fabric canvas if in canvas mode
-      if (canvasMode && fabricCanvasRef.current) {
+      // Add directly to Fabric canvas
+      if (fabricCanvasRef.current) {
         const canvas = fabricCanvasRef.current.getCanvas();
         if (canvas) {
           const { FabricImage } = await import("fabric");
@@ -375,36 +372,9 @@ export function EbookPageDesigner({
           </span>
           <div className="w-px h-4 bg-border mx-1" />
 
-          {/* Editor mode toggle: Template <-> Canvas */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant={canvasMode ? "default" : "outline"}
-                className="h-7 text-xs gap-1"
-                onClick={() => setCanvasMode(!canvasMode)}
-              >
-                {canvasMode ? <PenTool className="w-3 h-3" /> : <Layers className="w-3 h-3" />}
-                {canvasMode ? "Canvas" : "Template"}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {canvasMode
-                ? "Canvas mode: Full design freedom with drag, rotate, resize. Click to switch to Template."
-                : "Template mode: Fixed layout with inline editing. Click to switch to Canvas."
-              }
-            </TooltipContent>
-          </Tooltip>
-
-          <div className="w-px h-4 bg-border mx-1" />
           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={generateLayouts} title="Regenerate all layouts">
             <RefreshCw className="w-3 h-3" />
           </Button>
-          {selectedPage && !canvasMode && (
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLayoutPicker(true)}>
-              <LayoutGrid className="w-3 h-3 mr-1" /> Layout
-            </Button>
-          )}
           <div className="w-px h-4 bg-border mx-1" />
           <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => setShowAddPagePicker(true)} title="Add page after current">
             <Plus className="w-3 h-3" />
@@ -430,7 +400,7 @@ export function EbookPageDesigner({
             <Save className="w-3 h-3 mr-1" /> Save
           </Button>
           <span className="text-xs text-muted-foreground">
-            {canvasMode ? "Canvas: drag, rotate, resize objects" : "Click text to edit"}
+            Canvas: drag, rotate, resize objects
           </span>
         </div>
         {onToggleFullscreen && (
@@ -469,7 +439,7 @@ export function EbookPageDesigner({
 
         {/* Main page view */}
         <div ref={mainRef} className="flex-1 flex flex-col items-center overflow-auto">
-          {selectedPage && canvasMode ? (
+          {selectedPage ? (
             <FabricPageCanvas
               ref={fabricCanvasRef}
               page={selectedPage}
@@ -488,37 +458,10 @@ export function EbookPageDesigner({
               }}
               onImageAction={handleImageAction}
             />
-          ) : selectedPage ? (
-            <div className="relative">
-              <EbookPage
-                page={selectedPage}
-                pageSize={pageSize}
-                pdfStyle={pdfStyle}
-                scale={mainScale}
-                isSelected
-                editable
-                onFieldChange={(field, value) => updatePageContent(selectedPageIndex, field, value)}
-                onItemChange={(idx, value) => updatePageItem(selectedPageIndex, idx, value)}
-                onImageAction={handleImageAction}
-              />
-              {/* Page number overlay */}
-              <div className="absolute bottom-2 right-3 bg-muted/80 text-muted-foreground text-[10px] px-2 py-0.5 rounded font-medium">
-                {selectedPageIndex + 1} / {pages.length}
-              </div>
-            </div>
           ) : null}
         </div>
       </div>
 
-      {/* Layout picker dialog */}
-      {selectedPage && (
-        <PageLayoutPicker
-          open={showLayoutPicker}
-          onClose={() => setShowLayoutPicker(false)}
-          currentLayout={selectedPage.layout}
-          onSelect={handleLayoutChange}
-        />
-      )}
 
       {/* Add Page layout picker */}
       <PageLayoutPicker
