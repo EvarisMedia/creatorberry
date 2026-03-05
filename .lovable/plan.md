@@ -1,42 +1,81 @@
 
+# PDF Export Migration Plan — jsPDF → @react-pdf/renderer
 
-# Analysis: Current Architecture vs. Suggested @react-pdf/renderer Approach
+## Phase 1: Replace jsPDF with @react-pdf/renderer (Session 1-2)
 
-## Summary
+### 1a. Install dependencies & create PDF component foundation
+- Install `@react-pdf/renderer`
+- Register Google Fonts via `Font.register()` for all 6 template font pairs
+- Create `src/components/pdf/` folder with shared components:
+  - `PDFDocument.tsx` — root `<Document>` wrapper
+  - `CoverPage.tsx` — title, tagline, cover image
+  - `TableOfContents.tsx` — auto-generated from chapters
+  - `ChapterOpener.tsx` — full-page chapter start
+  - `SectionPage.tsx` — section content + image
+  - `FooterHeader.tsx` — page numbers
+  - `TemplateProvider.tsx` — context providing template config
 
-The suggested workflow is architecturally different and better in several areas, but a full migration would be a major rewrite. Here's a comparison of what's better, what's equivalent, and what you'd lose.
+### 1b. Create unified EbookTemplate config type
+- Define `EbookTemplate` type with colors, fonts, cover style, layout settings
+- Migrate existing `themeBackgrounds` + `PDFStyleConfig` into 6 template configs:
+  - modern-dark, editorial-light, bold-magazine, minimal-clean, luxury-gold, tech-blueprint
+- Single config drives PDF styling (and later HTML/DOCX/EPUB)
 
-## What the Suggested Approach Does Better
+### 1c. Replace generatePDF.ts internals
+- Rewrite `generatePDFFromPages()` to use `pdf(<PDFDocument />).toBlob()`
+- Remove jsPDF dependency and `fabricOffscreenRenderer.ts` from the PDF path
+- Keep Fabric.js canvas editor untouched — it stays for interactive design
+- Update `useProductExports.tsx` to call the new renderer
 
-| Area | Current | Suggested | Verdict |
-|------|---------|-----------|---------|
-| **PDF generation** | jsPDF with manual pixel math (925 lines of imperative positioning code) | `@react-pdf/renderer` declarative React components | Suggested is significantly cleaner and more maintainable |
-| **Fonts** | Limited to Helvetica, Times, Courier (jsPDF built-ins) | Custom Google Fonts via `Font.register()` | Suggested wins — real typography |
-| **Page breaks** | Manual word-count chunking (~200 words/page) + overflow continuation logic | Automatic via `break` prop | Suggested is more reliable |
-| **Template system** | Theme backgrounds as config objects driving jsPDF drawing commands | Single template config driving all 4 export formats (PDF, HTML, DOCX, EPUB) | Suggested is more elegant — one config, four outputs |
-| **Multi-format export** | Only PDF + basic markdown/HTML/JSON | PDF + HTML + DOCX + EPUB with template-aware styling | Suggested has richer export options |
-| **Content builder UX** | Section-by-section generation with separate "Build All" dialog | Sequential generation loop with progress bar and live preview | Roughly equivalent, but suggested has cleaner state management |
+### 1d. Verify & test
+- Test PDF export with all 6 templates
+- Verify cover page, TOC, chapter openers, section pages render correctly
+- Confirm fonts load from Google Fonts CDN
 
-## What Your Current App Does That the Suggested Doesn't
+## Phase 2: Add DOCX + EPUB exports (Session 3)
 
-| Feature | Status |
-|---------|--------|
-| **Fabric.js canvas editor** — pixel-perfect drag-and-drop design mode | You have this; suggested approach doesn't |
-| **Template + Canvas dual mode** — structured layout OR full design freedom | Unique to your app |
-| **Existing Supabase integration** — brands, outlines, sections, exports all wired up | Already working |
-| **Full product pipeline** — ideas → outlines → content → images → export | Already built end-to-end |
+### 2a. DOCX export
+- Install `docx` npm package
+- Create `src/lib/exporters/docx.ts`
+- Map markdown content → docx elements (headings, bold, lists, images)
+- Template config drives heading colors, font choices
 
-## Recommendation
+### 2b. EPUB export
+- Install `epub-gen-memory`
+- Create `src/lib/exporters/epub.ts`
+- Convert sections to HTML chapters with template CSS
 
-Don't rewrite the whole app. Instead, adopt the best ideas from the suggested approach:
+### 2c. Update Export Center UI
+- Add DOCX and EPUB download buttons alongside existing PDF/HTML/JSON
+- Each shows loading spinner during generation
 
-1. **Replace jsPDF with `@react-pdf/renderer`** for the PDF export path only — keep Fabric.js for the canvas editor, but use `@react-pdf/renderer` for the final export. This gives you custom fonts, automatic page breaks, and declarative layout.
+## Phase 3: Enhanced HTML export (Session 4)
 
-2. **Add a template config pattern** — define 4-6 visual templates as config objects that drive PDF styling (colors, fonts, layout), similar to the suggested `EbookTemplate` type. Your existing `PDFStyleConfig` + `themeBackgrounds` is close but more fragmented.
+### 3a. Template-aware HTML export
+- Create `src/lib/exporters/html.ts`
+- Generate self-contained HTML with embedded CSS from template config
+- Images as base64 data URIs
+- Print-ready @media print CSS
 
-3. **Add DOCX and EPUB exports** — use `docx` and `epub-gen-memory` npm packages. These are straightforward additions to your existing export center.
+## Phase 4: Cleanup (Session 5)
 
-4. **Keep your Fabric.js canvas editor** — this is a differentiator the suggested approach doesn't have.
+- Remove jsPDF dependency
+- Remove `fabricOffscreenRenderer.ts` (if no longer used)
+- Remove old `generatePDF.ts` imperative code
+- Update plan.md with final architecture
 
-This is a large effort (~3-5 implementation sessions). Want me to plan the migration in phases?
+---
 
+## What We Keep
+- Fabric.js canvas editor (Template + Canvas dual mode)
+- All existing Supabase integration (brands, outlines, sections, exports)
+- Full product pipeline (ideas → outlines → content → images → export)
+- EbookPage.tsx + PageBackgroundRenderer.tsx for in-app preview
+
+## What Changes
+- PDF generation: jsPDF → @react-pdf/renderer
+- Template system: fragmented configs → unified EbookTemplate type
+- Export formats: PDF only → PDF + DOCX + EPUB + HTML
+- Fonts: jsPDF built-ins → custom Google Fonts
+
+## Current Status: Ready to start Phase 1
