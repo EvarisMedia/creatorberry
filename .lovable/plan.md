@@ -1,81 +1,52 @@
 
-# PDF Export Migration Plan — jsPDF → @react-pdf/renderer
+# PDF Export Migration — Complete ✅
 
-## Phase 1: Replace jsPDF with @react-pdf/renderer (Session 1-2)
+## Phase 1: Replace jsPDF with @react-pdf/renderer ✅
+- Installed `@react-pdf/renderer`
+- Created `src/components/pdf/ebookTemplates.ts` — unified EbookTemplate config (8 themes)
+- Created `src/components/pdf/PDFDocument.tsx` — declarative PDF components (Cover, TOC, Content)
+- Created `src/lib/generatePDFReact.ts` — bridge functions using `pdf().toBlob()`
+- Updated `useProductExports.tsx` to use new renderer
 
-### 1a. Install dependencies & create PDF component foundation
-- Install `@react-pdf/renderer`
-- Register Google Fonts via `Font.register()` for all 6 template font pairs
-- Create `src/components/pdf/` folder with shared components:
-  - `PDFDocument.tsx` — root `<Document>` wrapper
-  - `CoverPage.tsx` — title, tagline, cover image
-  - `TableOfContents.tsx` — auto-generated from chapters
-  - `ChapterOpener.tsx` — full-page chapter start
-  - `SectionPage.tsx` — section content + image
-  - `FooterHeader.tsx` — page numbers
-  - `TemplateProvider.tsx` — context providing template config
+## Phase 2: Add DOCX + EPUB exports ✅
+- Installed `docx` npm package
+- Created `src/lib/exporters/docx.ts` — template-aware DOCX with images, styles, TOC
+- Created `src/lib/exporters/epub.ts` — valid EPUB3 using JSZip with template CSS
+- Wired both into `useProductExports.tsx` as client-side generators
 
-### 1b. Create unified EbookTemplate config type
-- Define `EbookTemplate` type with colors, fonts, cover style, layout settings
-- Migrate existing `themeBackgrounds` + `PDFStyleConfig` into 6 template configs:
-  - modern-dark, editorial-light, bold-magazine, minimal-clean, luxury-gold, tech-blueprint
-- Single config drives PDF styling (and later HTML/DOCX/EPUB)
+## Phase 3: Enhanced HTML export ✅
+- Created `src/lib/exporters/html.ts` — self-contained HTML with embedded template CSS
+- Supports all 12 layout types, print-ready `@media print`, responsive design
+- HTML export now uses client-side generator instead of edge function
 
-### 1c. Replace generatePDF.ts internals
-- Rewrite `generatePDFFromPages()` to use `pdf(<PDFDocument />).toBlob()`
-- Remove jsPDF dependency and `fabricOffscreenRenderer.ts` from the PDF path
-- Keep Fabric.js canvas editor untouched — it stays for interactive design
-- Update `useProductExports.tsx` to call the new renderer
+## Phase 4: Cleanup ✅
+- Deleted `src/lib/generatePDF.ts` (925 lines of legacy jsPDF code)
+- Deleted `src/lib/fabricOffscreenRenderer.ts` (unused)
+- Kept `jspdf` dependency (still used by `ExportCarouselDialog.tsx` for carousel PDF export)
 
-### 1d. Verify & test
-- Test PDF export with all 6 templates
-- Verify cover page, TOC, chapter openers, section pages render correctly
-- Confirm fonts load from Google Fonts CDN
+## Final Architecture
 
-## Phase 2: Add DOCX + EPUB exports (Session 3)
+### Export Pipeline
+```
+useProductExports.tsx
+  ├── PDF  → generatePDFReact.ts → PDFDocument.tsx (@react-pdf/renderer)
+  ├── DOCX → exporters/docx.ts (docx npm package)
+  ├── EPUB → exporters/epub.ts (JSZip)
+  ├── HTML → exporters/html.ts (template-aware self-contained HTML)
+  └── Other (md/txt/json/csv) → edge function (export-product)
+```
 
-### 2a. DOCX export
-- Install `docx` npm package
-- Create `src/lib/exporters/docx.ts`
-- Map markdown content → docx elements (headings, bold, lists, images)
-- Template config drives heading colors, font choices
+### Template System
+```
+ebookTemplates.ts — 8 unified templates
+  → drives PDF fonts/colors/layout
+  → drives DOCX heading styles/colors
+  → drives EPUB chapter CSS
+  → drives HTML embedded stylesheet
+```
 
-### 2b. EPUB export
-- Install `epub-gen-memory`
-- Create `src/lib/exporters/epub.ts`
-- Convert sections to HTML chapters with template CSS
-
-### 2c. Update Export Center UI
-- Add DOCX and EPUB download buttons alongside existing PDF/HTML/JSON
-- Each shows loading spinner during generation
-
-## Phase 3: Enhanced HTML export (Session 4)
-
-### 3a. Template-aware HTML export
-- Create `src/lib/exporters/html.ts`
-- Generate self-contained HTML with embedded CSS from template config
-- Images as base64 data URIs
-- Print-ready @media print CSS
-
-## Phase 4: Cleanup (Session 5)
-
-- Remove jsPDF dependency
-- Remove `fabricOffscreenRenderer.ts` (if no longer used)
-- Remove old `generatePDF.ts` imperative code
-- Update plan.md with final architecture
-
----
-
-## What We Keep
-- Fabric.js canvas editor (Template + Canvas dual mode)
-- All existing Supabase integration (brands, outlines, sections, exports)
+### What We Kept
+- Fabric.js canvas editor (interactive design mode)
+- All Supabase integration (brands, outlines, sections, exports)
 - Full product pipeline (ideas → outlines → content → images → export)
-- EbookPage.tsx + PageBackgroundRenderer.tsx for in-app preview
-
-## What Changes
-- PDF generation: jsPDF → @react-pdf/renderer
-- Template system: fragmented configs → unified EbookTemplate type
-- Export formats: PDF only → PDF + DOCX + EPUB + HTML
-- Fonts: jsPDF built-ins → custom Google Fonts
-
-## Current Status: Ready to start Phase 1
+- jsPDF for carousel-specific PDF export
