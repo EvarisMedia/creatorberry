@@ -2,10 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
-import { generatePDFFromPages, generatePDFFromMarkdown } from "@/lib/generatePDF";
+import { generatePDFFromPagesReact, generatePDFFromMarkdownReact } from "@/lib/generatePDFReact";
 import { EbookPageData } from "@/components/content/ebookLayouts";
 import { PDFStyleConfig, DEFAULT_PDF_STYLE_CONFIG } from "@/components/content/PDFStyleSettings";
-import { renderPagesToDataURLs } from "@/lib/fabricOffscreenRenderer";
 
 export interface ProductExport {
   id: string;
@@ -161,7 +160,7 @@ export function useProductExports(brandId: string | undefined) {
           tempDiv.innerHTML = html;
           const textContent = tempDiv.textContent || tempDiv.innerText || "";
           
-          const pdfBlob = await generatePDFFromMarkdown(
+          const pdfBlob = await generatePDFFromMarkdownReact(
             textContent,
             DEFAULT_PDF_STYLE_CONFIG,
             data.title
@@ -317,8 +316,7 @@ async function generatePDFClientSide(
 
   let pdfBlob: Blob;
   if (allPages.length > 0) {
-    const canvasDataURLs = await renderPagesToDataURLs(allPages, pdfStyle);
-    pdfBlob = await generatePDFFromPages(allPages, pdfStyle, outline.title, canvasDataURLs, {
+    pdfBlob = await generatePDFFromPagesReact(allPages, pdfStyle, outline.title, {
       includeCoverPage: true,
       includeToc: true,
       sectionTitles,
@@ -340,7 +338,7 @@ async function generatePDFClientSide(
     );
     if (!response.ok) throw new Error("Export failed");
     const data = await response.json();
-    pdfBlob = await generatePDFFromMarkdown(data.content, pdfStyle, outline.title);
+    pdfBlob = await generatePDFFromMarkdownReact(data.content, pdfStyle, outline.title);
   }
 
   return {
