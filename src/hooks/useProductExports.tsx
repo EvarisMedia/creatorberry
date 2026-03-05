@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { generatePDFFromPagesReact, generatePDFFromMarkdownReact } from "@/lib/generatePDFReact";
 import { generateDOCX } from "@/lib/exporters/docx";
 import { generateEPUB } from "@/lib/exporters/epub";
+import { generateHTML } from "@/lib/exporters/html";
 import { EbookPageData } from "@/components/content/ebookLayouts";
 import { PDFStyleConfig, DEFAULT_PDF_STYLE_CONFIG } from "@/components/content/PDFStyleSettings";
 
@@ -65,6 +66,10 @@ export function useProductExports(brandId: string | undefined) {
 
       if (format === "epub") {
         return await generateEpubClientSide(outlineId, settings);
+      }
+
+      if (format === "html") {
+        return await generateHtmlClientSide(outlineId, settings);
       }
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -418,5 +423,31 @@ async function generateEpubClientSide(
     _blob: blob,
     title: outline.title,
     extension: "epub",
+  };
+}
+
+/**
+ * Client-side HTML generation with template-aware styling.
+ */
+async function generateHtmlClientSide(
+  outlineId: string,
+  settings?: Record<string, unknown>
+): Promise<any> {
+  const { outline, allPages, sectionTitles, pdfStyle } = await fetchOutlinePages(outlineId);
+
+  const html = generateHTML(allPages, {
+    title: outline.title,
+    themeName: pdfStyle.themeName,
+    includeToc: true,
+    includeCover: true,
+    sectionTitles,
+  });
+
+  const blob = new Blob([html], { type: "text/html" });
+
+  return {
+    _blob: blob,
+    title: outline.title,
+    extension: "html",
   };
 }
