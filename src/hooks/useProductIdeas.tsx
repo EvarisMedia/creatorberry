@@ -110,14 +110,14 @@ export function useProductIdeas(brandId: string | null) {
     await fetchIdeas();
   };
 
-  const generateIdeas = async (brand: any, numberOfIdeas = 5, seedPrompt?: string) => {
+  const generateIdeas = async (brand: any, numberOfIdeas = 5, seedPrompt?: string, documentContext?: string) => {
     setIsGenerating(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
       const response = await supabase.functions.invoke("generate-product-ideas", {
-        body: { brand, numberOfIdeas, seedPrompt },
+        body: { brand, numberOfIdeas, seedPrompt, documentContext },
       });
 
       if (response.error) throw response.error;

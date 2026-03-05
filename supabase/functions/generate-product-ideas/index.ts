@@ -37,7 +37,7 @@ serve(async (req) => {
       );
     }
 
-    const { brand, numberOfIdeas = 5, seedPrompt } = await req.json();
+    const { brand, numberOfIdeas = 5, seedPrompt, documentContext } = await req.json();
 
     if (!brand?.id || !brand?.name) {
       return new Response(
@@ -148,7 +148,7 @@ IMPORTANT:
 - Combined score must follow the weighted formula
 - Prioritize ideas that leverage the creator's unique expertise
 - Consider the creator's existing content sources as validation signals
-- Include at least one "quick win" (low effort, fast to market) and one "flagship" (high effort, high reward)${seedPrompt ? `\n\nThe creator is particularly interested in exploring: ${seedPrompt}` : ''}`;
+- Include at least one "quick win" (low effort, fast to market) and one "flagship" (high effort, high reward)${seedPrompt ? `\n\nThe creator is particularly interested in exploring: ${seedPrompt}` : ''}${documentContext ? `\n\nUPLOADED DOCUMENT CONTENT (use this as primary context for generating ideas):\n${documentContext.substring(0, 30000)}` : ''}`;
 
     console.log('Generating product ideas for brand:', brand.name, 'source:', userApiKey ? 'user-key' : 'gateway');
 

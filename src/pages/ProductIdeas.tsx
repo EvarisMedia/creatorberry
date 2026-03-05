@@ -39,9 +39,9 @@ const ProductIdeas = () => {
   const [formatFilter, setFormatFilter] = useState("all");
   const [sortBy, setSortBy] = useState("score");
 
-  const handleGenerate = async (numberOfIdeas: number, seedPrompt?: string) => {
+  const handleGenerate = async (numberOfIdeas: number, seedPrompt?: string, documentContext?: string) => {
     if (!currentBrand) return;
-    await generateIdeas(currentBrand, numberOfIdeas, seedPrompt);
+    await generateIdeas(currentBrand, numberOfIdeas, seedPrompt, documentContext);
   };
 
   const handleStartBuilding = async (idea: ProductIdea) => {
